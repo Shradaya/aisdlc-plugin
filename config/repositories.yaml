@@ -1,5 +1,63 @@
 # Repository registry (spec §11). JSON-compatible YAML; managed by /aisdlc:add-repo.
 # Required per repo: path, role, base_branch (must be "main"), domains, depends_on, provides.
 {
-  "repositories": {}
+  "repositories": {
+    "manufacturer-hl7-parser": {
+      "path": "${AISDLC_REPOS_ROOT}/manufacturer-hl7-parser",
+      "role": "Backend ingestion pipeline (AWS Lambda) that turns cardiac-device manufacturer HL7 transmissions (Abbott, Biotronik, Boston Scientific, Medtronic) into patients, reports, automated notes and billing schedules in the shared Evoke MongoDB",
+      "system_role": "Developer-confirmed (2026-10-01): backend ingestion pipeline with no direct end users; output is consumed through other Evoke applications",
+      "base_branch": "main",
+      "domains": ["transmission-ingestion", "report-notes", "billing", "patient-registry"],
+      "depends_on": ["hl7-file-sync-service", "billing-schedule-lambda", "benchmark-sqs-consumer", "cardio-one-sqs-consumer"],
+      "provides": ["device-transmission-report-ingestion", "automated-report-notes-and-alerts", "billing-code-and-schedule-assignment", "patient-and-device-registration"],
+      "deployment": {
+        "type": "aws-lambda",
+        "pipeline": "bitbucket-pipelines.yml",
+        "environments": {
+          "lf-develop": "Development",
+          "lf-qa": "Quality Assurance",
+          "lf-uat": "Pre Production",
+          "main": "Production"
+        }
+      }
+    },
+    "rest-api-evoke": {
+      "path": "${AISDLC_REPOS_ROOT}/rest-api-evoke",
+      "role": "Express REST API (Node.js, Mongoose, one long-running process in a Docker image) behind the Evoke clinician web portal: patients, device transmissions and reports, alerts, billing and RPM, HL7/SFTP/API export jobs, outreach, accounts and access",
+      "system_role": "Developer-confirmed (2026-10-02): portal back end used by clinic staff, physicians and Evoke staff through evoke-portal-front-end; also receives third-party webhooks and service-JWT calls; owns app data and shares ingestion collections with manufacturer-hl7-parser",
+      "base_branch": "main",
+      "domains": ["report-notes", "transmission-ingestion", "patient-registry", "alerts", "billing", "ehr-export", "patient-outreach", "access-administration"],
+      "depends_on": ["benchmark-sqs-consumer", "cardio-one-sqs-consumer", "alert-notification-worker", "manufacturer-crawler", "client-ehr-hl7-export", "intergy-api-job-consumer", "sftp-export-consumer", "twilio-reminders-lambda"],
+      "provides": ["report-review-notes-and-assignment", "device-transmission-report-ingestion", "patient-and-device-registration", "automated-report-notes-and-alerts", "billing-code-and-schedule-assignment", "ehr-export-hl7-sftp-api-jobs", "patient-outreach", "access-and-account-administration"],
+      "deployment": {
+        "type": "docker-image-on-kubernetes",
+        "pipeline": "bitbucket-pipelines.yml",
+        "environments": {
+          "lf-develop": "Development",
+          "lf-qa": "QA",
+          "lf-uat": "Pre-production",
+          "main": "Production"
+        }
+      }
+    },
+    "evoke-portal-front-end": {
+      "path": "${AISDLC_REPOS_ROOT}/evoke-portal-front-end",
+      "role": "React single-page web portal (Create React App, Redux Toolkit, MUI) served by nginx, through which Evoke staff, partner-clinic staff and physicians review cardiac-device transmissions and reports, manage patients and RPM, tasks, billing, dashboards and configuration, by calling rest-api-evoke",
+      "system_role": "Developer-confirmed (2026-10-02): clinician and staff web portal used by Evoke operators and partner-clinic staff; its REST API is rest-api-evoke; realtime namespaces come from a separate socket service; it owns no persistent data",
+      "base_branch": "main",
+      "domains": ["clinician-portal", "report-notes", "patient-registry", "rpm", "tasks", "billing", "access-administration", "patient-communication"],
+      "depends_on": ["rest-api-evoke", "realtime-socket-service", "aws-cognito", "clinii-rpm-portal", "zoom-phone"],
+      "provides": ["report-review-notes-and-assignment", "patient-management-and-rpm", "task-management", "billing-management", "access-and-account-administration", "administration-and-configuration", "dashboard-and-notifications", "patient-communication"],
+      "deployment": {
+        "type": "static-spa-in-nginx-docker-image-on-kubernetes",
+        "pipeline": "bitbucket-pipelines.yml",
+        "environments": {
+          "lf-develop": "Development",
+          "lf-qa": "Quality Assurance",
+          "lf-uat": "Pre Production",
+          "main": "Production"
+        }
+      }
+    }
+  }
 }

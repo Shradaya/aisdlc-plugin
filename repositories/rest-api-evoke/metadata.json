@@ -1,0 +1,52 @@
+{
+  "repository": "rest-api-evoke",
+  "analyzed_commit": "4178ce47396c524dfd22a4dd107927b3b28eb100",
+  "analyzed_branch": "main",
+  "analyzed_at": "2026-10-01T17:57:10Z",
+  "generator": "aisdlc@1.0.0",
+  "analysis_source": "working tree of main@4178ce4 (clean, equal to origin/main); tracked files only; untracked .env, CLAUDE.md, .claude/, e2e/ not used as evidence",
+  "placement": "incomplete",
+  "placement_reason": "Role, callers, async consumers, data ownership, capabilities, workflows, rules, terminology handling and exclusions were confirmed by the developer on 2026-10-02. The repository identities of the queue/topic/Lambda consumers, the callers of the service-JWT endpoints, and the other owners of shared collections were not named and stay unknown; product-language term definitions were not provided and are recorded as inferred.",
+  "phases": {
+    "A": "complete",
+    "B": "complete",
+    "C": "complete (analyst output, medium confidence; Dockerfile and urlEncodedParser reads declined to the analyst)",
+    "D": "complete",
+    "E": "complete (role lists and validators abbreviated, Joi field shapes not transcribed)",
+    "F": "complete",
+    "G": "complete (static only; tests not run)",
+    "H": "complete",
+    "I": "complete (no dependency audit run)",
+    "J": "complete (lint, prettier, hooks and commit-subject patterns verified by orchestrator)",
+    "K": "complete",
+    "L": "complete (spot-checked in code: authorize.js role reassignment, authorizeService double next, userActivityLog event mismatch, Zoom NODE_ENV bypass, sequencer name, pipeline OIDC token write, .dockerignore content, yarn.lock tracked, testing.md headings, nyc thresholds, eslint/prettier/husky)",
+    "M": "complete (M1-M4; M5 verification recorded in the final report)"
+  },
+  "unknowns": [
+    "Repository names and owners of the consumers of every SQS queue, SNS topic and Lambda this API publishes to (benchmark, CardioOne, alert notification, crawler bot, client EHR HL7 export, Intergy API jobs, SFTP export, Twilio reminders)",
+    "Whether one CardioOne consumer accepts both this API's eventType/jobId and the parser's event_type/job_id message keys",
+    "Callers of /v2/service/export-to-ehr and /v2/patient/no-show-patients/process-connectivity-report (service JWT)",
+    "Other owners and writers of the shared MongoDB collections beyond this API and manufacturer-hl7-parser; real indexes (unique indexes the Lambda declares are not declared here) and replica-set topology",
+    "Whether mergePatientTransaction is atomic (mongoose session passed to a separate native client)",
+    "Whether Twilio, BodyTrace and Clinii webhooks are protected at the network layer; NODE_ENV and APP_ENVIRONMENT values per environment",
+    "Whether approving a patient-note deletion request deletes the note",
+    "Whether legacy v1 routes are still called by the front end",
+    "Meaning of each role in business terms; product-language definitions of next_send, late_date, evoke_id, IDTF, RPM, HF, ILR, report tabs, hl7job, ADT, OAC/LAAO (code-derived only)",
+    "Bitbucket-side branch restrictions, required PR checks and deployment approvals; rollback procedure; what applies the manifest change on the cluster",
+    "Whether the API's S3 bucket equals the parser's PROCESSED_BUCKET",
+    "Test pass/fail, runtime and real coverage (tests not run)"
+  ],
+  "findings_for_followup": [
+    "middleware/authorize.js:74 reassigns the closed-over roles parameter, so an account role_preferences override persists for later requests on that route",
+    "authorizeService accepts any JWT signed with JWT_SECRET, acts as the EVOKE AUTOMATED NOTES user, and calls next twice when the token is missing",
+    "/v2/mfa/otp/validate-login issues a session from email and OTP without a password check (analyst finding, not re-verified)",
+    "BodyTrace and Twilio webhooks have no authentication or signature validation; Zoom signature check returns true when NODE_ENV is unset (config.isDevelopment)",
+    "CSP, input sanitizer and global rate limiting are commented out or absent in app.js; multer upload size limits not set (analyst finding)",
+    "Production deploy on push to main runs no tests and has no manual gate; release PR from lf-uat to main gets no PR checks (conflicts with aisdlc production-writes-disabled default)",
+    "Pipeline writes the OIDC token to web-identity-token in the build context and .dockerignore does not exclude it (image contents not inspected)",
+    "quick_text_template controller emits userActivityLog but only logUserActivity has a listener, so those actions are not audited",
+    "GET /v2/patient/:serialNumber is unreachable (shadowed by /:patientId); /v2/transmissions is mounted twice",
+    "apiJob service hard-codes the account 'Eastside Urgent Care' (apiJob.v2.service.js:220)",
+    "Repository CLAUDE.md claims no lockfile is committed, but yarn.lock is tracked and used by the Dockerfile (stale claim)"
+  ]
+}

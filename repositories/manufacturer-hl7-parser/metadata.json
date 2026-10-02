@@ -1,0 +1,49 @@
+{
+  "repository": "manufacturer-hl7-parser",
+  "analyzed_commit": "e185ff36fe03c649cd7e9750e895c8c43f857c43",
+  "analyzed_branch": "main",
+  "analyzed_at": "2026-10-01T17:37:23Z",
+  "generator": "aisdlc@1.0.0",
+  "analysis_source": "git archive snapshot of main@e185ff3 (developer checkout was on lf-uat during onboarding and was not read)",
+  "placement": "incomplete",
+  "placement_reason": "Owner repositories of the shared MongoDB collections were not named, product-language term definitions were not provided, and the purpose of the Abbott ILR delay was not stated; these stay unknown.",
+  "phases": {
+    "A": "complete",
+    "B": "complete",
+    "C": "complete",
+    "D": "complete",
+    "E": "complete",
+    "F": "complete",
+    "G": "complete (static only; tests not run)",
+    "H": "complete",
+    "I": "complete",
+    "J": "complete",
+    "K": "complete",
+    "L": "complete (analyst claims spot-checked: SUPPORTED_FORMATS, Artanis dead code, empty_directory, regex escape, file counts)",
+    "M": "partial (M1-M4 done; M2 items 3, 6 and delay purpose unresolved)"
+  },
+  "unknowns": [
+    "Lambda runtime, handler config, memory, timeout, triggers (S3 notification vs SQS mapping), DLQ and delay-queue settings, IAM (no IaC in repository)",
+    "Whether the test suite passes, its runtime and coverage (tests were not run)",
+    "Whether unit tests collect on a clean machine (import-time config coupling inferred)",
+    "Real MongoDB indexes, including a unique index on reports.oruControlId; replica-set topology",
+    "Owner repositories of the shared MongoDB collections (developer said owned elsewhere, did not name them)",
+    "Consumers of PROCESSED_BUCKET PDFs and of the error path",
+    "Purpose of the Abbott ILR processing delay",
+    "Product-language definitions of HF, ILR, IDTF, generation change, initial report tab, summary report",
+    "Customer-visible vs internal classification of capabilities (recorded as internal per proposal, not explicitly confirmed)",
+    "Bitbucket-side branch restrictions and deployment approvals; rollback procedure; S3 versioning",
+    "Where pipeline variable values are defined; why QA and UAT deploy through the Dev bucket variable",
+    "Lambda layer or runtime providing third-party libraries",
+    "Whether the four production Lambdas have per-manufacturer triggers",
+    "Commit and PR conventions of the repository beyond recent EL-<n> subjects"
+  ],
+  "findings_for_followup": [
+    "Production deploy on push to main has no tests or manual gate (conflicts with aisdlc production-writes-disabled default)",
+    "OIDC token file is zipped into the deploy artifact (inferred from script order)",
+    "SUPPORTED_FORMATS is a string, not a tuple (src/constants.py:1)",
+    "empty_directory() with unset BASE_PATH lists the current directory (src/utils/aws.py:130-132)",
+    "Name regex built without re.escape (src/database/query.py:50-51)",
+    "Aborted duplicate-ORU transaction still triggers post-pipeline tasks (src/processor.py:192-219)"
+  ]
+}

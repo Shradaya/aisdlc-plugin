@@ -1,0 +1,306 @@
+# Cross-repository relationships (spec §12, add-repo Phase M3). JSON-compatible YAML.
+# status: human-confirmed (developer answered) | observed (seen in code, not contradicted) | inferred | conflicted
+# Endpoints that are not registered repositories carry source_registered / target_registered: false.
+# Consumer ids for unregistered targets are descriptive identifiers taken from the developer's answers; their actual repository names are unconfirmed.
+{
+  "edges": [
+    {
+      "from": "manufacturer-hl7-adapters",
+      "to": "hl7-file-sync-service",
+      "kind": "file",
+      "direction": "from -> to",
+      "description": "Per-manufacturer adapters installed on Windows EC2 instances receive HL7 from the manufacturers and store the files locally; a custom Python file-sync service copies them to S3.",
+      "evidence": ["developer answer 2026-10-01 (upstream round)"],
+      "status": "human-confirmed",
+      "source_registered": false,
+      "target_registered": false
+    },
+    {
+      "from": "hl7-file-sync-service",
+      "to": "manufacturer-hl7-parser",
+      "kind": "event",
+      "direction": "from -> to",
+      "description": "Files in S3 trigger the Lambda via S3 event, or via SQS (messages from a DLQ) whose body wraps S3-shaped records.",
+      "evidence": ["developer answer 2026-10-01", "main.py:106-129"],
+      "status": "human-confirmed",
+      "source_registered": false,
+      "target_registered": true
+    },
+    {
+      "from": "manufacturer-hl7-parser",
+      "to": "billing-schedule-lambda",
+      "kind": "api",
+      "direction": "from -> to",
+      "description": "Asynchronous Lambda invoke with {patient_id} after a report is stored, unless the existing patient is inactive.",
+      "evidence": ["src/processor.py:600-606", "developer answer 2026-10-01 (downstream round)"],
+      "status": "human-confirmed",
+      "target_registered": false
+    },
+    {
+      "from": "manufacturer-hl7-parser",
+      "to": "benchmark-sqs-consumer",
+      "kind": "event",
+      "direction": "from -> to",
+      "description": "CREATE_PATIENT event with patientId for a newly created patient on an IDTF account with export_for_billing.",
+      "evidence": ["src/processor.py:591-597", "developer answer 2026-10-01 (downstream round)"],
+      "status": "human-confirmed",
+      "target_registered": false
+    },
+    {
+      "from": "manufacturer-hl7-parser",
+      "to": "cardio-one-sqs-consumer",
+      "kind": "event",
+      "direction": "from -> to",
+      "description": "FETCH_RHYTHM_ID event with a job_id (cardio_one_api_logs document) for accounts that have a medical_center_id.",
+      "evidence": ["src/processor.py:555-588", "developer answer 2026-10-01 (downstream round)"],
+      "status": "human-confirmed",
+      "target_registered": false
+    },
+    {
+      "from": "manufacturer-hl7-parser",
+      "to": "evoke-shared-mongodb-owners",
+      "kind": "database",
+      "direction": "read-write",
+      "description": "Shared MongoDB (DB_URI / DATABASE_NAME from Secrets Manager). Developer confirmed the data is shared and owned elsewhere; as of 2026-10-02 rest-api-evoke is identified as one co-writer and the owner of the application/configuration collections (see the rest-api-evoke <-> manufacturer-hl7-parser database edge). Other owners were not named. This pipeline writes patients, reports, report_notes, alert_metadata, patient_analytics, sequencers, devices, leads, tasks, live_call_tasks (delete), cardio_one_api_logs, delayed_messages, user_activity_logs and reads accounts, manufacturers, device_types, users, device_group, report_templates, report_note_sections, report_note_alert_protocols.",
+      "evidence": ["src/database/connection.py", "src/database/query.py", "developer answer 2026-10-01 (data round)"],
+      "status": "human-confirmed",
+      "target_registered": false,
+      "owners": "partially known: rest-api-evoke owns application/configuration data; other owners unknown"
+    },
+    {
+      "from": "manufacturer-hl7-parser",
+      "to": "slack-webhooks",
+      "kind": "third-party",
+      "direction": "from -> to",
+      "description": "Operational alerts to two Slack incoming webhooks (SLACK_URL for the development team, EVOKE_SLACK_URL for business notices).",
+      "evidence": ["src/utils/slack.py", "src/config.py:46-47"],
+      "status": "observed",
+      "target_registered": false
+    },
+    {
+      "from": "evoke-portal-front-end",
+      "to": "rest-api-evoke",
+      "kind": "api",
+      "direction": "from -> to",
+      "description": "The Evoke clinician web portal calls the /v2/* and legacy URL prefixes mounted in routes/index.js with a bearer JWT and the {type,message,data} / {error:true,message} envelopes. Whether legacy v1 routes are still called is unknown. The portal was onboarded on 2026-10-02; it still calls the unversioned /patient/*, /task, /tasks, /admin/*, /accounts, /login, /logout and /user/* families as well as /v2/* (repositories/evoke-portal-front-end/interfaces.md), so those legacy routes are in use.",
+      "evidence": ["routes/index.js", "middleware/cors.js", "developer answer 2026-10-02 (upstream round)", "evoke-portal-front-end: src/static/endpoints.js, src/app/services/", "developer answer 2026-10-02 (add-repo evoke-portal-front-end: REST API is rest-api-evoke)"],
+      "status": "human-confirmed",
+      "source_registered": true
+    },
+    {
+      "from": "evoke-portal-front-end",
+      "to": "realtime-socket-service",
+      "kind": "event",
+      "direction": "from -> to (websocket)",
+      "description": "socket.io connections with auth {token} to REACT_APP_SOCKET_SERVER_URL namespaces reportPresence (report join/heartbeat/leave, dashboard presence), notifications (notification:new / notification:updated) and transcribe (16 kHz PCM audio, transcript events). Enabled only when REACT_APP_ENV is prod or pre. Developer confirmed it is a separate service from the REST API; its repository is not named.",
+      "evidence": ["src/hooks/useSocket.js", "src/static/constants.js:8-20", "developer answer 2026-10-02 (add-repo evoke-portal-front-end)"],
+      "status": "human-confirmed",
+      "target_registered": false,
+      "target_identity": "repository unknown"
+    },
+    {
+      "from": "evoke-portal-front-end",
+      "to": "aws-cognito",
+      "kind": "third-party",
+      "direction": "from -> to (browser redirect via URLs returned by rest-api-evoke)",
+      "description": "Cognito hosted sign-in for login (/oauth/cognito, callback /auth/cognito, POST /cognito/verify) and the CardioOneConnect hand-off for physicians (/wearables via /cognito/auth-url/rhythm).",
+      "evidence": ["src/pages/cognito/", "src/app/services/cognito/cognito.service.js", "src/containers/Login/LoginForm/index.js", "developer answer 2026-10-02 (add-repo evoke-portal-front-end)"],
+      "status": "human-confirmed",
+      "target_registered": false
+    },
+    {
+      "from": "evoke-portal-front-end",
+      "to": "clinii-rpm-portal",
+      "kind": "third-party",
+      "direction": "from -> to (iframe)",
+      "description": "The /rpm view embeds the Clinii portal in an iframe; the URL comes from GET /v2/rpm/clinii/signin-portal. Clinii host is unknown.",
+      "evidence": ["src/pages/rpm/RPMView.js", "src/app/services/rpm/rpmService.js", "developer answer 2026-10-02 (add-repo evoke-portal-front-end)"],
+      "status": "human-confirmed",
+      "target_registered": false
+    },
+    {
+      "from": "evoke-portal-front-end",
+      "to": "zoom-phone",
+      "kind": "third-party",
+      "direction": "from -> to (iframe and postMessage)",
+      "description": "Zoom Phone embeddable iframe (applications.zoom.us) used to place patient calls and log call events; postMessage origin-checked.",
+      "evidence": ["src/components/ZoomPhoneEmbed/ZoomPhoneEmbed.js", "nginx.conf CSP frame-src", "developer answer 2026-10-02 (add-repo evoke-portal-front-end)"],
+      "status": "human-confirmed",
+      "target_registered": false
+    },
+    {
+      "from": "evoke-portal-front-end",
+      "to": "manufacturer-hl7-parser",
+      "kind": "database",
+      "direction": "indirect (portal reads parser-written data through rest-api-evoke and the shared MongoDB; no direct call)",
+      "description": "Transmissions, patients, tasks and EHR-job screens show entities the parser writes (patients, reports, report_notes, alerts). The portal has no database, queue or Lambda client.",
+      "evidence": ["src/app/services/transmission/", "src/app/services/patient/", "repositories/manufacturer-hl7-parser/data-model.md", "developer answer 2026-10-02 (add-repo evoke-portal-front-end: indirect data link only)"],
+      "status": "human-confirmed",
+      "target_registered": true
+    },
+    {
+      "from": "evoke-portal-front-end",
+      "to": "benchmark-practice-management-web",
+      "kind": "third-party",
+      "direction": "from -> to (outbound link only)",
+      "description": "The UI builds links to the Benchmark practice-management patient-entry page for a patient; no API call from the browser.",
+      "evidence": ["src/static/constants.js:1820", "src/containers/Insurances/BenchmarkInsurances.js:66"],
+      "status": "observed",
+      "target_registered": false
+    },
+    {
+      "from": "third-party-webhook-senders",
+      "to": "rest-api-evoke",
+      "kind": "third-party",
+      "direction": "from -> to",
+      "description": "BodyTrace (/bodytrace/bp, /bodytrace/weight; no auth), Twilio (/v2/twilio/*; no signature validation), Zoom (/v2/zoom/webhook), Clinii (/v2/rpm/clinii/webhook-process) and PostGrid call webhook endpoints on this API.",
+      "evidence": ["routes/index.js", "controllers/bodyTrace.js:5-98", "services/v2/zoom.v2.service.js:195", "services/rpm/clinii/clinii.service.js:345-405", "developer answer 2026-10-02 (upstream round)"],
+      "status": "human-confirmed",
+      "source_registered": false
+    },
+    {
+      "from": "service-jwt-callers",
+      "to": "rest-api-evoke",
+      "kind": "api",
+      "direction": "from -> to",
+      "description": "Automated internal callers authenticate with a service JWT (middleware/authorizeService.js) to /v2/service/export-to-ehr and /v2/patient/no-show-patients/process-connectivity-report and act as the 'EVOKE AUTOMATED NOTES' user. The callers' repositories are not named.",
+      "evidence": ["middleware/authorizeService.js", "interfaces.md", "developer answer 2026-10-02 (upstream round)"],
+      "status": "human-confirmed",
+      "source_registered": false,
+      "source_identity": "unknown"
+    },
+    {
+      "from": "cognito-m2m-rhythm",
+      "to": "rest-api-evoke",
+      "kind": "api",
+      "direction": "from -> to",
+      "description": "A Cognito machine-to-machine client (Rhythm) reads a user profile through /v2/user/sso/profile.",
+      "evidence": ["middleware/authorizeCognitoClient.js", "routes/v2/user.v2.routes.js", "developer answer 2026-10-02 (upstream round)"],
+      "status": "human-confirmed",
+      "source_registered": false
+    },
+    {
+      "from": "rest-api-evoke",
+      "to": "manufacturer-hl7-parser",
+      "kind": "database",
+      "direction": "read-write (shared database, both directions)",
+      "description": "Both write the same MongoDB. rest-api-evoke owns application/configuration data (accounts, users, hospitals, alert_configurations, report_templates, hl7jobs, sftp_jobs, billing/RPM, outreach). patients, reports, report_notes, tasks, sequencers and cardio_one_api_logs are shared and have no single owner. The API reads parser-written reports (file_path, hf_file_path, hl7_file_path) and both draw evoke_id from the 'patients' counter in sequencers. Field or type changes on either side can break the other; the Lambda declares unique indexes (e.g. patients.serial_number) that this repo does not.",
+      "evidence": ["models/v2/", "repository/v2/sequencer.v2.repository.js:8-19", "util/v2/report.v2.util.js:131", "util/v2/pdf.v2.util.js:82", "developer answer 2026-10-02 (data round)"],
+      "status": "human-confirmed",
+      "target_registered": true
+    },
+    {
+      "from": "manufacturer-hl7-parser",
+      "to": "rest-api-evoke",
+      "kind": "file",
+      "direction": "from -> to",
+      "description": "The parser uploads report PDFs to PROCESSED_BUCKET; the API streams report PDFs from S3 by file_path. Bucket equality was not compared.",
+      "evidence": ["util/v2/s3.v2.util.js:50", "util/v2/pdf.v2.util.js:82"],
+      "status": "inferred",
+      "target_registered": true
+    },
+    {
+      "from": "rest-api-evoke",
+      "to": "benchmark-sqs-consumer",
+      "kind": "event",
+      "direction": "from -> to",
+      "description": "{eventType: INSERT_PATIENT | UPDATE_PATIENT | CHARGE_EXPORT} for patients on accounts with export_for_billing and IDTF billing. The parser sends CREATE_PATIENT to the same kind of queue, so the event vocabularies differ.",
+      "evidence": ["services/v2/benchmark.v2.service.js", "services/v2/patient.v2.service.js:1946,2454,4131", "services/transmissions.js:158", "developer answer 2026-10-02 (downstream round 1)"],
+      "status": "human-confirmed",
+      "target_registered": false
+    },
+    {
+      "from": "rest-api-evoke",
+      "to": "cardio-one-sqs-consumer",
+      "kind": "event",
+      "direction": "from -> to",
+      "description": "{eventType: 'FETCH_RHYTHM_ID', payload: {jobId}} for accounts with a medical_center_id. The parser sends {event_type, payload:{job_id}} (snake_case); whether one consumer accepts both spellings is unknown.",
+      "evidence": ["events/cardioOneEventEmitter.js:20-70,162", "developer answer 2026-10-02 (downstream round 1)"],
+      "status": "human-confirmed",
+      "target_registered": false
+    },
+    {
+      "from": "rest-api-evoke",
+      "to": "alert-notification-worker",
+      "kind": "event",
+      "direction": "from -> to",
+      "description": "Alert notifications chosen during report review are sent to the alert-notification queue (AWS_ALERT_NOTIFICATION_QUEUE_URL).",
+      "evidence": ["services/v2/transmission.v2.service.js:608,660", "developer answer 2026-10-02 (downstream round 1)"],
+      "status": "human-confirmed",
+      "target_registered": false
+    },
+    {
+      "from": "rest-api-evoke",
+      "to": "manufacturer-crawler",
+      "kind": "event",
+      "direction": "from -> to",
+      "description": "BOT_EVENT_TRIGGER messages on the bot queue update next send in the manufacturer portals (production only). A synchronous Lambda call for GET_DISCONNECTED_MONITORS is marked DEPRECATED in code but still used; it is excluded from product documentation at the developer's request.",
+      "evidence": ["services/sqs.js", "services/lambda.js:16", "services/updateNextSendInManufacturer.js", "services/v2/patient.v2.service.js:696-705,1204", "developer answer 2026-10-02 (downstream round 1)"],
+      "status": "human-confirmed",
+      "target_registered": false,
+      "target_identity": "name taken from developer's selection; repository name unconfirmed"
+    },
+    {
+      "from": "rest-api-evoke",
+      "to": "client-ehr-hl7-export",
+      "kind": "event",
+      "direction": "from -> to",
+      "description": "Publishes {hl7JobId} with an account attribute to an SNS topic for hl7jobs of type ORU_R01, DFT_P03 and IDCO_ORU_R01. An external consumer renders and delivers the HL7; this API never builds HL7 text.",
+      "evidence": ["services/v2/hl7job.service.js:164,225-255,262-380", "developer answer 2026-10-02 (downstream round 2)"],
+      "status": "human-confirmed",
+      "target_registered": false
+    },
+    {
+      "from": "rest-api-evoke",
+      "to": "intergy-api-job-consumer",
+      "kind": "event",
+      "direction": "from -> to",
+      "description": "{event_type: 'JOB_PROCESSING', event_payload: {job_id}} on the API-job queue for Intergy EHR jobs.",
+      "evidence": ["services/v2/apiJob.v2.service.js:22,115-208", "developer answer 2026-10-02 (downstream round 2)"],
+      "status": "human-confirmed",
+      "target_registered": false
+    },
+    {
+      "from": "rest-api-evoke",
+      "to": "sftp-export-consumer",
+      "kind": "event",
+      "direction": "from -> to",
+      "description": "Writes an sftp_jobs record, copies the report to S3 under sftp/<account>/<evoke_id>/ and sends an SQS message; delivery over SFTP is done by an external consumer (no SFTP client here).",
+      "evidence": ["events/SFTPEventEmitter.js:12", "services/v2/sftp.v2.service.js:14-100", "developer answer 2026-10-02 (downstream round 2)"],
+      "status": "human-confirmed",
+      "target_registered": false
+    },
+    {
+      "from": "rest-api-evoke",
+      "to": "twilio-reminders-lambda",
+      "kind": "api",
+      "direction": "from -> to",
+      "description": "Lambda invoke {TYPE: 'retry_by_next_contact_number'} after a failed Twilio delivery. Reminder sending itself is external; the API ingests Twilio callbacks.",
+      "evidence": ["services/v2/twilio.v2.service.js:76-195"],
+      "status": "human-confirmed",
+      "target_registered": false
+    },
+    {
+      "from": "rest-api-evoke",
+      "to": "third-party-services",
+      "kind": "third-party",
+      "direction": "from -> to",
+      "description": "Outbound calls to Twilio, PostGrid, Slack, Zoom, Clinii, CardioOne/Rhythm, Amazon SES and S3.",
+      "evidence": ["repositories/rest-api-evoke/dependencies.md", "util/v2/"],
+      "status": "observed",
+      "target_registered": false
+    }
+  ],
+  "open_questions": [
+    "Which other repositories (beyond rest-api-evoke and manufacturer-hl7-parser) own and write the shared MongoDB collections? (developer: this API owns application data; ingestion collections are shared with no single owner)",
+    "Who reads the PDFs in PROCESSED_BUCKET (via reports.file_path / hf_file_path)? The API streams report PDFs from S3, but whether it is the same bucket is unconfirmed.",
+    "src/artanis/ in manufacturer-hl7-parser would invoke an Artanis AI Lambda (ARTANIS_AI_LAMBDA) but has no caller and the variable is never set; the developer did not select it as active, so no edge is recorded.",
+    "What are the repository names of the consumers listed above for rest-api-evoke (benchmark, CardioOne, alert notification, crawler, client EHR HL7 export, Intergy, SFTP, Twilio reminders Lambda)? Ids here are descriptive.",
+    "Who calls the service-JWT endpoints of rest-api-evoke?",
+    "Does the CardioOne consumer accept both eventType/jobId (rest-api-evoke) and event_type/job_id (manufacturer-hl7-parser)?",
+    "What is the repository name and owner of the realtime socket service used by evoke-portal-front-end (reportPresence, notifications, transcribe)?",
+    "What is the evoke.lcwms.co origin allowed in the portal's CSP frame-src (no source reference; not confirmed by the developer)?",
+    "Where is the Clinii portal hosted (URL is returned by rest-api-evoke at runtime)?",
+    "The portal's deployment target repository eks-yml-manifest is observed in bitbucket-pipelines.yml but not recorded as a system edge at the developer's request."
+  ]
+}

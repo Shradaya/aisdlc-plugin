@@ -1,0 +1,124 @@
+# Structured index of durable product capabilities/features (spec §42.2, §42.5).
+# Maintained by product-knowledge-consolidation. Entry shape:
+#   - id: scheduled-report-generation
+#     name: Scheduled Report Generation
+#     status: active
+#     introduced_by: FEAT-1234
+#     capabilities: [reporting]
+#     product_document: capabilities/reporting.md
+#     user_workflows: [user-workflows/schedule-report.md]
+#     repositories: [backend, frontend, database]   # contributing repositories
+# Capabilities that already existed when a repository was onboarded use `introduced_by: baseline`.
+features:
+  - id: device-transmission-report-ingestion
+    name: Device Transmission Report Ingestion
+    status: active
+    introduced_by: baseline
+    capabilities: [device-transmission-report-ingestion]
+    product_document: capabilities/device-transmission-report-ingestion.md
+    user_workflows: [user-workflows/process-device-transmission.md, user-workflows/manual-and-in-office-transmission-upload.md]
+    repositories: [manufacturer-hl7-parser, rest-api-evoke]
+  - id: automated-report-notes-and-alerts
+    name: Automated Report Notes and Alerts
+    status: active
+    introduced_by: baseline
+    capabilities: [automated-report-notes-and-alerts]
+    product_document: capabilities/automated-report-notes-and-alerts.md
+    user_workflows: [user-workflows/process-device-transmission.md, user-workflows/configure-alerts.md]
+    repositories: [manufacturer-hl7-parser, rest-api-evoke]
+  - id: billing-code-and-schedule-assignment
+    name: Billing Code and Schedule Assignment
+    status: active
+    introduced_by: baseline
+    capabilities: [billing-code-and-schedule-assignment]
+    product_document: capabilities/billing-code-and-schedule-assignment.md
+    user_workflows: [user-workflows/process-device-transmission.md, user-workflows/bill-and-export.md]
+    repositories: [manufacturer-hl7-parser, rest-api-evoke]
+  - id: patient-and-device-registration
+    name: Patient and Device Registration
+    status: active
+    introduced_by: baseline
+    capabilities: [patient-and-device-registration]
+    product_document: capabilities/patient-and-device-registration.md
+    user_workflows: [user-workflows/process-device-transmission.md, user-workflows/enrol-patient.md]
+    repositories: [manufacturer-hl7-parser, rest-api-evoke]
+  - id: report-review-notes-and-assignment
+    name: Report Review, Notes and Assignment
+    status: active
+    introduced_by: baseline
+    capabilities: [report-review-notes-and-assignment]
+    product_document: capabilities/report-review-notes-and-assignment.md
+    user_workflows: [user-workflows/review-and-sign-report.md, user-workflows/review-transmissions-in-portal.md]
+    repositories: [rest-api-evoke, evoke-portal-front-end]
+  - id: ehr-export-hl7-sftp-api-jobs
+    name: "EHR Export: HL7, SFTP and API Jobs"
+    status: active
+    introduced_by: baseline
+    capabilities: [ehr-export-hl7-sftp-api-jobs]
+    product_document: capabilities/ehr-export-hl7-sftp-api-jobs.md
+    user_workflows: [user-workflows/export-report-to-ehr.md]
+    repositories: [rest-api-evoke]
+  - id: patient-outreach
+    name: Patient Outreach
+    status: active
+    introduced_by: baseline
+    capabilities: [patient-outreach]
+    product_document: capabilities/patient-outreach.md
+    user_workflows: [user-workflows/patient-outreach.md]
+    repositories: [rest-api-evoke]
+  - id: access-and-account-administration
+    name: Access and Account Administration
+    status: active
+    introduced_by: baseline
+    capabilities: [access-and-account-administration]
+    product_document: capabilities/access-and-account-administration.md
+    user_workflows: [user-workflows/sign-in-and-manage-access.md]
+    repositories: [rest-api-evoke, evoke-portal-front-end]
+  - id: patient-management-and-rpm
+    name: Patient Management and Remote Patient Monitoring
+    status: active
+    introduced_by: baseline
+    capabilities: [patient-management-and-rpm]
+    product_document: capabilities/patient-management-and-rpm.md
+    user_workflows: [user-workflows/follow-up-no-show-patients.md, user-workflows/monitor-rpm-patients.md]
+    repositories: [evoke-portal-front-end, rest-api-evoke, manufacturer-hl7-parser]
+  - id: task-management
+    name: Task Management
+    status: active
+    introduced_by: baseline
+    capabilities: [task-management]
+    product_document: capabilities/task-management.md
+    user_workflows: []
+    repositories: [evoke-portal-front-end, rest-api-evoke]
+  - id: billing-management
+    name: Billing Management
+    status: active
+    introduced_by: baseline
+    capabilities: [billing-management]
+    product_document: capabilities/billing-management.md
+    user_workflows: [user-workflows/bill-and-export.md]
+    repositories: [evoke-portal-front-end, rest-api-evoke]
+  - id: administration-and-configuration
+    name: Administration and Configuration
+    status: active
+    introduced_by: baseline
+    capabilities: [administration-and-configuration]
+    product_document: capabilities/administration-and-configuration.md
+    user_workflows: []
+    repositories: [evoke-portal-front-end, rest-api-evoke]
+  - id: dashboard-and-notifications
+    name: Dashboard and Notifications
+    status: active
+    introduced_by: baseline
+    capabilities: [dashboard-and-notifications]
+    product_document: capabilities/dashboard-and-notifications.md
+    user_workflows: []
+    repositories: [evoke-portal-front-end, rest-api-evoke]
+  - id: patient-communication
+    name: Patient Communication
+    status: active
+    introduced_by: baseline
+    capabilities: [patient-communication]
+    product_document: capabilities/patient-communication.md
+    user_workflows: [user-workflows/follow-up-no-show-patients.md]
+    repositories: [evoke-portal-front-end, rest-api-evoke]
