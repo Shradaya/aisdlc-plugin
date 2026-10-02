@@ -1,0 +1,59 @@
+# External integrations (spec §6, §20, §40, §42.1). JSON-compatible YAML; '#' comments only on their own lines.
+# Adapters are MCP/connector-backed. Nothing here is assumed to be connected; `status` reports availability at runtime.
+# Credentials are read from environment variables ONLY; this file stores the variable names, never values.
+# Jira Cloud also needs your site URL in "jira.base_url" (not a secret); the Jira variable names are an aisdlc convention.
+# Jira workflow transitions MUST be configured explicitly (spec §20.1): an empty "status_transitions" map means none are allowed.
+{
+  "jira": {
+    "adapter": "mcp",
+    "base_url": "",
+    "required_for_ticket_fetch": false,
+    "read": ["issue", "fields", "description", "acceptance_criteria", "labels", "priority", "linked_issues", "comments_when_required"],
+    "write": {
+      "add_comment": false,
+      "add_pr_link": false,
+      "status_transitions": {}
+    },
+    "fallback": "interactive-questions",
+    "credentials": {
+      "email_env": "JIRA_EMAIL",
+      "api_token_env": "JIRA_API_TOKEN"
+    },
+    "token_scopes": {
+      "read:issue:jira": "Fetch the ticket and its basic fields",
+      "read:issue-details:jira": "Description, labels, priority, linked issues",
+      "read:comment:jira": "Comments, only when the workflow asks for them",
+      "read:field:jira": "Find the custom field holding acceptance criteria",
+      "read:project:jira": "Resolve the project a ticket belongs to",
+      "read:jira-user": "Optional: assignee and reporter names"
+    }
+  },
+  "git_hosting": {
+    "adapter": "mcp",
+    "provider": "bitbucket",
+    "credentials": {
+      "email_env": "BITBUCKET_EMAIL",
+      "api_token_env": "BITBUCKET_API_TOKEN"
+    },
+    "token_scopes": {
+      "read:repository:bitbucket": "Read repository content and pull request diffs",
+      "read:pullrequest:bitbucket": "Read pull request details and status",
+      "write:pullrequest:bitbucket": "Create pull requests (and post PR comments if enabled)"
+    },
+    "operations": ["create_pull_request", "read_pull_request_status", "read_pull_request", "read_pull_request_diff"],
+    "write": {
+      "add_pr_comment": false
+    }
+  },
+  "ci": {
+    "adapter": "mcp",
+    "provider": "configured-per-environment",
+    "operations": ["read_check_status"]
+  },
+  "release": {
+    "adapter": "mcp",
+    "provider": "configured-per-environment",
+    "evidence_sources": ["integration", "user-provided"],
+    "production_deployment": "disabled"
+  }
+}

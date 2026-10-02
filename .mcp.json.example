@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "atlassian": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-v", "C:/path/to/corporate-ca.pem:/certs/ca.pem:ro",
+        "-e", "JIRA_URL",
+        "-e", "JIRA_USERNAME",
+        "-e", "JIRA_API_TOKEN",
+        "-e", "SSL_CERT_FILE",
+        "-e", "REQUESTS_CA_BUNDLE",
+        "ghcr.io/sooperset/mcp-atlassian:latest"
+      ],
+      "env": {
+        "JIRA_URL": "https://your-site.atlassian.net",
+        "JIRA_USERNAME": "${JIRA_EMAIL}",
+        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}",
+        "SSL_CERT_FILE": "/certs/ca.pem",
+        "REQUESTS_CA_BUNDLE": "/certs/ca.pem"
+      }
+    }
+  }
+}

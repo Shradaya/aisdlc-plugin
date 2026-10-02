@@ -1,0 +1,5 @@
+# Repository registry (spec §11). JSON-compatible YAML; managed by /aisdlc:add-repo.
+# Required per repo: path, role, base_branch (must be "main"), domains, depends_on, provides.
+{
+  "repositories": {}
+}
