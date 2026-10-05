@@ -8,7 +8,7 @@
       "system_role": "Developer-confirmed (2026-10-01): backend ingestion pipeline with no direct end users; output is consumed through other Evoke applications",
       "base_branch": "main",
       "domains": ["transmission-ingestion", "report-notes", "billing", "patient-registry"],
-      "depends_on": ["hl7-file-sync-service", "billing-schedule-lambda", "benchmark-sqs-consumer", "cardio-one-sqs-consumer"],
+      "depends_on": ["hl7-file-sync-service", "patient-billing-schedule", "benchmark-sqs-consumer", "cardio-one-sqs-consumer"],
       "provides": ["device-transmission-report-ingestion", "automated-report-notes-and-alerts", "billing-code-and-schedule-assignment", "patient-and-device-registration"],
       "deployment": {
         "type": "aws-lambda",
@@ -57,6 +57,25 @@
           "lf-uat": "Pre Production",
           "main": "Production"
         }
+      }
+    },
+    "patient-billing-schedule": {
+      "path": "${AISDLC_REPO_PATIENT_BILLING_SCHEDULE}",
+      "role": "Python AWS Lambda that decides, per patient and RPM billing code, which transmission report is billable and when (billing windows, next send and late dates), creates and archives follow-up tasks for late patients, deactivates patients with no report for 730 days and sends bot events for late patients",
+      "system_role": "Developer-confirmed (2026-10-05): back-end billing scheduler with no end users, invoked by manufacturer-hl7-parser, rest-api-evoke and SQS/EventBridge-driven account batches; the same service the parser calls billing-schedule-lambda (remote name patient-schedule-monitoring); owns billing_activity_logger and manufacturer_crawler_report_status",
+      "base_branch": "main",
+      "domains": ["billing", "patient-registry", "patient-outreach"],
+      "depends_on": ["rest-api-evoke", "manufacturer-crawler"],
+      "provides": ["billing-code-and-schedule-assignment", "billing-window-scheduling", "patient-management-and-rpm", "patient-and-device-registration"],
+      "deployment": {
+        "type": "aws-lambda",
+        "pipeline": "bitbucket-pipelines.yml",
+        "environments": {
+          "lf-qa": "QA",
+          "lf-uat": "Pre Production",
+          "main": "Production"
+        },
+        "notes": "No lf-develop pipeline; every push to lf-qa, lf-uat or main zips the source and updates the Lambda with no tests or manual gate (build-release.md)."
       }
     }
   }

@@ -28,13 +28,58 @@
     },
     {
       "from": "manufacturer-hl7-parser",
-      "to": "billing-schedule-lambda",
+      "to": "patient-billing-schedule",
       "kind": "api",
       "direction": "from -> to",
       "description": "Asynchronous Lambda invoke with {patient_id} after a report is stored, unless the existing patient is inactive.",
-      "evidence": ["src/processor.py:600-606", "developer answer 2026-10-01 (downstream round)"],
+      "evidence": ["src/processor.py:600-606", "developer answer 2026-10-01 (downstream round)", "developer answer 2026-10-05: billing-schedule-lambda is patient-billing-schedule"],
       "status": "human-confirmed",
-      "target_registered": false
+      "target_registered": true
+    },
+    {
+      "from": "rest-api-evoke",
+      "to": "patient-billing-schedule",
+      "kind": "api",
+      "direction": "from -> to",
+      "description": "rest-api-evoke triggers the billing schedule Lambda for a patient or account.",
+      "evidence": ["developer answer 2026-10-05 (triggers)", "repositories/rest-api-evoke knowledge: services/lambda.js, services/sqs.js (not re-verified)"],
+      "status": "human-confirmed",
+      "target_registered": true,
+      "note": "Exact mechanism (direct invoke or queue) not shown; recorded as unknown."
+    },
+    {
+      "from": "aws-eventbridge-sqs-trigger",
+      "to": "patient-billing-schedule",
+      "kind": "event",
+      "direction": "from -> to",
+      "description": "SQS messages (Records[].body with account and/or patient_id) started by an EventBridge/queue trigger run billing for all patients of an account.",
+      "evidence": ["main.py:lambda_handler (Records handling)", "developer answer 2026-10-05 (triggers)"],
+      "status": "human-confirmed",
+      "source_registered": false,
+      "target_registered": true,
+      "note": "Rule, queue name and producer are not in the repository (unknown)."
+    },
+    {
+      "from": "patient-billing-schedule",
+      "to": "manufacturer-crawler",
+      "kind": "event",
+      "direction": "from -> to",
+      "description": "BOT_EVENT_TRIGGER messages with the patient id on the bot queue (MANUFACTURER_BOT_SQS_URL) for late patients, sent after the billing transaction commits.",
+      "evidence": ["src/database/schedule.py:send_bot_event_to_sqs", "src/utils/aws.py", "developer answer 2026-10-05 (bot consumer)"],
+      "status": "human-confirmed",
+      "target_registered": false,
+      "target_identity": "name taken from developer's selection; repository name unconfirmed"
+    },
+    {
+      "from": "patient-billing-schedule",
+      "to": "rest-api-evoke",
+      "kind": "database",
+      "direction": "shared data",
+      "description": "Shared MongoDB: reads patients, reports, accounts, users, devices, device_types; updates patients and reports; inserts and archives tasks; upserts billing_activity_logger and user_activity_logs. Acts as the user EVOKE AUTOMATED NOTES, which rest-api-evoke also defaults to. The developer states this Lambda owns billing_activity_logger and manufacturer_crawler_report_status.",
+      "evidence": ["src/database/query.py", "src/database/schedule.py", "src/database/user.py", "src/utils/constants.py", "developer answer 2026-10-05 (data ownership)"],
+      "status": "inferred",
+      "target_registered": true,
+      "note": "Schema owner of the shared collections is not confirmed; ownership of the two named collections is human-confirmed."
     },
     {
       "from": "manufacturer-hl7-parser",

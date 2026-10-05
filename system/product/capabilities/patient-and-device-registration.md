@@ -35,12 +35,19 @@ the crawler bot (manufacturer-crawler) receives next-send updates; Benchmark and
 Customer visibility (supersedes the inferred "internal" statement below): customer-visible, human-confirmed 2026-10-02.
 Workflows: [enrol a patient](../user-workflows/enrol-patient.md). Rules: [patient management rules](../business-rules/patient-management-rules.md).
 
+## Contribution of patient-billing-schedule (added 2026-10-05)
+
+Provenance: patient-billing-schedule @ ec1d8894c633996d7fc9e7a9423d21521a981bf6, analyzed 2026-10-05, aisdlc@1.0.0; status human-confirmed (developer answers 2026-10-05); confidence high. Evidence: src/database/schedule.py:108-121, src/database/schedule.py:365-374.
+
+During a billing run, an active patient with no report for 730 days (about two years) is set inactive with the reason "No Longer Monitoring". Rule: [Billing window rules](../business-rules/billing-window-rules.md).
+
 ## Implemented by
 
 | Repository | Role |
 |---|---|
 | rest-api-evoke | Patient enrolment and management, devices, device groups, manufacturer accounts (portal back end) |
 | manufacturer-hl7-parser | Matching, creation, device validation, task creation and queue events |
+| patient-billing-schedule | Sets patients inactive when they have had no report for 730 days |
 | cardio-one-sqs-consumer (not onboarded) | Receives the CardioOne job event (behavior not documented here) |
 
 Patient, device, lead and task records live in a shared MongoDB owned by other repositories (owners not named).

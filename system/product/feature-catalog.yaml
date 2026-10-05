@@ -33,7 +33,15 @@ features:
     capabilities: [billing-code-and-schedule-assignment]
     product_document: capabilities/billing-code-and-schedule-assignment.md
     user_workflows: [user-workflows/process-device-transmission.md, user-workflows/bill-and-export.md]
-    repositories: [manufacturer-hl7-parser, rest-api-evoke]
+    repositories: [manufacturer-hl7-parser, rest-api-evoke, patient-billing-schedule]
+  - id: billing-window-scheduling
+    name: Billing Window Scheduling
+    status: active
+    introduced_by: baseline
+    capabilities: [billing-window-scheduling]
+    product_document: capabilities/billing-window-scheduling.md
+    user_workflows: [user-workflows/run-billing-schedule.md]
+    repositories: [patient-billing-schedule, manufacturer-hl7-parser, rest-api-evoke]
   - id: patient-and-device-registration
     name: Patient and Device Registration
     status: active
@@ -41,7 +49,7 @@ features:
     capabilities: [patient-and-device-registration]
     product_document: capabilities/patient-and-device-registration.md
     user_workflows: [user-workflows/process-device-transmission.md, user-workflows/enrol-patient.md]
-    repositories: [manufacturer-hl7-parser, rest-api-evoke]
+    repositories: [manufacturer-hl7-parser, rest-api-evoke, patient-billing-schedule]
   - id: report-review-notes-and-assignment
     name: Report Review, Notes and Assignment
     status: active
@@ -81,7 +89,7 @@ features:
     capabilities: [patient-management-and-rpm]
     product_document: capabilities/patient-management-and-rpm.md
     user_workflows: [user-workflows/follow-up-no-show-patients.md, user-workflows/monitor-rpm-patients.md]
-    repositories: [evoke-portal-front-end, rest-api-evoke, manufacturer-hl7-parser]
+    repositories: [evoke-portal-front-end, rest-api-evoke, manufacturer-hl7-parser, patient-billing-schedule]
   - id: task-management
     name: Task Management
     status: active

@@ -19,7 +19,7 @@ Each transmission report is tagged with the codes and dates needed for billing, 
 - **Which report types are created:** the clinic account's "initial report tab" settings decide whether a regular report, an HF report, or both are produced. If a tab is not enabled for the account, its billing code is dropped and that report is not created. If neither remains, the transmission fails with an alert (initial report tab not set).
 - **IDTF vs invoice billing:** the account's billing type, together with whether the patient is new and the patient's stored IDTF setting, decides if codes are mapped using the IDTF mapping or the invoice (modifier-stripped) mapping.
 - **Dates:** next bill dates (day 31 and day 91 entries on the patient's implanted billing schedule), next send date and late date are calculated from the interrogation date, the implant date and the codes.
-- **Notifying billing:** after the report is saved, the billing schedule Lambda is invoked with the patient id, except for an existing patient who is inactive. New patients on an IDTF account with billing export enabled also trigger a `CREATE_PATIENT` event on the Benchmark queue.
+- **Notifying billing:** after the report is saved, the billing schedule service ([patient-billing-schedule](billing-window-scheduling.md)) is invoked with the patient id, except for an existing patient who is inactive. New patients on an IDTF account with billing export enabled also trigger a `CREATE_PATIENT` event on the Benchmark queue.
 
 ## Contribution of rest-api-evoke (added 2026-10-02)
 
@@ -36,13 +36,19 @@ benchmark-sqs-consumer and cardio-one-sqs-consumer (not onboarded) receive the e
 Customer visibility (supersedes the inferred "internal" statement below): customer-visible, human-confirmed 2026-10-02.
 Workflows: [bill and export](../user-workflows/bill-and-export.md). Rules: [billing and RPM rules](../business-rules/billing-and-rpm-rules.md).
 
+## Contribution of patient-billing-schedule (added 2026-10-05)
+
+Provenance: patient-billing-schedule @ ec1d8894c633996d7fc9e7a9423d21521a981bf6, analyzed 2026-10-05, aisdlc@1.0.0; status human-confirmed for role and rules (developer answers 2026-10-05), observed for the described behavior; confidence medium. Evidence: main.py:21-263, src/database/schedule.py:35-151.
+
+Where this document says the dates are calculated at transmission time, the assignment of the billable report and the recurring billing dates is done by this back-end service (also known to the parser as billing-schedule-lambda): for each billing code (93297, 93298, 93294, 93295, 0578T, 93264) it finds the billing window, marks exactly one report billable with a billing date, and advances the patient's next billing date, next send and late date. Accounts anchored on signature bill from the latest signed report date. Details: [Billing Window Scheduling](billing-window-scheduling.md); rules: [Billing window rules](../business-rules/billing-window-rules.md); workflow: [Run the billing schedule](../user-workflows/run-billing-schedule.md).
+
 ## Implemented by
 
 | Repository | Role |
 |---|---|
 | rest-api-evoke | Billing-date validation, billing amounts and rules, Benchmark and CardioOne events, RPM billing and invoices (portal back end) |
-| manufacturer-hl7-parser | Assigns codes and dates, stores them, and triggers the billing schedule Lambda and Benchmark event |
-| billing-schedule-lambda (not onboarded) | Receives the patient id (behavior not documented here) |
+| manufacturer-hl7-parser | Assigns codes and dates, stores them, and triggers patient-billing-schedule and the Benchmark event |
+| patient-billing-schedule | Chooses the billable report and billing date per billing window and maintains next send, late date and follow-up (see [Billing Window Scheduling](billing-window-scheduling.md)) |
 | benchmark-sqs-consumer (not onboarded) | Receives the new-patient event (behavior not documented here) |
 
 ## Customer visibility
@@ -52,4 +58,4 @@ Internal; the effects are billing schedules and exports visible in other systems
 ## Open questions
 
 - Exact billing code values and the full IDTF/invoice mapping tables, and the cycle rules behind day 31/91 dates (in `src/constants.py` and `src/utils/date.py`; not confirmed by the developer).
-- What the billing schedule Lambda and Benchmark consumer do with their messages. Unknown.
+- What the Benchmark consumer does with its messages. Unknown. (The billing schedule service is now documented; see below.)

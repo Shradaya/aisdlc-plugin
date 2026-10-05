@@ -28,7 +28,14 @@ Workflows: [Follow up no-show patients](../user-workflows/follow-up-no-show-pati
 | evoke-portal-front-end | Screens: patient list and profile, RPM embed, no-show patients, live-call tasks |
 | rest-api-evoke | Patient, RPM, non-compliant and live-call APIs and data |
 | manufacturer-hl7-parser | Creates patients and devices from transmissions (shared database) |
+| patient-billing-schedule | Marks patients late and creates follow-up call and letter tasks; queues a crawler bot event (back-end, no screens) |
 | Clinii (third party, not onboarded) | RPM portal shown in an iframe |
+
+## Contribution of patient-billing-schedule (added 2026-10-05)
+
+Provenance: patient-billing-schedule @ ec1d8894c633996d7fc9e7a9423d21521a981bf6, analyzed 2026-10-05, aisdlc@1.0.0; status human-confirmed (developer answers 2026-10-05); confidence medium. Evidence: src/database/schedule.py:200-316, src/database/schedule.py:392-435.
+
+Patients who send no transmission by their late date are marked late and automated follow-up tasks are created for staff: first, second and third follow-up calls and a letter to the patient, at 2, 9, 16 and 20 days after the late date. The tasks are archived when a report arrives. A bot event with the patient id is also queued so the manufacturer crawler (descriptive name; repository unconfirmed) can look for the patient's data. Rule: [Billing window rules](../business-rules/billing-window-rules.md); workflow: [Run the billing schedule](../user-workflows/run-billing-schedule.md). Open question: whether these tasks are the live-call tasks shown in the portal.
 
 ## Customer visibility
 

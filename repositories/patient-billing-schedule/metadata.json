@@ -1,0 +1,35 @@
+{
+  "repository": "patient-billing-schedule",
+  "analyzed_commit": "ec1d8894c633996d7fc9e7a9423d21521a981bf6",
+  "analyzed_branch": "main",
+  "analyzed_at": "2026-10-05T00:00:00Z",
+  "generator": "aisdlc@1.0.0",
+  "analysis_source": "git archive of main@ec1d889 (snapshot of 27 tracked files; equal to origin/main in the local clone). The clone itself was on branch EL-5444 with untracked files and was not used as evidence. Local clone path is set per developer in claude.env as AISDLC_REPO_PATIENT_BILLING_SCHEDULE.",
+  "placement": "complete",
+  "placement_reason": "Role, callers, bot-event consumer, data ownership, capabilities, rules and exclusions were confirmed by the developer on 2026-10-05. The exact Lambda trigger wiring (EventBridge/SQS rules, queue names) stays unknown because it is not in the repository.",
+  "phases": {
+    "A": "complete",
+    "B": "complete",
+    "C": "complete (analyst output, medium confidence)",
+    "D": "complete",
+    "E": "complete",
+    "F": "complete",
+    "G": "complete (static only; no tests exist)",
+    "H": "complete",
+    "I": "complete (written by the orchestrator after the analyst's write was refused; no dependency audit run)",
+    "J": "complete (written by the orchestrator after the analyst's write was refused)",
+    "K": "complete",
+    "L": "complete (spot-checked in code: CARDIO_MEMS_BILLING_CODES string, retry_on_write_conflict location and None return, 730-day inactivity constant, UCH exclusion, transaction use in update_billables, bot event type, OIDC token written before zip -r in all three pipeline steps)",
+    "M": "complete (M1-M4 recorded; M5 verification in the final report)"
+  },
+  "unknowns": [
+    "Lambda runtime version, handler string, timeout, memory, IAM role, VPC, layers, and how requirements.txt reaches the deployed function",
+    "EventBridge rule, SQS queue, DLQ and batch settings that invoke the function with account batches, and the producer of those messages",
+    "Whether rest-api-evoke invokes the Lambda directly or through a queue (developer confirmed rest-api-evoke as a trigger; the exact path was not shown)",
+    "MongoDB topology (replica set required by transactions), indexes and schema ownership beyond the two collections the developer says this Lambda owns",
+    "Whether the built deployment artifact contains the OIDC token file web-identity-token (script order says yes; artifact not inspected)",
+    "Contents of .env-example (read denied)",
+    "Advisory status of pinned dependencies",
+    "Product-language definitions of ideal billing date, billing window, backbill, next send and late date (recorded as inferred from code)"
+  ]
+}

@@ -6,7 +6,7 @@
   "system_role": "Developer-confirmed (2026-10-01): backend ingestion pipeline with no direct end users; output is consumed through other Evoke applications",
   "base_branch": "main",
   "domains": ["transmission-ingestion", "report-notes", "billing", "patient-registry"],
-  "depends_on": ["hl7-file-sync-service", "billing-schedule-lambda", "benchmark-sqs-consumer", "cardio-one-sqs-consumer"],
+  "depends_on": ["hl7-file-sync-service", "patient-billing-schedule", "benchmark-sqs-consumer", "cardio-one-sqs-consumer"],
   "provides": ["device-transmission-report-ingestion", "automated-report-notes-and-alerts", "billing-code-and-schedule-assignment", "patient-and-device-registration"],
   "deployment": {
     "type": "aws-lambda",

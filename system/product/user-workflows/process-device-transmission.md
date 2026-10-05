@@ -24,7 +24,7 @@ Consumer: an automated flow, not an end user. The developer accepted the pipelin
 7. The patient is matched or created (a name is required for new patients) and device consistency is checked.
 8. Billing codes and dates are calculated; the manufacturer PDF is extracted and stored.
 9. The report (and an HF report when applicable), its automated notes, alert flags and analytics are saved together.
-10. Follow-ups run: billing schedule Lambda, Benchmark event for new IDTF patients, CardioOne job for CardioOne accounts, a new-patient task for new patients, removal of the patient's live-call task.
+10. Follow-ups run: billing schedule run ([patient-billing-schedule](run-billing-schedule.md)), Benchmark event for new IDTF patients, CardioOne job for CardioOne accounts, a new-patient task for new patients, removal of the patient's live-call task.
 
 Capabilities involved: [Device Transmission Report Ingestion](../capabilities/device-transmission-report-ingestion.md), [Automated Report Notes and Alerts](../capabilities/automated-report-notes-and-alerts.md), [Billing Code and Schedule Assignment](../capabilities/billing-code-and-schedule-assignment.md), [Patient and Device Registration](../capabilities/patient-and-device-registration.md).
 Rules: [Transmission processing rules](../business-rules/transmission-processing-rules.md).

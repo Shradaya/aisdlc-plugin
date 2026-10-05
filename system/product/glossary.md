@@ -51,3 +51,17 @@ Provenance: evoke-portal-front-end @ 79953d33432479d03bcde9545050dbb9a7193ed8, 2
 | Clinic Review | The worklist where clinic users and physicians review reports before they are processed | Route `/transmissions/clinic-review` | inferred |
 | Clinic roles | Clinic, Physician, Clinic Admin (and Clinic Reviewer, treated separately in some checks): users of partner clinics | `CLINIC_ROLES` in `src/static/constants.js` | observed |
 | Evoke roles | Admin, User, Assistant: Evoke staff | `EVOKE_ROLES` | observed |
+
+## Terms from patient-billing-schedule
+
+Provenance: patient-billing-schedule @ ec1d8894c633996d7fc9e7a9423d21521a981bf6, 2026-10-05, aisdlc@1.0.0. Definitions are written from how the code uses each term and are **inferred**, not confirmed by the developer; each is listed under Open questions in [Billing Window Scheduling](capabilities/billing-window-scheduling.md). Other terms already defined above (next_send, late_date, HF, IDTF) are not redefined.
+
+| Term | Definition (inferred) | Used in code | Status |
+|---|---|---|---|
+| Ideal billing date | The expected billing date for a code: signature-anchored date, stored cutoff date, implant date plus a wait period (first time), or last billing date plus cycle (recurring) | `main.py:171-216` | inferred |
+| Billing window | Days before and after the ideal billing date within which a report may be chosen as billable | `main.py:31-105`, `src/utils/constants.py:28-45` | inferred |
+| Backbill | Billing a report after its window ended, using a widened range | `main.py:86-92`, `src/database/schedule.py:54-98` | inferred |
+| Next send | Date the next transmission from the patient is expected (see also the rest-api-evoke entry) | `src/database/schedule.py:153-167` | inferred |
+| Late date | Three days after next send; passing it without a report makes the patient late | `src/utils/constants.py:46`, `src/database/schedule.py:153-167` | inferred |
+| Signature anchor | Account billing setting that bases the next billing date on the latest signed report instead of the last billing date | `src/utils/constants.py:192-194`, `main.py:174-202` | inferred |
+| Bot event | Message with the patient id sent to the manufacturer crawler so it fetches data for a late patient | `src/database/schedule.py:318-363` | inferred |

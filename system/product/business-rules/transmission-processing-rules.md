@@ -37,7 +37,7 @@ Capability: Patient and Device Registration.
 ## Observed but not confirmed by the developer
 
 - A new patient without a name in the message is not created; a Slack notice is sent.
-- Existing inactive patients are not sent to the billing schedule Lambda.
+- Existing inactive patients are not sent to the billing schedule service ([patient-billing-schedule](../capabilities/billing-window-scheduling.md)).
 - Benchmark events are sent only for new patients on IDTF accounts with billing export enabled.
 
 ## Open questions
