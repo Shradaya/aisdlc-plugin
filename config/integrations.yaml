@@ -31,6 +31,7 @@
   "git_hosting": {
     "adapter": "mcp",
     "provider": "bitbucket",
+    "pr_target_branches": ["lf-develop", "lf-qa", "lf-uat"],
     "credentials": {
       "email_env": "BITBUCKET_EMAIL",
       "api_token_env": "BITBUCKET_API_TOKEN"

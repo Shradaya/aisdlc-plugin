@@ -40,6 +40,7 @@ Bugs and investigations have their own state machines. The other task types use 
 | `/aisdlc:resume <ticket-number>` | Continue an interrupted task from the first incomplete safe state. See [resume](/guide/resume). |
 | `/aisdlc:commit <ticket-number>` | Commit through the commit skill: message `<ticket-number>: <changes summary>`, on branch `<ticket-number>`. |
 | `/aisdlc:pr <ticket-number>` | Create the pull request(s) once implementation, tests, review and commit are done. |
+| `/aisdlc:create-pr <ticket-number> [target-branches]` | Open pull requests from the task branch to `lf-develop`, `lf-qa` and `lf-uat` (or a subset) in every affected repository, with the team description template (`pr_target_branches` in `config/integrations.yaml`). |
 | `/aisdlc:pr-review <repo-name> <pr-id-or-url>` | Review a Bitbucket pull request (yours or a teammate's) against its ticket, the repository's documented conventions and interfaces, and aisdlc rules. Writes an advisory review to `reviews/<repo-name>/pr-<id>.md`; never approves, merges or edits, and posts comments only if you ask. |
 | `/aisdlc:finish <ticket-number>` | Finalize a task. For features it refuses unless the state is `TEMPORARY_ARTIFACTS_CLEANED`. It never deletes artifacts. |
 
