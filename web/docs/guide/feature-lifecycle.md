@@ -87,6 +87,10 @@ CREATED
 ```
 :::
 
+## UI features and designs
+
+When an affected repository is a UI repository (`"ui": true` in `config/repositories.yaml`), `/aisdlc:feature` asks you for a design ticket number once the repositories are confirmed, then runs `/aisdlc:ui-design` after the specification is drafted and before approval. The designer has already finished the design in Claude Design, with that number in the artifact title; aisdlc finds it (or asks you for the link), reads it without changing it, and records what it read in `system/designs/<DESIGN-TICKET>/` as numbered versions. You confirm the recorded screens against the design. Several feature tickets can use the same design ticket. The feature specification pins one version in section 11 ("Design references"), and the plan, implementation and review follow the design. Approving the specification approves the pinned design, and changing the pin later requires reapproval. The recorded designs are not deleted by cleanup.
+
 ## What to do next
 
 At every step aisdlc tells you what comes next and whose turn it is. After each state change you see a line such as:

@@ -29,8 +29,7 @@ Phase 2 (persist) requires an existing task: `node ${CLAUDE_PLUGIN_ROOT}/scripts
 3. Hold the content in context; keep Jira-sourced and user-supplied details clearly distinguished.
 
 ### Phase 2 - Persist (after `init`)
-4. Write `tasks/<TICKET>/jira.md`. It begins with a `source:` block - Jira: `type: jira`, `jira_available: true`, `issue_key`, `fetched_at`; fallback: `type: user-provided`, `jira_available: false`. Follow with the sections above, labelling each user-supplied item.
-5. Compute the snapshot hash: `node -e "const c=require('crypto'),f=require('fs');console.log('sha256:'+c.createHash('sha256').update(f.readFileSync(process.argv[1])).digest('hex'))" tasks/<TICKET>/jira.md` (adapt quoting to the shell).
+4. Write `tasks/<TICKET>/jira.md`. It begins with a `source:` block - Jira: `type: jira`, `jira_available: true`, `issue_key`, `fetched_at`; fallback: `type: user-provided`, `jira_available: false`. Follow with the sections above, labelling each user-supplied item.5. Compute the snapshot hash: `node -e "const c=require('crypto'),f=require('fs');console.log('sha256:'+c.createHash('sha256').update(f.readFileSync(process.argv[1])).digest('hex'))" tasks/<TICKET>/jira.md` (adapt quoting to the shell).
 6. Record it: `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js set <TICKET> source '{"type":"jira","issue_key":"<TICKET>","snapshot_hash":"sha256:<hash>"}'` (use `"type":"user-provided"` for fallback, and add `"jira_available":false`).
 7. Append audit events `ticket-loaded` (or `ticket-fallback-used`) to `tasks/<TICKET>/execution-log.jsonl`.
 8. Set `workflow.jira` complete: `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js set <TICKET> workflow.jira '"completed"'`.

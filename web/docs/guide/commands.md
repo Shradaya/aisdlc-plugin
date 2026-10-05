@@ -20,6 +20,7 @@ Each one creates a task directory `tasks/<ticket-number>/` and follows its own w
 | `/aisdlc:feature <ticket-number>` | New or changed product behavior. The primary workflow. See [feature lifecycle](/guide/feature-lifecycle). |
 | `/aisdlc:bug <ticket-number>` | A defect. Root cause first, minimal fix, regression test. See [bug lifecycle](/guide/bug-lifecycle). |
 | `/aisdlc:post-release <ticket-number \| * \| PREFIX-*>` | After production release: consolidate knowledge into `system/product/` and clean up temporary artifacts, for one ticket or for all eligible tickets (`*`, `FEAT-*`) in one run. See [post-release](/guide/post-release-and-finish). |
+| `/aisdlc:ui-design <ticket-number>` | UI features only. Asks for a design ticket number, reads the designer's finished Claude Design artifact for it (read-only), records it in `system/designs/<DESIGN-TICKET>/` and pins that version in the specification. `/aisdlc:feature` runs it for you before specification approval. |
 | `/aisdlc:refactor <ticket-number>` | Restructure code while preserving documented behavior. |
 | `/aisdlc:investigate <ticket-number>` | Read-only investigation that produces findings. It does not modify source unless explicitly converted into an implementation task. |
 | `/aisdlc:database-change <ticket-number>` | Schema and data changes, with migration ordering and rollback. |

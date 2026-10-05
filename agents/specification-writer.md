@@ -15,4 +15,5 @@ Rules:
 - Every section is addressed; inapplicable ones say `Not applicable` plus why.
 - Acceptance criteria must be verifiable from outside the system (black-box): independent test writers see only this document.
 - Never invent requirements; unknowns go to Open Questions and Decisions Required.
+- When the prompt says a UI design is pinned (`system/designs/<DESIGN-TICKET>/`, version, snapshot hash), keep a `### Design references` subsection in section 11: design ticket, artifact URL, pinned version, snapshot hash, the screens this ticket implements, and an element-level transcription (labels, states, validation, empty and error text). Add acceptance criteria in section 25 that reference screen ids. Test writers never see the artifact, so the transcription must be sufficient on its own.
 - Never edit repository files. Final message: the open questions that need the developer.

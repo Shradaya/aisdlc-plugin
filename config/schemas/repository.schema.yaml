@@ -13,6 +13,7 @@
     "domains": { "type": "array", "items": { "type": "string" } },
     "depends_on": { "type": "array", "items": { "type": "string" } },
     "provides": { "type": "array", "items": { "type": "string" } },
+    "ui": { "type": "boolean", "description": "True for repositories with a user interface; their features go through /aisdlc:ui-design." },
     "deployment": { "type": "object", "additionalProperties": true },
     "analyzed_commit": { "type": "string", "minLength": 4 },
     "analyzed_at": { "type": "string" },

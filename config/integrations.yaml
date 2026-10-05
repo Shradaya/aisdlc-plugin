@@ -29,8 +29,10 @@
     }
   },
   "git_hosting": {
-    "adapter": "mcp",
+    "adapter": "rest-api",
     "provider": "bitbucket",
+    "api_base": "https://api.bitbucket.org/2.0",
+    "script": "scripts/git-hosting/bitbucket-pr.js",
     "pr_target_branches": ["lf-develop", "lf-qa", "lf-uat"],
     "credentials": {
       "email_env": "BITBUCKET_EMAIL",
@@ -45,6 +47,14 @@
     "write": {
       "add_pr_comment": false
     }
+  },
+  "design": {
+    "adapter": "claude-design-artifact",
+    "tool": "Artifact (type: Design)",
+    "access": "read-only",
+    "operations": ["find_design", "read_design"],
+    "title_contains": "<DESIGN-TICKET>",
+    "storage": "system/designs/<DESIGN-TICKET>/"
   },
   "ci": {
     "adapter": "mcp",

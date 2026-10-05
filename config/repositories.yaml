@@ -43,6 +43,7 @@
     "evoke-portal-front-end": {
       "path": "${AISDLC_REPOS_ROOT}/evoke-portal-front-end",
       "role": "React single-page web portal (Create React App, Redux Toolkit, MUI) served by nginx, through which Evoke staff, partner-clinic staff and physicians review cardiac-device transmissions and reports, manage patients and RPM, tasks, billing, dashboards and configuration, by calling rest-api-evoke",
+      "ui": true,
       "system_role": "Developer-confirmed (2026-10-02): clinician and staff web portal used by Evoke operators and partner-clinic staff; its REST API is rest-api-evoke; realtime namespaces come from a separate socket service; it owns no persistent data",
       "base_branch": "main",
       "domains": ["clinician-portal", "report-notes", "patient-registry", "rpm", "tasks", "billing", "access-administration", "patient-communication"],

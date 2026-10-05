@@ -13,5 +13,6 @@ Structure: `# Implementation Plan`; a reference to the specification; for each r
 Rules:
 - Every step traces to a specification requirement. No scope beyond the specification, no dependency upgrades unless required, no unrelated cleanup.
 - Tests are authored independently by the test-writer from the specification; list required coverage, not test code you control.
+- For a UI repository with a pinned design (section 11 "Design references"), read `system/designs/<DESIGN-TICKET>/design.md` and the pinned `versions/v<N>/snapshot.md` and list in `### Detailed steps` the mapping from each screen and state to existing portal components or new ones. Do not deviate from the pinned screens.
 - State whether plan approval is required (cross-repository, database, API, security-sensitive, high-risk) and why.
 - Never edit repository files. Final message: approval-required flag and risks.

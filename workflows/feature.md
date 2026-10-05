@@ -16,7 +16,7 @@ Failure states (reachable from any state): BLOCKED, WAITING_FOR_INPUT, WAITING_F
 | Understand | TICKET_READY -> UNDERSTOOD | feature skill | `requirements.md` |
 | Impact | UNDERSTOOD -> IMPACT_ANALYZED -> REPOSITORIES_IDENTIFIED | impact-analysis, impact-analyst | `knowledge-manifest.yaml`, `impact-analysis.md` |
 | Prepare | -> REPOSITORIES_PREPARED | repository-preparation | `repository-preparation.yaml` |
-| Specify | -> SPEC_DRAFTED -> AWAITING_SPEC_APPROVAL -> SPEC_APPROVED | feature-specification, specification-writer | `specification.md` |
+| Specify | -> SPEC_DRAFTED -> AWAITING_SPEC_APPROVAL -> SPEC_APPROVED | feature-specification, specification-writer, ui-design (UI repositories only, within SPEC_DRAFTED) | `specification.md`, `system/designs/<DESIGN-TICKET>/` |
 | Plan | -> PLAN_DRAFTED [-> AWAITING_PLAN_APPROVAL] | implementation-planner | `implementation-plan.md` |
 | Implement | -> IMPLEMENTING | testing (write: test-writer), implementation | tests, code |
 | Validate | -> VALIDATING | testing (run) | `validation.md` |
@@ -32,6 +32,7 @@ Failure states (reachable from any state): BLOCKED, WAITING_FOR_INPUT, WAITING_F
 
 - Source edits in registered repositories are allowed only from SPEC_APPROVED to COMMITTED and only while the approved specification hash matches (hook-enforced). Spec changes after approval require reapproval.
 - Specification approval is explicit human approval (`approve <ticket> specification`). The state engine refuses IMPLEMENTING without it.
+- UI features (an affected repository has `"ui": true`) ask the developer for a design ticket number (after repositories are identified) and pin a version of the designer's finished Claude Design design for that ticket (read-only) in the specification's "Design references" (`ui-design`); the feature is built from the design. Approval of the specification approves the pin; changing the pin after approval changes the hash and requires reapproval. Design folders under `system/designs/` are durable and are not deleted by cleanup.
 - Plan approval (`approve <ticket> plan`) is required for cross-repository, database, API, security-sensitive and high-risk changes (`config/policies.yaml`); the state engine does not enforce it, the workflow does.
 - Ticket drift before implementation: JIRA_CHANGED -> SPEC_REVIEW_REQUIRED -> reapproval; implementation blocked meanwhile.
 - Validation completion (spec §14.3) precedes REVIEWING. Reviewers see only requirement, code and tests.
