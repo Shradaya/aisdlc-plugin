@@ -23,5 +23,14 @@
     "implementer_may_edit_tests": false,
     "failure_feedback_to_implementer": "failing test output only"
   },
+  "ui": {
+    "applies_to": "repositories with \"ui\": true in config/repositories.yaml",
+    "browser_framework": "Playwright",
+    "layer": "end-to-end",
+    "required_when": "the specification has Design references, or acceptance criteria describe user-visible behavior",
+    "target": "local dev server started by the Playwright webServer setting, with backend calls mocked; a deployed non-production environment only when the developer names it",
+    "evidence": "per screen and state screenshots under tasks/{ticket}/validation-evidence/ui/, compared with the pinned design by review",
+    "test_data": "synthetic only; no real patient data, credentials or production URLs"
+  },
   "prohibited": ["disabling tests to pass CI", "deleting failing tests without documented replacement coverage", "running tests against production"]
 }
