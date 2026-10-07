@@ -30,3 +30,10 @@
 
 /* BLOCKED message samples */
 .blocked-msg { border-left: 4px solid var(--vp-c-danger-1); }
+
+/* Relationship graph page: use the full content width (override the doc column cap) */
+.graph-page .VPDoc .container,
+.graph-page .VPDoc .content,
+.graph-page .VPDoc .content-container { max-width: none !important; }
+.graph-page .VPDoc:not(.has-sidebar) .content { padding: 0; }
+.graph-page .VPDoc .content { padding-right: 24px; }

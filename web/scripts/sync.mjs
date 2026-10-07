@@ -543,7 +543,7 @@ function renderCatalog(text) {
   return out.join('\n')
 }
 
-function buildSystem() {
+function buildSystem(registry) {
   const base = path.join(ROOT, 'system')
   const entries = [] // { group: parts[], text, link, order }
   const files = fs.existsSync(base) ? walkSystem(base) : []
@@ -588,6 +588,19 @@ function buildSystem() {
   }
   if (!entries.some((e) => e.dirParts.length === 0 && e.slugName === 'index')) addPage('system/index.md', idx.join('\n'))
 
+  // interactive relationship graph (system/repository-relationships.yaml + registry)
+  let hasGraph = false
+  const relFile = path.join(base, 'repository-relationships.yaml')
+  if (fs.existsSync(relFile)) {
+    const doc = parseYaml(readAllowed(relFile).split(/\r?\n/).filter((l) => !/^\s*#/.test(l)).join('\n')) || {}
+    const edges = (doc.edges || []).map((e) => ({
+      from: e.from, to: e.to, kind: e.kind, direction: e.direction, description: e.description, status: e.status, note: e.note,
+    }))
+    const payload = Buffer.from(unescape(encodeURIComponent(JSON.stringify({ registered: registry.map((r) => r.name), edges }))), 'binary').toString('base64')
+    addPage('system/graph.md', `---\naside: false\npageClass: graph-page\n---\n\n# Relationship graph\n\nHow the registered repositories and their external systems connect, drawn from \`system/repository-relationships.yaml\`.\n\n<RepoGraph data="${payload}" />\n`)
+    hasGraph = true
+  }
+
   // sidebar tree
   const rootItems = []
   const groups = new Map()
@@ -621,7 +634,7 @@ function buildSystem() {
     const w = (i) => (/overview/i.test(i.link ?? '') ? 0 : /feature-catalog/.test(i.link ?? '') ? 1 : i.items ? 3 : 2)
     product.items.sort((a, b) => w(a) - w(b))
   }
-  const sidebar = [{ text: 'System', items: [{ text: 'Overview', link: '/system/' }] }, ...rootItems]
+  const sidebar = [{ text: 'System', items: [{ text: 'Overview', link: '/system/' }, ...(hasGraph ? [{ text: 'Relationship graph', link: '/system/graph' }] : [])] }, ...rootItems]
   return { sidebar, count: entries.length }
 }
 
@@ -708,7 +721,7 @@ function removeGenerated() {
 function main() {
   const registry = parseRegistry()
   const { summaries, sidebarItems } = buildRepos(registry)
-  const system = buildSystem()
+  const system = buildSystem(registry)
   const tasks = readTasks()
   buildStatus(summaries, tasks)
 

@@ -12,6 +12,7 @@ Lifecycle: Understand, Analyze, Specify, Approve, Plan, Implement, Validate, Rev
 - `skills/<name>/SKILL.md` procedures (commands in spec §51); `agents/` subagents; `workflows/` lifecycle references per task type.
 - `config/` registry (`repositories.yaml`), `task-types.yaml`, policies, schemas. `repositories/<repo>/` repository knowledge. `system/` architecture, decisions and durable product knowledge (`system/product/`) and UI designs shared by a parent ticket's children (`system/designs/<PARENT>/`, `/aisdlc:ui-design`).
 - `tasks/<ticket>/` task state and temporary artifacts. State CLI: `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js`. Hooks in `hooks/` enforce the gates.
+- Cross-repo relationships: query the graph CLI, do not read `system/repository-relationships.yaml` whole. `node ${CLAUDE_PLUGIN_ROOT}/scripts/graph/aisdlc-graph.js <impact|neighbors> <repo> [--depth N] [--registered] [--min-status human-confirmed]`; `validate` after editing relationships or the registry. The YAML stays the source of truth (edit it, never generated output); read it directly only for an edge's full description or evidence.
 - Detailed rules: `.claude/rules/{workspace,safety,git,task-gates}.md`.
 
 ## Invariants (never optional)
