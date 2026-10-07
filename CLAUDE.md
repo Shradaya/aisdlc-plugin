@@ -4,6 +4,9 @@ Control plane for the AI-SDLC (spec: `aisdlc.markdown`). Claude Code plugin `ais
 
 Lifecycle: Understand, Analyze, Specify, Approve, Plan, Implement, Validate, Review, Commit, PR, CI, Merge, Release, Consolidate Product Knowledge, Clean Up Temporary Artifacts, Complete.
 
+## Prerequisite
+- Load `claude.env` values if available
+
 ## Navigation
 
 - `skills/<name>/SKILL.md` procedures (commands in spec §51); `agents/` subagents; `workflows/` lifecycle references per task type.
