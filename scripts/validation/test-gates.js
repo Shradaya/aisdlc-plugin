@@ -5,7 +5,7 @@ const { spawnSync, execSync } = require("child_process");
 const SRC = path.resolve(__dirname, "..", "..");
 const W = fs.mkdtempSync(path.join(os.tmpdir(), "aisdlc-test-"));
 for (const d of ["hooks", "scripts/state", "scripts/lib", "config", "tasks", "logs"]) fs.mkdirSync(path.join(W, d), { recursive: true });
-for (const f of ["hooks/pre-tool-policy.js", "scripts/state/aisdlc-state.js", "scripts/lib/repo-paths.js", "config/task-types.yaml"]) fs.copyFileSync(path.join(SRC, f), path.join(W, f));
+for (const f of ["hooks/pre-tool-policy.js", "scripts/state/aisdlc-state.js", "scripts/lib/repo-paths.js", "scripts/lib/root.js", "config/task-types.yaml"]) fs.copyFileSync(path.join(SRC, f), path.join(W, f));
 const repo = path.join(W, "..", path.basename(W) + "-backend");
 fs.mkdirSync(repo, { recursive: true });
 execSync("git init -q -b main && git config user.email t@t && git config user.name t && git commit -q --allow-empty -m init", { cwd: repo });

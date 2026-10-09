@@ -2,7 +2,7 @@
 // SessionStart hook (spec §30.1). Read-only: validates config and reports active tasks.
 const fs = require("fs");
 const path = require("path");
-const ROOT = process.env.AISDLC_ROOT || path.resolve(__dirname, "..");
+const ROOT = require("../scripts/lib/root").resolveRoot(path.resolve(__dirname, ".."));
 const out = [];
 const { resolveRepoPath } = require("../scripts/lib/repo-paths");
 const parse = (f) => JSON.parse(fs.readFileSync(f, "utf8").replace(/^\s*#.*$/gm, ""));

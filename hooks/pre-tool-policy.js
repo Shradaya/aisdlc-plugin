@@ -6,7 +6,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { execSync } = require("child_process");
 
-const ROOT = process.env.AISDLC_ROOT || path.resolve(__dirname, "..");
+const ROOT = require("../scripts/lib/root").resolveRoot(path.resolve(__dirname, ".."));
 const readJson = (f, d) => {
   try { return JSON.parse(fs.readFileSync(f, "utf8").replace(/^\s*#.*$/gm, "")); } catch { return d; }
 };

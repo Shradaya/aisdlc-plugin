@@ -13,7 +13,7 @@ const path = require("path");
 const crypto = require("crypto");
 const { execSync } = require("child_process");
 
-const ROOT = process.env.AISDLC_ROOT || path.resolve(__dirname, "..", "..");
+const ROOT = require("../lib/root").resolveRoot(path.resolve(__dirname, "..", ".."));
 const TYPES = JSON.parse(
   fs.readFileSync(path.join(ROOT, "config", "task-types.yaml"), "utf8").replace(/^#.*$/gm, "")
 );

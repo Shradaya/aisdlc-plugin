@@ -1,0 +1,11 @@
+{
+  "name": "aisdlc-marketplace",
+  "owner": { "name": "Evoke Medical Care" },
+  "plugins": [
+    {
+      "name": "aisdlc",
+      "source": "./",
+      "description": "AI-SDLC engineering lifecycle and governance plugin"
+    }
+  ]
+}

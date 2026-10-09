@@ -2,7 +2,7 @@
 // PostToolUse audit hook (spec §30.7). Records metadata only; command text is redacted.
 const fs = require("fs");
 const path = require("path");
-const ROOT = process.env.AISDLC_ROOT || path.resolve(__dirname, "..");
+const ROOT = require("../scripts/lib/root").resolveRoot(path.resolve(__dirname, ".."));
 let ev; try { ev = JSON.parse(fs.readFileSync(0, "utf8")); } catch { process.exit(0); }
 const SECRET = /(AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:token|secret|password|passwd|api[_-]?key)\s*[=:]\s*\S+|xox[bp]-\S+|ghp_\w+)/gi;
 const input = ev.tool_input || {};

@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = path.resolve(__dirname, '..', '..');
+const ROOT = require('../lib/root').resolveRoot(path.resolve(__dirname, '..', '..'));
 const STATUS_RANK = { conflicted: 0, inferred: 1, observed: 2, 'human-confirmed': 3 };
 const KINDS = new Set(['api', 'event', 'database', 'file', 'third-party']);
 

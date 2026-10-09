@@ -11,7 +11,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const ROOT = process.env.AISDLC_ROOT || path.resolve(__dirname, "..", "..");
+const ROOT = require("./root").resolveRoot(path.resolve(__dirname, "..", ".."));
 const ENV_FILES = ["claude.env", ".env"]; // later files override earlier ones
 
 function parseEnv(text) {
