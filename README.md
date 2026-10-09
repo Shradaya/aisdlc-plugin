@@ -10,13 +10,15 @@ The plugin walks a task through a full lifecycle — Understand, Analyze, Specif
 
 ### Layout
 
-- `skills/<name>/SKILL.md` — the procedures behind each `/aisdlc:<skill>` command.
-- `agents/` — specialized sub-agents (reviewers, analysts, planners).
-- `workflows/` — lifecycle references per task type (bug, feature, refactor, ...).
-- `config/` — the repository registry (`repositories.yaml`), task types, policies, and schemas.
+- The plugin itself is **not** stored here. It is installed from `~/.claude/plugin`, the `aisdlc-plugin` branch of this repository checked out as a worktree (marketplace `aisdlc-marketplace`; install steps are in its README):
+  - `skills/<name>/SKILL.md` — the procedures behind each `/aisdlc:<skill>` command.
+  - `agents/` — specialized sub-agents (reviewers, analysts, planners).
+  - `workflows/` — lifecycle references per task type (bug, feature, refactor, ...).
+  - `hooks/` — pre/post tool and session hooks that enforce the gates (they do nothing outside an aisdlc workspace).
+  - `scripts/` — state, graph and git-hosting CLIs, shared libraries and gate tests.
+- `config/` — workspace config: the repository registry (`repositories.yaml`), `integrations.yaml` and `workspace.yaml`. Task types, policies, testing policy and schemas ship in the plugin's `config/`; a same-named file here overrides the plugin default.
 - `repositories/<repo>/` — generated knowledge about each registered repository.
 - `system/` — architecture, decisions, and durable product knowledge.
-- `hooks/` — pre/post tool and session hooks that enforce the gates.
 - `web/` — a read-only documentation site (usage guide + repository browser).
 
 See `CLAUDE.md` for the invariants and `aisdlc.markdown` for the full specification.
@@ -26,7 +28,7 @@ See `CLAUDE.md` for the invariants and `aisdlc.markdown` for the full specificat
 1. Copy the example config files and fill in your own values (paths only, never secrets):
    - `claude.env.example` → `claude.env` (set `AISDLC_REPOS_ROOT` to the folder holding your clones)
    - `.mcp.json.example` → `.mcp.json` (Jira/Bitbucket MCP server; credentials come from environment variables)
-2. Open the workspace in Claude Code with the plugin, then run `/aisdlc:status` to check configuration and `/aisdlc:add-repo` to register a repository.
+2. Open the workspace in Claude Code with the plugin (install once with `/plugin marketplace add ~/.claude/plugin` then `/plugin install aisdlc@aisdlc-marketplace`; after editing the plugin, update it with `/plugin marketplace update aisdlc-marketplace`), start Claude Code from this folder, then run `/aisdlc:status` to check configuration and `/aisdlc:add-repo` to register a repository.
 
 ## Running the web app
 
