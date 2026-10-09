@@ -36,6 +36,10 @@ Evidence: services/v2/hl7job.service.js:276-305, 372.
 The account must be an Intergy account; the report needs an alert or a billing date (in-office reports need a billing date); the patient needs first name, last name and date of birth; an EHR provider must resolve and a task label must resolve for the billing code. If the job cannot be queued it is removed.
 Evidence: services/v2/apiJob.v2.service.js:115-245.
 
+## 5. HL7 message content
+
+How the ORU, DFT and IDCO ORU messages are built per client account, and which accounts support which message, is described in [EMR message handling rules](emr-message-handling-rules.md).
+
 ## Open questions
 
 - The Intergy job account name is fixed in code (apiJob.v2.service.js:220), which suggests it works for one client only; intended behavior is unknown (observed defect, see repositories/rest-api-evoke/security.md for code-level notes).

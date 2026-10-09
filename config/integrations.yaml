@@ -32,7 +32,7 @@
     "adapter": "rest-api",
     "provider": "bitbucket",
     "api_base": "https://api.bitbucket.org/2.0",
-    "script": "scripts/git-hosting/bitbucket-pr.js",
+    "script": "${CLAUDE_PLUGIN_ROOT}/scripts/git-hosting/bitbucket-pr.js",
     "pr_target_branches": ["lf-develop", "lf-qa", "lf-uat"],
     "credentials": {
       "email_env": "BITBUCKET_EMAIL",
@@ -43,9 +43,9 @@
       "read:pullrequest:bitbucket": "Read pull request details and status",
       "write:pullrequest:bitbucket": "Create pull requests (and post PR comments if enabled)"
     },
-    "operations": ["create_pull_request", "read_pull_request_status", "read_pull_request", "read_pull_request_diff"],
+    "operations": ["create_pull_request", "read_pull_request_status", "read_pull_request", "read_pull_request_diff", "add_pr_comment"],
     "write": {
-      "add_pr_comment": false
+      "add_pr_comment": true
     }
   },
   "design": {

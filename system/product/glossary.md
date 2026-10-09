@@ -65,3 +65,17 @@ Provenance: patient-billing-schedule @ ec1d8894c633996d7fc9e7a9423d21521a981bf6,
 | Late date | Three days after next send; passing it without a report makes the patient late | `src/utils/constants.py:46`, `src/database/schedule.py:153-167` | inferred |
 | Signature anchor | Account billing setting that bases the next billing date on the latest signed report instead of the last billing date | `src/utils/constants.py:192-194`, `main.py:174-202` | inferred |
 | Bot event | Message with the patient id sent to the manufacturer crawler so it fetches data for a late patient | `src/database/schedule.py:318-363` | inferred |
+
+## Terms from client-emr-hl7-parser
+
+Provenance: client-emr-hl7-parser @ b9615126ee17c4e2583e08ac81faaa9d12c63005, 2026-10-09T00:00:00Z, aisdlc@1.0.0. The developer gave no definitions; the entries below use the standard HL7 v2 meanings and are **inferred**, with product definitions unconfirmed (see Open questions in [EMR message handling rules](business-rules/emr-message-handling-rules.md)). The hl7job entry above (from rest-api-evoke) also covers ORU, DFT and IDCO as job types; this section defines them as messages.
+
+| Term | Definition (inferred, standard HL7 meaning) | Used in code | Status |
+|---|---|---|---|
+| ADT | Admit, discharge and transfer message from a client EMR carrying patient and visit information; stored as an ADT record per account | Event `ADT_PARSING`; types A02, A03, A04, A08, A31 | inferred |
+| ORM | Order message from a client EMR; handled with the ADT messages | Type `ORM_O01` | inferred |
+| ORU | Observation result message; inbound from a client EMR, or outbound carrying an Evoke report | Type `ORU_R01`; event `ORU_CREATION`; inbound ORU arrives through `ADT_PARSING` | inferred |
+| DFT | Detailed financial transaction message carrying a billing charge, sent to the client EMR | Event `DFT_CREATION`, type `DFT_P03` | inferred |
+| IDCO ORU | Outbound result message carrying discrete device data from the manufacturer's original file; product meaning of "IDCO" not confirmed | Event `IDCO_ORU_CREATION`, job type `IDCO_ORU_R01` | inferred |
+| ACK | Acknowledgement message accepting (AA), rejecting (AR) or reporting an error (AE) for a received HL7 message | Event `ACK_PARSING`; `acks` collection | inferred |
+| Client account alias | A lower-case sending-application or facility name mapped to the client account whose handler is used | `APPLICATION_FACILITY_MAPPER` | observed |

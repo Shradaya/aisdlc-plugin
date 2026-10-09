@@ -33,6 +33,10 @@ Evidence: services/v2/patient.v2.service.js:1986, 2332.
 Enrolling a patient checks for an existing patient with the same name, date of birth, device model and serial number and refuses a duplicate (the message says whether it exists in the account of the user or another). A new enrolment creates a NEW PATIENT onboarding task.
 Evidence: services/v2/patient.v2.service.js:1611-1640; util/v2/patient.v2.util.js:1123-1138; services/v2/patient.v2.service.js:1761-1778.
 
+## 5. Patients from client EMR messages
+
+Inbound messages from client EMRs also create patients and onboarding tasks; see [EMR message handling rules](emr-message-handling-rules.md).
+
 ## Open questions
 
 Observed, not confirmed as product rules:

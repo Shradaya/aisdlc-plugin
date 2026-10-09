@@ -1,0 +1,43 @@
+{
+  "name": "client-emr-hl7-parser",
+  "path": "${AISDLC_REPOS_ROOT}/client-emr-hl7-parser",
+  "remote": "git@bitbucket.org:evoke-medical-care/client-emr-hl7-parser.git",
+  "role": "Python AWS Lambda (EMR integration) that builds outbound HL7 messages (ORU_R01, DFT_P03, IDCO ORU) from Evoke reports for client EMR accounts and parses inbound ADT, ORM, ORU and ACK messages from them, creating or updating patients, onboarding tasks, ADT records and acknowledgements in the shared Evoke MongoDB",
+  "system_role": "Developer-confirmed (2026-10-09): EMR integration Lambda with no end users; parsing events come from an inbound EMR transport service or manual CLI runs, creation events from a trigger fed by the rest-api-evoke hl7job SNS topic; generated HL7 in S3 is delivered to the EMRs by client-ehr-hl7-export; owns adts, adts_book_keeping and acks",
+  "base_branch": "main",
+  "domains": ["ehr-export", "patient-registry"],
+  "depends_on": ["rest-api-evoke", "manufacturer-hl7-parser"],
+  "provides": ["ehr-export-hl7-sftp-api-jobs", "patient-and-device-registration", "ehr-delivery-acknowledgements"],
+  "deployment": {
+    "type": "aws-lambda",
+    "pipeline": "bitbucket-pipelines.yml",
+    "environments": {
+      "lf-uat": "User Acceptance Testing",
+      "main": "Production"
+    },
+    "notes": "Only lf-uat and main have pipelines; each push zips the source and updates the Lambda with no tests or manual gate. No lf-develop or lf-qa pipeline on this commit (build-release.md)."
+  },
+  "analyzed_commit": "b9615126ee17c4e2583e08ac81faaa9d12c63005",
+  "analyzed_at": "2026-10-09T00:00:00Z",
+  "generator": "aisdlc@1.0.0",
+  "status": "current",
+  "technology": {
+    "languages": ["python"],
+    "frameworks": ["hl7apy", "pymongo", "boto3", "pymupdf", "rapidfuzz", "requests"]
+  },
+  "entrypoints": ["main.py lambda_handler(event, context): {eventType, value} with eventType ORU_CREATION | DFT_CREATION | IDCO_ORU_CREATION (value = report id), ADT_PARSING | ACK_PARSING (value = raw HL7 text)", "python main.py --eventType <type> --value <value> (CLI)"],
+  "testing": { "profile": "repositories/client-emr-hl7-parser/testing.md" },
+  "knowledge": {
+    "overview": { "status": "observed", "confidence": "high", "evidence": ["main.py", "src/eventHandler/__init__.py"] },
+    "structure": { "status": "observed", "confidence": "high", "evidence": ["git ls-files (120 files)"] },
+    "architecture": { "status": "observed", "confidence": "medium", "evidence": ["main.py", "src/eventHandler/", "src/accountHandler/__init__.py", "src/eventHandler/contants.py"] },
+    "dependencies": { "status": "observed", "confidence": "medium", "evidence": ["requirements.txt", "src/config.py", "src/database/connection.py"] },
+    "interfaces": { "status": "observed", "confidence": "medium", "evidence": ["main.py", "src/eventHandler/__init__.py", "src/utils/aws.py", "src/utils/slack.py"] },
+    "data-model": { "status": "observed", "confidence": "medium", "evidence": ["src/database/query.py", "src/utils/constants.py"] },
+    "testing": { "status": "observed", "confidence": "high", "evidence": ["repository file listing (no tests)", "requirements.txt", "bitbucket-pipelines.yml"] },
+    "build-release": { "status": "observed", "confidence": "high", "evidence": ["bitbucket-pipelines.yml"] },
+    "security": { "status": "observed", "confidence": "medium", "evidence": ["src/config.py", "bitbucket-pipelines.yml", "src/eventHandler/ack.py"] },
+    "conventions": { "status": "observed", "confidence": "medium", "evidence": ["main.py", "src/utils/logger.py", "src/eventHandler/contants.py"] },
+    "change-impact": { "status": "inferred", "confidence": "medium", "evidence": ["src/eventHandler/contants.py", "src/accountHandler/__init__.py"] }
+  }
+}

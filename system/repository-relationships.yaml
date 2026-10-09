@@ -334,9 +334,66 @@
       "evidence": ["repositories/rest-api-evoke/dependencies.md", "util/v2/"],
       "status": "observed",
       "target_registered": false
+    },
+    {
+      "from": "inbound-emr-transport-service",
+      "to": "client-emr-hl7-parser",
+      "kind": "event",
+      "direction": "from -> to",
+      "description": "Passes raw ADT/ORM/ORU and ACK text from client EMRs to the Lambda as {eventType: ADT_PARSING | ACK_PARSING, value}. Manual CLI runs (python main.py --eventType) are the other confirmed caller.",
+      "evidence": ["main.py", "src/eventHandler/__init__.py", "developer answer 2026-10-09 (invoker round)"],
+      "status": "human-confirmed",
+      "source_registered": false,
+      "target_registered": true,
+      "source_identity": "descriptive id from the developer's selection; actual service and repository name unknown"
+    },
+    {
+      "from": "rest-api-evoke",
+      "to": "client-emr-hl7-parser",
+      "kind": "event",
+      "direction": "from -> to (indirect)",
+      "description": "rest-api-evoke publishes {hl7JobId} to an SNS topic; a trigger fed by that topic invokes the Lambda with ORU_CREATION, DFT_CREATION or IDCO_ORU_CREATION (value = report id). The Lambda reads the hl7jobs record by report_id and type.",
+      "evidence": ["src/database/query.py", "src/eventHandler/dft.py", "system edge rest-api-evoke -> client-ehr-hl7-export", "developer answer 2026-10-09 (creation-event round)"],
+      "status": "human-confirmed",
+      "target_registered": true,
+      "note": "The trigger between the topic and the Lambda is not named and is not client-ehr-hl7-export (developer did not select it as invoker)."
+    },
+    {
+      "from": "client-emr-hl7-parser",
+      "to": "client-ehr-hl7-export",
+      "kind": "file",
+      "direction": "from -> to",
+      "description": "Generated HL7 is written to S3 (orus/, dfts/, ehr_orus/); the developer states client-ehr-hl7-export delivers it to the client EMRs.",
+      "evidence": ["src/config.py", "src/utils/aws.py", "developer answer 2026-10-09 (delivery round)"],
+      "status": "human-confirmed",
+      "target_registered": false,
+      "target_identity": "name taken from the developer's selection; repository name unconfirmed"
+    },
+    {
+      "from": "client-emr-hl7-parser",
+      "to": "rest-api-evoke",
+      "kind": "database",
+      "direction": "shared data",
+      "description": "Shared MongoDB: reads reports, report_cover_pages, hl7jobs, report_notes, accounts, users, devices, manufacturers; reads and writes patients, patient_diagnoses, sequencers (patients counter), adts, adts_book_keeping; inserts acks and tasks (NEW PATIENT onboarding task). The developer states this Lambda owns adts, adts_book_keeping and acks.",
+      "evidence": ["src/database/query.py", "src/utils/constants.py", "src/eventHandler/contants.py", "developer answer 2026-10-09 (data ownership)"],
+      "status": "inferred",
+      "target_registered": true,
+      "note": "Ownership of adts, adts_book_keeping and acks is human-confirmed; schema owner of the other shared collections is not confirmed."
+    },
+    {
+      "from": "manufacturer-hl7-parser",
+      "to": "client-emr-hl7-parser",
+      "kind": "file",
+      "direction": "indirect (data written by the manufacturer parser is read here)",
+      "description": "Reads reports.file_path, hf_file_path, hl7_file_path and report_cover_pages written by the manufacturer parser, plus the processed S3 bucket and per-manufacturer buckets (IDCO flow, with Glacier restore).",
+      "evidence": ["src/eventHandler/oru.py", "src/eventHandler/idco_oru.py", "src/utils/aws.py"],
+      "status": "observed",
+      "target_registered": true
     }
   ],
   "open_questions": [
+    "What are the inbound EMR transport service and the SNS-fed trigger that invoke client-emr-hl7-parser, and in which repositories do they live?",
+    "Is client-ehr-hl7-export the real name and repository of the service that delivers client-emr-hl7-parser's S3 output to the EMRs?",
     "Which other repositories (beyond rest-api-evoke and manufacturer-hl7-parser) own and write the shared MongoDB collections? (developer: this API owns application data; ingestion collections are shared with no single owner)",
     "Who reads the PDFs in PROCESSED_BUCKET (via reports.file_path / hf_file_path)? The API streams report PDFs from S3, but whether it is the same bucket is unconfirmed.",
     "src/artanis/ in manufacturer-hl7-parser would invoke an Artanis AI Lambda (ARTANIS_AI_LAMBDA) but has no caller and the variable is never set; the developer did not select it as active, so no edge is recorded.",

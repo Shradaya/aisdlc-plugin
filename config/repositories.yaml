@@ -78,6 +78,24 @@
         },
         "notes": "No lf-develop pipeline; every push to lf-qa, lf-uat or main zips the source and updates the Lambda with no tests or manual gate (build-release.md)."
       }
+    },
+    "client-emr-hl7-parser": {
+      "path": "${AISDLC_REPOS_ROOT}/client-emr-hl7-parser",
+      "role": "Python AWS Lambda (EMR integration) that builds outbound HL7 messages (ORU_R01, DFT_P03, IDCO ORU) from Evoke reports for client EMR accounts and parses inbound ADT, ORM, ORU and ACK messages from them, creating or updating patients, onboarding tasks, ADT records and acknowledgements in the shared Evoke MongoDB",
+      "system_role": "Developer-confirmed (2026-10-09): EMR integration Lambda with no end users; parsing events come from an inbound EMR transport service or manual CLI runs, creation events from a trigger fed by the rest-api-evoke hl7job SNS topic; generated HL7 in S3 is delivered to the EMRs by client-ehr-hl7-export; owns adts, adts_book_keeping and acks",
+      "base_branch": "main",
+      "domains": ["ehr-export", "patient-registry"],
+      "depends_on": ["rest-api-evoke", "manufacturer-hl7-parser"],
+      "provides": ["ehr-export-hl7-sftp-api-jobs", "patient-and-device-registration", "ehr-delivery-acknowledgements"],
+      "deployment": {
+        "type": "aws-lambda",
+        "pipeline": "bitbucket-pipelines.yml",
+        "environments": {
+          "lf-uat": "User Acceptance Testing",
+          "main": "Production"
+        },
+        "notes": "Only lf-uat and main have pipelines; each push zips the source and updates the Lambda with no tests or manual gate. No lf-develop or lf-qa pipeline on this commit (build-release.md)."
+      }
     }
   }
 }

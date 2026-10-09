@@ -41,11 +41,27 @@ Provenance: patient-billing-schedule @ ec1d8894c633996d7fc9e7a9423d21521a981bf6,
 
 During a billing run, an active patient with no report for 730 days (about two years) is set inactive with the reason "No Longer Monitoring". Rule: [Billing window rules](../business-rules/billing-window-rules.md).
 
+## Contribution of client-emr-hl7-parser (added 2026-10-09)
+
+Provenance: client-emr-hl7-parser @ b9615126ee17c4e2583e08ac81faaa9d12c63005, analyzed 2026-10-09T00:00:00Z, aisdlc@1.0.0; status observed (role confirmed by the developer 2026-10-09); confidence medium. Evidence: src/eventHandler/adt.py, oru.py, contants.py, src/database/query.py.
+
+Messages from client EMRs create and update patients.
+
+- **Inbound ADT and ORM messages** (admit, discharge, transfer and order updates) from a recognised client account update or insert the patient and record the message as an ADT record for the account. Messages of other types are rejected with an error acknowledgement.
+- **Inbound ORU messages** (results from the client's system) additionally match the device model to the device list, set the next send cycle (31 days for certain billing codes, otherwise 91), register the patient as an in-office patient and create a NEW PATIENT onboarding task for staff.
+- Duplicate messages (same account and control id) are acknowledged but not stored again.
+- A message from an unrecognised sender gets a default acknowledgement and a Slack notice; no patient is written.
+- Every inbound message receives an HL7 acknowledgement.
+- Patient and device discrepancies produce an error and a Slack notice instead of a write.
+
+Customer-visible (developer-confirmed 2026-10-09). Workflow: [Receive patient messages from a client EMR](../user-workflows/receive-patient-messages-from-emr.md). Rules: [EMR message handling rules](../business-rules/emr-message-handling-rules.md).
+
 ## Implemented by
 
 | Repository | Role |
 |---|---|
 | rest-api-evoke | Patient enrolment and management, devices, device groups, manufacturer accounts (portal back end) |
+| client-emr-hl7-parser | Receives patient, order and result messages from client EMRs; creates or updates patients and ADT records; creates the NEW PATIENT onboarding task for inbound results; returns acknowledgements |
 | manufacturer-hl7-parser | Matching, creation, device validation, task creation and queue events |
 | patient-billing-schedule | Sets patients inactive when they have had no report for 730 days |
 | cardio-one-sqs-consumer (not onboarded) | Receives the CardioOne job event (behavior not documented here) |
@@ -59,4 +75,5 @@ Internal; patients and tasks appear in other Evoke applications (status: inferre
 ## Open questions
 
 - Which application staff use to work the "new patient" and live-call tasks. Unknown.
+- Inbound EMR path: in the released code the NEW PATIENT task is created only for inbound ORU messages, not for ADT or ORM messages, although the developer described ADT, ORM and ORU as all creating a task. Needs clarification.
 - Product rules for merging or retiring the old record after a generation change (the pipeline only flags a possible duplicate patient). Unknown.

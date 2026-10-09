@@ -1,0 +1,4 @@
+# JSON-compatible YAML
+[
+  {"ticket": "EL-5597", "pinned_version": 1, "screens": ["S1", "S2"]}
+]

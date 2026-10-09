@@ -100,10 +100,41 @@ flowchart LR
 
 Per-repository detail: [patient-billing-schedule](../../repositories/patient-billing-schedule/architecture.md).
 
+## Confirmed picture: client EMR integration (client-emr-hl7-parser)
+
+Provenance: added 2026-10-09 for `client-emr-hl7-parser` (analyzed commit b9615126ee17c4e2583e08ac81faaa9d12c63005, aisdlc@1.0.0). Back-end Lambda with no end users (developer-confirmed).
+
+```mermaid
+flowchart LR
+  EMR[Client EMRs] --> TS[Inbound EMR transport service<br/>unregistered, unnamed]
+  TS -->|ADT_PARSING, ACK_PARSING| E
+  CLI[Manual CLI run] --> E
+  API[rest-api-evoke] -->|SNS hl7job| TR[Trigger<br/>unregistered, unnamed]
+  TR -->|ORU_CREATION, DFT_CREATION, IDCO_ORU_CREATION| E
+  E[client-emr-hl7-parser<br/>Lambda] <-->|read/write| DB[(Shared MongoDB)]
+  E -->|generated HL7: orus, dfts, ehr_orus; received: adts, acks| S3[(S3 processed bucket)]
+  MP[manufacturer-hl7-parser] -.->|reports, PDFs, manufacturer HL7 read here| E
+  S3 --> EX[client-ehr-hl7-export<br/>unregistered, name unconfirmed]
+  EX -->|delivers HL7| EMR
+  E -->|alerts| SL[Slack webhook]
+```
+
+| Edge | Kind | Status |
+|---|---|---|
+| Inbound EMR transport service -> client-emr-hl7-parser | event | human-confirmed (service unnamed) |
+| Manual CLI run -> client-emr-hl7-parser | cli | human-confirmed |
+| rest-api-evoke -> (SNS-fed trigger) -> client-emr-hl7-parser | event, indirect | human-confirmed (trigger unnamed; not client-ehr-hl7-export) |
+| client-emr-hl7-parser -> client-ehr-hl7-export (S3 files) | file | human-confirmed (repository name unconfirmed) |
+| client-emr-hl7-parser <-> shared MongoDB | database | inferred (ownership below) |
+| manufacturer-hl7-parser -> client-emr-hl7-parser (reports, PDFs, manufacturer HL7) | file, indirect | observed |
+
+Per-repository detail: [client-emr-hl7-parser](../../repositories/client-emr-hl7-parser/architecture.md).
+
 ## Data ownership
 
 - Shared MongoDB: developer-confirmed that `rest-api-evoke` owns the application and configuration data (accounts, users, hospitals, alert configurations, report templates, HL7 and SFTP jobs, billing and RPM, outreach data). `patients`, `reports`, `report_notes`, `tasks`, `sequencers` and `cardio_one_api_logs` are shared between `rest-api-evoke` and `manufacturer-hl7-parser` with no single owner. The parser writes `patients`, `reports`, `report_notes`, `alert_metadata`, `patient_analytics`, `sequencers`, `devices`, `leads`, `tasks`, `live_call_tasks` (delete only), `cardio_one_api_logs`, `delayed_messages`, `user_activity_logs`; it only reads `accounts`, `manufacturers`, `device_types`, `users`, `device_group`, `report_templates`, `report_note_sections`, `report_note_alert_protocols`. Owners of any other collection: unknown.
 - patient-billing-schedule: human-confirmed owner of the collections `billing_activity_logger` and `manufacturer_crawler_report_status`. In the shared database it updates (never inserts) `patients` and `reports`, inserts and archives `tasks`, upserts `user_activity_logs`, and reads `accounts`, `users`, `devices` and `device_types`; the schema owner of the shared collections is not confirmed (inferred from code).
+- client-emr-hl7-parser: human-confirmed owner of `adts`, `adts_book_keeping` and `acks`. It reads `reports`, `report_cover_pages`, `hl7jobs`, `report_notes`, `accounts`, `users`, `devices`, `manufacturers`, reads and writes `patients`, `patient_diagnoses` and `sequencers`, and inserts `tasks`; the schema owner of those shared collections is unconfirmed. Its S3 prefixes `orus/`, `dfts/`, `ehr_orus/`, `adts/` and `acks/` are written by this repository.
 - S3 processed bucket: PDFs written by the pipeline; readers unknown (the API reads report file paths written by the pipeline, status inferred).
 - Report data is created by the pipeline (or by manual upload and intake in the API) and then edited by staff through the API.
 
@@ -115,9 +146,10 @@ Per-repository detail: [patient-billing-schedule](../../repositories/patient-bil
 | Automated Report Notes and Alerts | manufacturer-hl7-parser (reads note configuration from MongoDB) -> MongoDB; portal -> rest-api-evoke (alert configuration, protocols, dispatch) -> alert-notification worker |
 | Billing Code and Schedule Assignment | manufacturer-hl7-parser -> MongoDB, patient-billing-schedule, Benchmark queue; portal -> rest-api-evoke (billing validation, RPM, invoices) -> Benchmark and CardioOne consumers |
 | Billing Window Scheduling | parser (after a report is stored), rest-api-evoke (mechanism unknown) or an SQS / EventBridge account batch -> patient-billing-schedule -> MongoDB (billable report, billing dates, next send, late date, tasks, inactivation) -> crawler bot queue for late patients |
-| Patient and Device Registration | manufacturer-hl7-parser -> MongoDB, CardioOne queue; patient-billing-schedule -> MongoDB (730-day inactivation); portal -> rest-api-evoke (enrolment, management) -> MongoDB, Benchmark, CardioOne, crawler bot |
+| Patient and Device Registration | client EMR -> inbound EMR transport service -> client-emr-hl7-parser (ADT, ORM, ORU) -> MongoDB (patients, adts, NEW PATIENT task) + S3, acknowledgement back via the transport service; manufacturer-hl7-parser -> MongoDB, CardioOne queue; patient-billing-schedule -> MongoDB (730-day inactivation); portal -> rest-api-evoke (enrolment, management) -> MongoDB, Benchmark, CardioOne, crawler bot |
 | Report Review, Notes and Assignment | portal -> rest-api-evoke -> MongoDB (+ alert-notification worker, EHR export consumers on processing) |
-| EHR Export: HL7, SFTP and API Jobs | portal or processing event -> rest-api-evoke -> MongoDB + SNS (client EHR HL7 export), SQS (Intergy, SFTP export consumers) |
+| EHR Export: HL7, SFTP and API Jobs | portal or processing event -> rest-api-evoke -> MongoDB + SNS (hl7job topic) -> unnamed trigger -> client-emr-hl7-parser (builds ORU, DFT, IDCO ORU; reads MongoDB and S3) -> S3 -> client-ehr-hl7-export -> client EMR; SQS (Intergy, SFTP export consumers) |
+| EHR Delivery Acknowledgements (internal) | client EMR -> inbound EMR transport service -> client-emr-hl7-parser -> S3 `acks/` + MongoDB `acks` |
 | Patient Outreach | portal -> rest-api-evoke -> Twilio reminders Lambda, PostGrid, SES; Twilio and Zoom webhooks -> rest-api-evoke -> MongoDB |
 | Access and Account Administration | portal -> rest-api-evoke (login, MFA, Cognito SSO, admin, dashboard) -> MongoDB; Rhythm Cognito client -> rest-api-evoke |
 | Patient Management and RPM | portal -> rest-api-evoke -> MongoDB (patients created by manufacturer-hl7-parser; late-patient follow-up tasks created by patient-billing-schedule); portal -> Clinii iframe (URL from rest-api-evoke) |
@@ -127,7 +159,7 @@ Per-repository detail: [patient-billing-schedule](../../repositories/patient-bil
 | Dashboard and Notifications | portal -> rest-api-evoke (analytics, notifications) and realtime socket service (presence, notification refresh) |
 | Patient Communication | portal -> Zoom Phone iframe; portal -> rest-api-evoke (communication logs, letters, live calls); dictation via the realtime socket service |
 
-Repository architecture: [manufacturer-hl7-parser](../../repositories/manufacturer-hl7-parser/architecture.md), [rest-api-evoke](../../repositories/rest-api-evoke/architecture.md), [patient-billing-schedule](../../repositories/patient-billing-schedule/architecture.md).
+Repository architecture: [client-emr-hl7-parser](../../repositories/client-emr-hl7-parser/architecture.md), [manufacturer-hl7-parser](../../repositories/manufacturer-hl7-parser/architecture.md), [rest-api-evoke](../../repositories/rest-api-evoke/architecture.md), [patient-billing-schedule](../../repositories/patient-billing-schedule/architecture.md).
 
 ## Open questions
 
@@ -138,4 +170,5 @@ Repository architecture: [manufacturer-hl7-parser](../../repositories/manufactur
 - Callers of the service-JWT endpoints are unnamed; repository names of the unregistered consumers (Benchmark, CardioOne, alert notification, crawler, client EHR HL7 export, Intergy, SFTP export, Twilio reminders Lambda) are descriptive ids.
 - Whether the CardioOne consumer accepts both event spellings used by the two repositories is unknown.
 - Whether the portal still calls the legacy v1 endpoints that remain mounted is unknown.
+- client-emr-hl7-parser: identity and repository of the inbound EMR transport service and of the trigger that turns the hl7job topic into creation events; whether `client-ehr-hl7-export` is the real repository name of the delivery service; schema owners of the shared collections it touches. Note: earlier text in this document names client-ehr-hl7-export as the consumer of the rest-api-evoke SNS job; per the developer (2026-10-09) the topic feeds an unnamed trigger that invokes client-emr-hl7-parser, and client-ehr-hl7-export delivers its S3 output.
 - patient-billing-schedule: the queue, EventBridge rule and producer for account batches, how rest-api-evoke triggers it, the schema owner of the shared collections it updates, and the repository name of the crawler bot consumer are unknown.

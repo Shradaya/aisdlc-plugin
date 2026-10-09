@@ -1,0 +1,38 @@
+{
+  "repository": "client-emr-hl7-parser",
+  "analyzed_commit": "b9615126ee17c4e2583e08ac81faaa9d12c63005",
+  "analyzed_branch": "EL-5353",
+  "analyzed_at": "2026-10-09T00:00:00Z",
+  "generator": "aisdlc@1.0.0",
+  "analysis_source": "Local clone at ${AISDLC_REPOS_ROOT}/client-emr-hl7-parser, clean working tree on branch EL-5353 (HEAD b961512). HEAD is one commit ahead of main 6e4d67e: EL-5353 adds a Baptist Heart & Vascular Electrophysiology alias to the Tenet mapper (src/eventHandler/contants.py). Everything else equals main. Read-only git only.",
+  "placement": "complete",
+  "placement_reason": "Role, callers, delivery, data ownership, capabilities, rules and exclusions were confirmed by the developer on 2026-10-09. The inbound transport service and the creation-event trigger are not named (unknown).",
+  "phases": {
+    "A": "complete",
+    "B": "complete",
+    "C": "complete (analyst output, medium confidence)",
+    "D": "complete",
+    "E": "complete",
+    "F": "complete",
+    "G": "complete (static only; no tests exist)",
+    "H": "complete",
+    "I": "complete (spot-checked only; no scan of PHI/secret logging across all account handlers, no dependency audit)",
+    "J": "complete",
+    "K": "complete",
+    "L": "complete (spot-checked in code: five EVENT_TYPE_MAPPER keys, find_best_match best_score * 100 comparison, mongoengine never imported, BILLING_LAMBDA_ARN loaded but unused, OIDC token written before zip -r, S3 prefixes orus/ dfts/ ehr_orus/, NEW_PATIENT_TASK_DESCRIPTION, acks and adts_book_keeping collection constants)",
+    "M": "complete (M1-M4 recorded; M5 verification in the final report)"
+  },
+  "unknowns": [
+    "Lambda runtime version, handler string, memory, timeout, IAM role, VPC, layers, and how requirements.txt reaches the deployed function (pipeline has no pip step)",
+    "Identity of the inbound EMR transport service that supplies raw ADT/ACK/ORU text, and how EMRs reach it",
+    "Identity of the trigger fed by the rest-api-evoke hl7job SNS topic that invokes the creation events (developer confirmed it exists; it is not client-ehr-hl7-export)",
+    "Whether client-ehr-hl7-export is the real repository name of the delivery service (developer selected it; its repository name is unconfirmed)",
+    "Schema owner and indexes of the shared collections; developer confirmed ownership of adts, adts_book_keeping and acks only",
+    "Whether src/accountHandler/pueblo/, src/accountHandler/uch/ and pdf/utils.py are used (inferred dead from grep)",
+    "Contents of .env-example and .vscode/launch-example.json (read denied or not read)",
+    "Bitbucket branch restrictions and required builds for main",
+    "Advisory status of pinned dependencies",
+    "Per-account HL7 segment mappings (not analysed in depth)",
+    "Product-language definitions of ADT, ORU, DFT, IDCO ORU and ACK (recorded as inferred, standard HL7 meanings)"
+  ]
+}

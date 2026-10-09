@@ -21,6 +21,8 @@ Consumers: clinic and Evoke staff. Steps confirmed by the developer on 2026-10-0
 4. Staff adjust next send and next billing date; the crawler bot is told of the change in production.
 5. Admin merges duplicate patients by Evoke ID and manages devices, device groups and manufacturer accounts.
 
+Patients can also arrive without staff action from client EMR messages, which create or update the patient and (for inbound results) the NEW PATIENT onboarding task: [Receive patient messages from a client EMR](receive-patient-messages-from-emr.md).
+
 Capability: [Patient and Device Registration](../capabilities/patient-and-device-registration.md).
 Rules: [Patient management rules](../business-rules/patient-management-rules.md).
 

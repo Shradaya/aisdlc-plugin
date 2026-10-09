@@ -22,9 +22,20 @@ Consumers: clinic users, Admin, Clinic Admin. Steps confirmed by the developer o
 5. Intergy accounts: a job with the report note is queued; jobs are listed, retried, marked complete or deleted.
 6. ADT records for a patient can be searched by MRN and downloaded.
 
+## HL7 message creation (back-end steps, added 2026-10-09)
+
+Source: client-emr-hl7-parser @ b9615126ee17c4e2583e08ac81faaa9d12c63005, observed from code, aisdlc@1.0.0; the caller is a trigger fed by the HL7 job topic (developer-confirmed 2026-10-09).
+
+1. A creation event (ORU, DFT or IDCO ORU) arrives with a report id.
+2. The HL7 job and report documents for that report are read; if missing, the request fails and Slack is alerted.
+3. The portal account name is matched to a client account handler ([EMR message handling rules](../business-rules/emr-message-handling-rules.md)).
+4. The account handler builds the HL7 message (for ORU, the report embedded as text or as a PDF merged with its cover page; for IDCO ORU, from the manufacturer's original HL7 file, restoring it from archive first when needed, in which case the request fails and must be retried later).
+5. The message is stored in the processed bucket (`orus/` or `dfts/`) and the storage paths are returned.
+6. A separate delivery service sends the stored file to the client EMR (client-ehr-hl7-export, not onboarded).
+
 Capability: [EHR Export: HL7, SFTP and API Jobs](../capabilities/ehr-export-hl7-sftp-api-jobs.md).
 Rules: [EHR export rules](../business-rules/ehr-export-rules.md).
 
 ## Open questions
 
-See the Open questions of the EHR export rules.
+See the Open questions of the EHR export rules and of the [EMR message handling rules](../business-rules/emr-message-handling-rules.md#open-questions). The trigger between the HL7 job topic and the parser is unnamed (unknown).

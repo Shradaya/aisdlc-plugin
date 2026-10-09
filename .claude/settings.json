@@ -1,6 +1,5 @@
 {
   "permissions": {
-    "defaultMode": "acceptEdits",
     "allow": [
       "Read",
       "Glob",
@@ -25,27 +24,6 @@
       "Bash(git show*)",
       "Bash(git rev-parse*)",
       "Bash(git branch --show-current)"
-    ],
-    "ask": [
-      "Bash(git add*)",
-      "Bash(git commit*)",
-      "Bash(git push*)",
-      "Bash(git stash*)",
-      "Bash(git checkout*)",
-      "Bash(git switch*)",
-      "Bash(git pull*)",
-      "Bash(git fetch*)",
-      "Bash(git -C * add*)",
-      "Bash(git -C * commit*)",
-      "Bash(git -C * push*)",
-      "Bash(git -C * stash*)",
-      "Bash(git -C * checkout*)",
-      "Bash(git -C * switch*)",
-      "Bash(git -C * pull*)",
-      "Bash(git -C * fetch*)",
-      "Bash(rm *)",
-      "Bash(git rebase*)",
-      "Bash(git -C * rebase*)"
     ],
     "deny": [
       "Read(./.env)",
@@ -82,6 +60,31 @@
       "Bash(rm -rf *)",
       "Bash(printenv*)",
       "Bash(env)"
-    ]
+    ],
+    "ask": [
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git push*)",
+      "Bash(git stash*)",
+      "Bash(git checkout*)",
+      "Bash(git switch*)",
+      "Bash(git pull*)",
+      "Bash(git fetch*)",
+      "Bash(git -C * add*)",
+      "Bash(git -C * commit*)",
+      "Bash(git -C * push*)",
+      "Bash(git -C * stash*)",
+      "Bash(git -C * checkout*)",
+      "Bash(git -C * switch*)",
+      "Bash(git -C * pull*)",
+      "Bash(git -C * fetch*)",
+      "Bash(rm *)",
+      "Bash(git rebase*)",
+      "Bash(git -C * rebase*)"
+    ],
+    "defaultMode": "acceptEdits"
+  },
+  "enabledPlugins": {
+    "aisdlc@aisdlc-marketplace": true
   }
 }

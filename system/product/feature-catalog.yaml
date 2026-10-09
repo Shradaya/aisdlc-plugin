@@ -48,8 +48,8 @@ features:
     introduced_by: baseline
     capabilities: [patient-and-device-registration]
     product_document: capabilities/patient-and-device-registration.md
-    user_workflows: [user-workflows/process-device-transmission.md, user-workflows/enrol-patient.md]
-    repositories: [manufacturer-hl7-parser, rest-api-evoke, patient-billing-schedule]
+    user_workflows: [user-workflows/process-device-transmission.md, user-workflows/enrol-patient.md, user-workflows/receive-patient-messages-from-emr.md]
+    repositories: [manufacturer-hl7-parser, rest-api-evoke, patient-billing-schedule, client-emr-hl7-parser]
   - id: report-review-notes-and-assignment
     name: Report Review, Notes and Assignment
     status: active
@@ -65,7 +65,15 @@ features:
     capabilities: [ehr-export-hl7-sftp-api-jobs]
     product_document: capabilities/ehr-export-hl7-sftp-api-jobs.md
     user_workflows: [user-workflows/export-report-to-ehr.md]
-    repositories: [rest-api-evoke]
+    repositories: [rest-api-evoke, client-emr-hl7-parser]
+  - id: ehr-delivery-acknowledgements
+    name: EHR Delivery Acknowledgements
+    status: active
+    introduced_by: baseline
+    capabilities: [ehr-delivery-acknowledgements]
+    product_document: capabilities/ehr-delivery-acknowledgements.md
+    user_workflows: [user-workflows/receive-patient-messages-from-emr.md]
+    repositories: [client-emr-hl7-parser]
   - id: patient-outreach
     name: Patient Outreach
     status: active
