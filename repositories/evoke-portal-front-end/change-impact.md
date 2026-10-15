@@ -1,17 +1,17 @@
 ---
 repository: evoke-portal-front-end
-analyzed_commit: 79953d33432479d03bcde9545050dbb9a7193ed8
+analyzed_commit: 35b36e323291354f6cb8fe43162c8f0dec9a1478
 analyzed_branch: main
-analyzed_at: 2026-10-02T00:00:00Z
+analyzed_at: 2026-10-15T08:45:00Z
 generator: aisdlc@1.0.0
 status: inferred
 confidence: medium
-evidence: [import counts by absolute path from the main snapshot (lower bounds), src/containers/AppPage/index.js, src/static/constants.js, src/static/endpoints.js, src/app/store/transmission]
+evidence: [import counts by absolute path from the main snapshot (lower bounds), src/containers/AppPage/index.js, src/static/constants.js, src/static/endpoints.js, src/app/store/transmission, src/utils/auth.js, src/app/lib/api.js, src/components/common/accountDocument/AccountDocumentLink.js, src/hooks/useCloseModalPage.js, src/utils/broadcastChannel.js]
 ---
 
 # evoke-portal-front-end: Change-impact map (Phase K)
 
-Import counts are by absolute path, so they are lower bounds (relative imports are not counted). The co-change sets below are inferred from structure, not from history.
+Import counts are by absolute path, so they are lower bounds (relative imports are not counted). The table below was measured at the previous commit (79953d3) and not re-measured for 35b36e3. The co-change sets below are inferred from structure, not from history.
 
 ## Coupling hot spots (observed counts)
 
@@ -39,6 +39,13 @@ Import counts are by absolute path, so they are lower bounds (relative imports a
 - **Report or transmission model change:** the `transmission` slice (118 importers), `transmissionTableApi`, table column hooks, report modal and PDF viewer, tab constants (`constants.js:1396-1440`).
 - **Auth or role change:** `constants.js` (roles, groups, landing routes), `routes.util.js`, `AppPage` route table, `Sidenav`, `useAuthorization`, `useSettings`, `useAuth` localStorage keys, 46 `USER_ROLES` usages; backend changes in `rest-api-evoke` and the session flow (`useSessionExpiry`, `utils/auth.js`).
 - **Shared component or util (SubmitButton, ModalWrapper, CustomTable, toast, date, string):** dozens of consumers; check every screen listed above.
+- **401, session expiry or logout:** `utils/auth.js` (`handleUnauthorizedError`, `triggerSessionExpiry`, `redirectToLogin`), `SESSION_BLOCKED_CODES`, all three clients (`app/lib/api.js`, `app/lib/cacheApi.js`, `utils/http.js`), `useSessionExpiry`, `useAuth`, `utils/routes.util.js` (`previousPath` restore), Login and OTP modal. The 401 path returns a never-settling promise, so new callers must not rely on catch.
+- **Account documents (protocol PDFs):** `AccountDocumentLink`, `services/accountDocument`, `store/accountDocument`, `static/account_document.js` (type keys must match the API), `endpoints.accountDocuments`, `utils/pdf.js` (`loadPdfWithTitle`), consumers `ReportNotes.js` and `PatientProfileTabs.js`.
+- **Task with patient assignment:** `tasks/modals/TaskModal.js`, `useTaskModal.js`, `useTaskTableWrapper.js`, `app/services/task/taskService.js`, `taskApi.js`, the patient-profile `task/modal/TaskModal.js` and `usePatientTasks.js`, `SearchPatient` (shared with manual upload).
+- **Modal-only pages (report page, patient profile page):** `hooks/useCloseModalPage.js`, `ReportDetailModal.js`, `usePatientModal.js`, `getRoleInitialRoute`, `previousPath` logic.
+- **Notification preferences and alert recipients:** `utils/notificationPreference.js`, `useAlertNotification.js`, `AlertEmailRecipients.js`, `ExpandableTags`, `useNotificationPreferenceList.js`, `broadcastAccountsRefetch` and the `accounts` tag in `transmissionTableApi`.
+- **Quick text templates:** `useQuickTextTemplates.js`, `QuickTextTemplates.js`, clinic and provider note components, `quickTextTemplateSlice`, `CARDIO_CHECK_ACCOUNTS`.
+- **New RTK Query API:** register the reducer in `src/reducers/index.js` and the middleware in `src/app/store/index.js` (as `accountDocumentApi` does).
 - **Store slice:** root reducer (`src/reducers/index.js`, `src/app/store/index.js`), `RESET_APP_STATE` handling, cross-tab `BroadcastChannel` flags if shared.
 - **Env var:** `Dockerfile` build args, all four pipeline branches in `bitbucket-pipelines.yml`, `src/static/constants.js`, `.env.example`; the dev and qa builds currently omit the socket URL.
 - **react-pdf or pdf.js upgrade:** `nginx.conf` CSP `script-src` pinned worker URL, `PdfViewer.js`.
@@ -49,6 +56,8 @@ Import counts are by absolute path, so they are lower bounds (relative imports a
 
 - `rest-api-evoke` contract changes (see `interfaces.md`): the main risk is silent breakage because the UI has no types; `dashboard` endpoints are used by 12 files, `patient` by 7, `transmission` by 4, `auth` by 3.
 - Both `/patient/...` and `/v2/patient/...` families are used, so the backend must keep both.
+- Account documents: the UI expects `/v2/account-documents/:accountId` to return `alert_protocol_available` and `clinic_protocol_available` booleans and a PDF blob for `alertProtocol` and `clinicProtocol` (inferred from client code).
+- The session-blocking codes `ACCOUNT_DEACTIVATED` and `ACCOUNT_LOCKED` in 401 bodies are part of the contract with the backend (inferred).
 - Raw-`fetch` callers string-compare server messages and expect `{error, message}`; changing message text breaks them.
 - `manufacturer-hl7-parser` writes patients, reports and notes that this UI shows via the backend; changes to those entities' shape (report notes, alerts, billing codes) affect the transmissions, patient and report screens (indirect).
 - Socket service contract (namespaces and event names) is defined only by this client and an unregistered service.

@@ -19,8 +19,8 @@
     },
     "notes": "Every push to the four branches builds an image, pushes it to ECR and bumps a Kustomize image tag in the eks-yml-manifest repository; no tests, lint or manual gate in the repository's pipelines (build-release.md)."
   },
-  "analyzed_commit": "79953d33432479d03bcde9545050dbb9a7193ed8",
-  "analyzed_at": "2026-10-02T00:00:00Z",
+  "analyzed_commit": "35b36e323291354f6cb8fe43162c8f0dec9a1478",
+  "analyzed_at": "2026-10-15T08:45:00Z",
   "generator": "aisdlc@1.0.0",
   "status": "current",
   "technology": {

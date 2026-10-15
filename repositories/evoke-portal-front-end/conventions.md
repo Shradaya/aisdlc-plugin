@@ -1,12 +1,12 @@
 ---
 repository: evoke-portal-front-end
-analyzed_commit: 79953d33432479d03bcde9545050dbb9a7193ed8
+analyzed_commit: 35b36e323291354f6cb8fe43162c8f0dec9a1478
 analyzed_branch: main
-analyzed_at: 2026-10-02T00:00:00Z
+analyzed_at: 2026-10-15T08:45:00Z
 generator: aisdlc@1.0.0
 status: observed
 confidence: medium
-evidence: [.prettierrc, .eslintrc.json, .husky/pre-commit, package.json, jsconfig.json, src/, git log main]
+evidence: [.prettierrc, .eslintrc.json, .husky/pre-commit, package.json, jsconfig.json, src/, git log main, src/utils/auth.js, src/app/store/accountDocument/api/accountDocumentApi.js, src/components/common/accountDocument/AccountDocumentLink.js, src/static/account_document.js, src/hooks/useCloseModalPage.js]
 ---
 
 # evoke-portal-front-end: Conventions (Phase J)
@@ -21,7 +21,7 @@ JavaScript only. Prettier: 2-space indent, double quotes, semicolons, `trailingC
 
 ## Patterns (observed)
 
-Per-domain store under `app/store/<domain>/` (`slice/`, `actions/` reducer maps, `api/` RTK Query with `queryFn`, `slice/state/`); services in `app/services/<domain>/` calling `app/lib/api.js`; endpoints in `src/static/endpoints.js` with `:param` interpolation; constants in `src/static/constants.js`; yup schemas in `src/schemas`; toasts via `utils/toast.js`. Legacy classic-Redux code coexists.
+New RTK Query domains follow the same shape (EL-5597 `accountDocument`: constants in `static/account_document.js`, `app/services/accountDocument`, `app/store/accountDocument/api`, shared component in `components/common/accountDocument`). Reusable MUI helpers sit under `components/common/<name>/` (`ExpandableTags`, JSDoc with `@param`). Pages that show only a modal leave through `hooks/useCloseModalPage`. Per-domain store under `app/store/<domain>/` (`slice/`, `actions/` reducer maps, `api/` RTK Query with `queryFn`, `slice/state/`); services in `app/services/<domain>/` calling `app/lib/api.js`; endpoints in `src/static/endpoints.js` with `:param` interpolation; constants in `src/static/constants.js`; yup schemas in `src/schemas`; toasts via `utils/toast.js`. Legacy classic-Redux code coexists.
 
 ## Styling (observed)
 

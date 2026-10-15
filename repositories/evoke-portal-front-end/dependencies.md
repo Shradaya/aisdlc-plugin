@@ -1,12 +1,12 @@
 ---
 repository: evoke-portal-front-end
-analyzed_commit: 79953d33432479d03bcde9545050dbb9a7193ed8
+analyzed_commit: 35b36e323291354f6cb8fe43162c8f0dec9a1478
 analyzed_branch: main
-analyzed_at: 2026-10-02T00:00:00Z
+analyzed_at: 2026-10-15T08:45:00Z
 generator: aisdlc@1.0.0
 status: observed
 confidence: medium
-evidence: [package.json, yarn.lock, Dockerfile, nginx.conf, bitbucket-pipelines.yml, craco.config.js, src/static/constants.js, public/index.html]
+evidence: [package.json, yarn.lock, Dockerfile, nginx.conf, bitbucket-pipelines.yml, craco.config.js, src/static/constants.js, public/index.html, src/static/endpoints.js, src/app/services/accountDocument/accountDocument.js]
 ---
 
 # evoke-portal-front-end: Dependencies (Phase D)
@@ -47,7 +47,7 @@ Build-only packages declared under `dependencies`: react-scripts, @craco/craco, 
 
 ## External systems reached from the browser (observed unless marked)
 
-1. Evoke REST backend at `REACT_APP_BASE_URL` (developer: `rest-api-evoke`); CSP allows `https://*.emc-portal.com`.
+1. Evoke REST backend at `REACT_APP_BASE_URL` (developer: `rest-api-evoke`); new calls since 79953d3: `/v2/account-documents/*` (server routes confirmed in rest-api-evoke), task patient fields, `recordsByName?account=`, insurance `authorization_code`/`treatment_start`/`treatment_end` (details in `interfaces.md`); CSP allows `https://*.emc-portal.com`.
 2. Socket.io server (namespaces reportPresence, transcribe, notifications); developer-confirmed separate realtime service, repository not named.
 3. AWS Cognito hosted sign-in (login and CardioOneConnect hand-off) via URLs from the backend; Cognito domain `unknown`.
 4. Zoom Phone embeddable (`applications.zoom.us`) with `postMessage`.
@@ -76,6 +76,8 @@ Bitbucket Pipelines (branch pipelines only); agent images `public.ecr.aws/c7j4d3
 | evoke-portal-front-end | eks-yml-manifest | deployment manifests | no | observed; developer asked that it not be recorded as a system edge |
 
 The front end has no database, S3, SQS or Lambda client and no direct edge to `hl7-file-sync-service`, `billing-schedule-lambda`, `benchmark-sqs-consumer` or `cardio-one-sqs-consumer`.
+
+Refresh note (35b36e3): `package.json` is unchanged, so package, build and tooling sections are carried forward and were not re-verified. No new external system, library or relationship edge appears in the diff; the `rest-api-evoke` edge now also covers account documents (S3-backed server side, invisible to the front end).
 
 ## Unknowns
 

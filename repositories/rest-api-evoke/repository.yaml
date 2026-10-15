@@ -19,8 +19,8 @@
     },
     "notes": "Every push to the four branches builds an image and updates a Kustomize image tag in a separate manifest repository; no tests or manual gate in this repository's branch pipelines (build-release.md)."
   },
-  "analyzed_commit": "4178ce47396c524dfd22a4dd107927b3b28eb100",
-  "analyzed_at": "2026-10-01T17:57:10Z",
+  "analyzed_commit": "84768b56f78a3663d6cfb9acf128556c4cdab89f",
+  "analyzed_at": "2026-10-15T08:40:00Z",
   "generator": "aisdlc@1.0.0",
   "status": "current",
   "technology": {
@@ -31,7 +31,7 @@
   "testing": { "profile": "repositories/rest-api-evoke/testing.md" },
   "knowledge": {
     "overview": { "status": "observed", "confidence": "high", "evidence": ["README.md", "package.json", "app.js", "routes/index.js"] },
-    "structure": { "status": "observed", "confidence": "high", "evidence": ["git ls-files 4178ce4"] },
+    "structure": { "status": "observed", "confidence": "high", "evidence": ["git archive origin/main 84768b5"] },
     "architecture": { "status": "observed", "confidence": "medium", "evidence": ["app.js", "routes/index.js", "events/", "services/sqs.js", "services/lambda.js"] },
     "dependencies": { "status": "observed", "confidence": "medium", "evidence": ["package.json", "yarn.lock", "Dockerfile", "util/config.js"] },
     "interfaces": { "status": "observed", "confidence": "medium", "evidence": ["routes/index.js", "routes/", "routes/v2/"] },

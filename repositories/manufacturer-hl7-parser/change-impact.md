@@ -1,7 +1,7 @@
 ---
 repository: manufacturer-hl7-parser
-analyzed_commit: e185ff36fe03c649cd7e9750e895c8c43f857c43
-analyzed_at: 2026-10-01T17:37:23Z
+analyzed_commit: 55bae1b09c246af044531301560276ec7f3ab3a2
+analyzed_at: 2026-10-15T08:31:52Z
 generator: aisdlc@1.0.0
 status: inferred
 confidence: medium
@@ -18,6 +18,7 @@ Consumers outside this repository are not visible in code; "who is affected" bel
 |---|---|---|
 | Shared Mongo collections: `patients`, `reports`, `report_notes`, `alert_metadata`, `patient_analytics`, `accounts`, `devices`, `device_types`, `manufacturers`, `tasks`, `live_call_tasks`, `cardio_one_api_logs`, `delayed_messages` | Every other application using the same database (consumers `unknown`; see relationships) | Field renames/removals or type changes need cross-repository review. `reports.oruControlId` and its `-HF` suffix, and `reports.hl7_file_path`, are relied on by duplicate detection and probably by other code. |
 | SQS message shapes | Benchmark consumer (`eventType`, camelCase), CardioOne consumer (`event_type`, snake_case), this Lambda itself for `DELAY_SQS` | Delay-queue body must stay S3-notification shaped because `lambda_handler` re-parses it. |
+| `patients.deviceInformation` disconnect fields (`is_monitor_disconnected`, `monitor_disconnected_at`, `previous_monitor_disconnected_at`, `monitor_disconnected_history`) and the insurance embeds (`authorization_code`, `treatment_start`, `treatment_end`) | Other applications that set or read them (consumers `unknown`) | EL-5617 makes this pipeline clear the disconnect on report receipt, so the portal/API that sets the disconnect and the parser now both write these fields. |
 | Billing Lambda payload `{"patient_id"}` | Billing schedule Lambda | |
 | S3 layouts: `<manufacturer>/<clinic>/<date>/<report>.pdf`, `<ERROR_PATH><date>/` | Whatever reads PDFs through `reports.file_path` / `hf_file_path` and operators who triage error files | Paths are persisted on report documents. |
 | Env vars / secret keys (`DELAY_SQS`, `BENCHMARK_SQS`, `CARDIO_ONE_SQS`, `BILLING_LAMBDA_ARN`) | Feature silently disabled when unset (guards skip sending) | Removing one is not an error. |

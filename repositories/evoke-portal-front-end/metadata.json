@@ -1,10 +1,11 @@
 {
   "repository": "evoke-portal-front-end",
-  "analyzed_commit": "79953d33432479d03bcde9545050dbb9a7193ed8",
+  "analyzed_commit": "35b36e323291354f6cb8fe43162c8f0dec9a1478",
   "analyzed_branch": "main",
-  "analyzed_at": "2026-10-02T00:00:00Z",
+  "analyzed_at": "2026-10-15T08:45:00Z",
   "generator": "aisdlc@1.0.0",
-  "analysis_source": "git archive snapshot of main@79953d3 (developer checkout was on task branch EL-5607 with uncommitted edits during onboarding and was not read)",
+  "analysis_source": "onboarding 2026-10-02: git archive snapshot of main@79953d3 (developer checkout on EL-5607 with uncommitted edits, not read). Partial refresh 2026-10-15: exact git archive of origin/main@35b36e3 (PR #6234); the local checkout was not read",
+  "refresh": {"from_commit": "79953d33432479d03bcde9545050dbb9a7193ed8", "to_commit": "35b36e323291354f6cb8fe43162c8f0dec9a1478", "kind": "partial (no build, framework, structure or dependency change; package.json, pipeline and Dockerfile unchanged)", "commits": 51, "files_changed": 67, "refreshed_artifacts": ["overview","structure","data-model","security","conventions","dependencies","interfaces","architecture","change-impact"], "not_refreshed": ["testing","build-release"], "phase_M_rerun": false, "note": "Main carries the iframe variant of the account-document tab (EL-5597); the blob variant (EL-5670) is not on main at this commit. Items not traced: EL-5607, EL-5409, EL-5664, EL-5475 request effects, insurance form internals."},
   "analysis_note": "Analyst subagents' Write calls were blocked by the auto-mode classifier; at the developer's instruction (2026-10-02) the orchestrator wrote the knowledge files from the analysts' reports. analyzed_at is a nominal timestamp (date only known).",
   "placement": "incomplete",
   "placement_reason": "Role, REST API, socket service, third parties, data ownership, parser link, capabilities, visibility and rule confirmations were given by the developer. Repository name of the socket/realtime service, purpose of the evoke.lcwms.co embed, developer-written workflows and product-language term definitions were not provided and stay unknown or inferred.",
@@ -35,6 +36,7 @@
     "Where Sonar runs",
     "Reason for the webpack and @mui/utils resolutions",
     "Developer-written workflows (documented as inferred from route and tab names)",
+    "Backend authorization and contract for /v2/account-documents/*, task patient assignment fields and alert recipient subsets (front end only; server side not read)",
     "Product-language definitions of RPM, Clinii, CardioOneConnect, EHR Jobs, No Show Patients, Live Call Task, Reports Assignment, Clinic Review (recorded as inferred)"
   ],
   "findings_for_followup": [

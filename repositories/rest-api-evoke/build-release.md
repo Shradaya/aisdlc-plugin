@@ -1,16 +1,16 @@
 ---
 repository: rest-api-evoke
-analyzed_commit: 4178ce47396c524dfd22a4dd107927b3b28eb100
-analyzed_at: 2026-10-01T17:57:10Z
+analyzed_commit: 84768b56f78a3663d6cfb9acf128556c4cdab89f
+analyzed_at: 2026-10-15T08:40:00Z
 generator: aisdlc@1.0.0
 status: observed
 confidence: high
-evidence: [bitbucket-pipelines.yml, Dockerfile, .dockerignore, package.json, .env.example, util/config.js, routes/index.js, app.js, logger/index.js, sonar-project.properties, .husky/pre-commit, git tags and first-parent history of main]
+evidence: [bitbucket-pipelines.yml, Dockerfile, .dockerignore, package.json, .env.example, util/config.js, routes/index.js, app.js, logger/index.js, sonar-project.properties, .husky/pre-commit, git tags and first-parent history of main, git diff 4178ce4..origin/main --stat on bitbucket-pipelines.yml/Dockerfile/package.json/yarn.lock/.dockerignore/.env.example/sonar-project.properties/.husky (empty: unchanged), app.js:35]
 ---
 
 # Build and release (Phase H)
 
-Static study only: nothing was built, pushed or deployed. Pipeline values (Bitbucket variables, cluster, manifest repository contents) that live outside this repository are `unknown`.
+Static study only: nothing was built, pushed or deployed. Refresh at 84768b5: `bitbucket-pipelines.yml`, `Dockerfile`, `.dockerignore`, `package.json`, `yarn.lock`, `.env.example`, `sonar-project.properties` and `.husky` are unchanged since 4178ce4 (empty `git diff --stat`), so the Build, Docker, Pipelines, Findings and Rollback sections below were carried over, not re-derived; line references remain valid. Pipeline values (Bitbucket variables, cluster, manifest repository contents) that live outside this repository are `unknown`.
 
 ## Build
 
@@ -50,12 +50,12 @@ Observed from `git log --first-parent` (not documented in the repo): promotion i
 
 ## Release PR flow
 
-Observed: `main` receives (a) release merges "Merged in lf-uat (pull request #NNNN)" roughly every one to three weeks (for example #6135 on 2026-10-01 at the analyzed HEAD, #6079 on 2026-09-21, #6073 on 2026-09-18, #6066 on 2026-09-17), and (b) direct merges of `EL-<n>` branches, for example #6098, #6097, #6029, #5999 (hotfix-style, intent `unknown`). The `lf-uat` to `main` PR matches no `EL-*` pull-request pipeline (inferred), so no automated lint or tests gate a release PR. Human review and merge in Bitbucket is assumed (`unknown` whether Bitbucket requires approvals or passing builds). Under aisdlc rules the merge stays human-controlled.
+Observed: `main` receives (a) release merges "Merged in lf-uat (pull request #NNNN)" roughly every one to three weeks (for example #6195 on 2026-10-14 at the analyzed HEAD, the only first-parent commit since 4178ce4; #6135 on 2026-10-01, #6079 on 2026-09-21, #6073 on 2026-09-18, #6066 on 2026-09-17), and (b) direct merges of `EL-<n>` branches, for example #6098, #6097, #6029, #5999 (hotfix-style, intent `unknown`). The `lf-uat` to `main` PR matches no `EL-*` pull-request pipeline (inferred), so no automated lint or tests gate a release PR. Human review and merge in Bitbucket is assumed (`unknown` whether Bitbucket requires approvals or passing builds). Under aisdlc rules the merge stays human-controlled.
 
 ## Versioning and tags
 
 - `package.json` version is `1.0.0` and is not bumped by releases.
-- Tags are manual and sporadic: 89 tags; schemes `vNN.NN.NN` (v01 to v08, v10), four `UAT_*` tags and one tag named `list`. Latest `v10.17.00` is an annotated tag on commit `4178ce4` (the analyzed commit, `git describe` = `v10.17.00`), created 2026-10-01 about 40 minutes after the commit, with message "Disconnected monitors; Max Impedance; Log injection protection". Before it, the previous tag is `v08.08.00` (2025-06-12), so many `lf-uat` merges to `main` between them are untagged (v09 does not exist).
+- Tags are manual and sporadic: 89 tags; schemes `vNN.NN.NN` (v01 to v08, v10), four `UAT_*` tags and one tag named `list`. Latest `v10.17.00` is an annotated tag on commit `4178ce4` (the previously analyzed commit; at the analyzed HEAD `84768b5` `git describe` = `v10.17.00-40-g84768b56f`, i.e. 40 commits untagged, and no tag points at HEAD; tag count still 89), created 2026-10-01 about 40 minutes after the commit, with message "Disconnected monitors; Max Impedance; Log injection protection". Before it, the previous tag is `v08.08.00` (2025-06-12), so many `lf-uat` merges to `main` between them are untagged (v09 does not exist).
 - No pipeline creates or reacts to tags. Deployed artifacts are identified by `<env>-<7-char SHA>` image tags only, so a git tag does not map to a deployed image by itself; the mapping is by commit SHA (inferred). No CHANGELOG file is tracked.
 - Commit convention in history (observed): `EL-<n>: <summary>`, plus Bitbucket merge commits "Merged in <branch> (pull request #N)".
 
@@ -90,7 +90,7 @@ Application runtime variables read in tracked non-test code (`git grep process.e
 
 ## Observability hooks
 
-Observed: `winston` logger with Console and file transport `logs/error.log` (`logger/index.js`; the file is on the container filesystem, so durability is `unknown` and likely ephemeral), `morgan` request logging (`app.js:32`), per-request activity/audit middleware (`middleware/activityLogger.js`, `middleware/v2/userActivityLogger.js`; behavior not analyzed here), CSP violation report endpoint configured by `CSP_REPORT_URI`, and `GET /health-check` returning `OK` unconditionally with no database or dependency check (`routes/index.js:69-71`). Not found: APM, Sentry, Prometheus/OpenTelemetry metrics, CloudWatch hooks, `HEALTHCHECK` (grep in tracked non-test, non-lock files). Log shipping, alerting and probe configuration (liveness/readiness) live in the manifest repository or cluster: `unknown`.
+Observed: `winston` logger with Console and file transport `logs/error.log` (`logger/index.js`; the file is on the container filesystem, so durability is `unknown` and likely ephemeral), `morgan` request logging (`app.js:32`), per-request activity/audit middleware (`middleware/activityLogger.js`, `middleware/v2/userActivityLogger.js`; behavior not analyzed here), CSP violation report endpoint configured by `CSP_REPORT_URI`, and `GET /health-check` returning `OK` unconditionally with no database or dependency check (`routes/index.js:69-71`). New since the last analysis: the morgan access log skips `/health-check` requests (`app.js:35`). Not found: APM, Sentry, Prometheus/OpenTelemetry metrics, CloudWatch hooks, `HEALTHCHECK` (grep in tracked non-test, non-lock files). Log shipping, alerting and probe configuration (liveness/readiness) live in the manifest repository or cluster: `unknown`.
 
 ## Notes for aisdlc
 

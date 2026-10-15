@@ -1,10 +1,11 @@
 {
   "repository": "rest-api-evoke",
-  "analyzed_commit": "4178ce47396c524dfd22a4dd107927b3b28eb100",
+  "analyzed_commit": "84768b56f78a3663d6cfb9acf128556c4cdab89f",
   "analyzed_branch": "main",
-  "analyzed_at": "2026-10-01T17:57:10Z",
+  "analyzed_at": "2026-10-15T08:40:00Z",
   "generator": "aisdlc@1.0.0",
-  "analysis_source": "working tree of main@4178ce4 (clean, equal to origin/main); tracked files only; untracked .env, CLAUDE.md, .claude/, e2e/ not used as evidence",
+  "analysis_source": "onboarding 2026-10-01: working tree of main@4178ce4. Full-study refresh 2026-10-15: exact git archive of origin/main@84768b5 (local checkout was on branch EL-5597 and was not read); .env, CLAUDE.md, .claude/, e2e/ not used as evidence",
+  "refresh": {"from_commit": "4178ce47396c524dfd22a4dd107927b3b28eb100", "to_commit": "84768b56f78a3663d6cfb9acf128556c4cdab89f", "kind": "full study (structural triggers: new API endpoints /v2/account-documents, persistence layer migration EL-5638, 401 error contract EL-5580)", "commits": 40, "files_changed": 79, "phase_M_rerun": false, "changes_not_reverified": "parts of artifacts outside the diff carry over from onboarding; Phase M product placement (2026-10-02) was not re-run and no product documentation under system/ was changed"},
   "placement": "incomplete",
   "placement_reason": "Role, callers, async consumers, data ownership, capabilities, workflows, rules, terminology handling and exclusions were confirmed by the developer on 2026-10-02. The repository identities of the queue/topic/Lambda consumers, the callers of the service-JWT endpoints, and the other owners of shared collections were not named and stay unknown; product-language term definitions were not provided and are recorded as inferred.",
   "phases": {
@@ -34,19 +35,25 @@
     "Meaning of each role in business terms; product-language definitions of next_send, late_date, evoke_id, IDTF, RPM, HF, ILR, report tabs, hl7job, ADT, OAC/LAAO (code-derived only)",
     "Bitbucket-side branch restrictions, required PR checks and deployment approvals; rollback procedure; what applies the manifest change on the cluster",
     "Whether the API's S3 bucket equals the parser's PROCESSED_BUCKET",
-    "Test pass/fail, runtime and real coverage (tests not run)"
+    "Test pass/fail, runtime and real coverage (tests not run)",
+    "Whether the front end handles the 401 data.code values and the /v2/account-documents routes, and how it calls the upload (front-end repo not read in this refresh)",
+    "Whether the /login password path enforces active/locked (not in the changed set)",
+    "S3 bucket policy for account-documents/, and any other writer of account_documents or the stored PDFs",
+    "Scope of the native-driver to Mongoose migration (EL-5638 phases 1 and 2) beyond what the snapshot shows; whether the Mongoose client honors the merge transaction"
   ],
   "findings_for_followup": [
     "middleware/authorize.js:74 reassigns the closed-over roles parameter, so an account role_preferences override persists for later requests on that route",
     "authorizeService accepts any JWT signed with JWT_SECRET, acts as the EVOKE AUTOMATED NOTES user, and calls next twice when the token is missing",
     "/v2/mfa/otp/validate-login issues a session from email and OTP without a password check (analyst finding, not re-verified)",
     "BodyTrace and Twilio webhooks have no authentication or signature validation; Zoom signature check returns true when NODE_ENV is unset (config.isDevelopment)",
-    "CSP, input sanitizer and global rate limiting are commented out or absent in app.js; multer upload size limits not set (analyst finding)",
+    "CSP, input sanitizer and global rate limiting are commented out or absent in app.js; multer upload size limits not set except the account-document uploader (5 MiB, one file, PDF check; analyst finding at onboarding for the rest)",
     "Production deploy on push to main runs no tests and has no manual gate; release PR from lf-uat to main gets no PR checks (conflicts with aisdlc production-writes-disabled default)",
     "Pipeline writes the OIDC token to web-identity-token in the build context and .dockerignore does not exclude it (image contents not inspected)",
     "quick_text_template controller emits userActivityLog but only logUserActivity has a listener, so those actions are not audited",
     "GET /v2/patient/:serialNumber is unreachable (shadowed by /:patientId); /v2/transmissions is mounted twice",
     "apiJob service hard-codes the account 'Eastside Urgent Care' (apiJob.v2.service.js:220)",
+    "A revoked-session 401 reveals whether the account is deactivated or locked to anyone holding an old signed token (EL-5580, security.md finding 16)",
+    "Account-document upload writes S3 before the DB upsert with no rollback (EL-5597)",
     "Repository CLAUDE.md claims no lockfile is committed, but yarn.lock is tracked and used by the Dockerfile (stale claim)"
   ]
 }

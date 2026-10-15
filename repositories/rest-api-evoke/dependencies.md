@@ -1,18 +1,18 @@
 ---
 repository: rest-api-evoke
-analyzed_commit: 4178ce47396c524dfd22a4dd107927b3b28eb100
-analyzed_at: 2026-10-01T17:57:10Z
+analyzed_commit: 84768b56f78a3663d6cfb9acf128556c4cdab89f
+analyzed_at: 2026-10-15T08:40:00Z
 generator: aisdlc@1.0.0
 status: observed
 confidence: medium
-evidence: [package.json, yarn.lock, Dockerfile, bitbucket-pipelines.yml, .env.example, util/config.js, util/database.js, database/index.js, util/v2/s3.v2.util.js, util/v2/ses.v2.util.js, util/v2/sns.v2.util.js, util/v2/sqs.v2.util.js, util/v2/slack.v2.util.js, util/v2/alert.v2.util.js, services/lambda.js, services/sqs.js, util/v2/secret_manager/*.js, util/v2/api/post_grid.v2.api.js, util/v2/cardioOne/cardioOneApi.js, util/v2/clinii/cliniiApi.js, services/v2/benchmark-token.v2.service.js, services/v2/insurance.v2.service.js, events/*.js, services/v2/hl7job.service.js]
+evidence: [package.json, yarn.lock, Dockerfile, bitbucket-pipelines.yml, .env.example, util/config.js, util/database.js, database/index.js, util/v2/s3.v2.util.js, util/v2/ses.v2.util.js, util/v2/sns.v2.util.js, util/v2/sqs.v2.util.js, util/v2/slack.v2.util.js, util/v2/alert.v2.util.js, services/lambda.js, services/sqs.js, util/v2/secret_manager/*.js, util/v2/api/post_grid.v2.api.js, util/v2/cardioOne/cardioOneApi.js, util/v2/clinii/cliniiApi.js, services/v2/benchmark-token.v2.service.js, services/v2/insurance.v2.service.js, events/*.js, services/v2/hl7job.service.js, package.json (diff 4178ce4..84768b5), services/updateNextSendInManufacturer.js, models/v2/account_document.v2.model.js, services/v2/account_document.v2.service.js, controllers/admin.js]
 ---
 
 # Dependencies (Phase D)
 
 ## Packages (`package.json`, caret ranges; resolved versions from `yarn.lock`)
 
-Runtime (observed): AWS SDK v3 clients `@aws-sdk/client-{cognito-identity-provider,lambda,s3,secrets-manager,ses,sns,sqs}` and `s3-request-presigner` (^3.1129.0, S3 resolved 3.1129.0); `express` ^4.17.1 (4.22.2), `mongoose` ^6.12.6 (6.13.11), `mongodb` ^4.0.0 (4.17.2; yarn.lock also holds a 7.6.0 entry, probably transitive of a dev package, unverified), `@hapi/joi` ^17, `express-validator` ^6 (legacy), `axios` ^1.20, `twilio` ^4.20 (4.23.0), `puppeteer` ^25.10 (25.10.0), `pdf-lib`, `pdfjs-dist` ^4.10 (PDF text extraction), `exceljs`, `archiver` ^4, `handlebars`, `multer` ^2.3 + `multer-s3`, `jsonwebtoken`, `jwks-rsa`, `bcryptjs`, `crypto-js`, `otplib`, `helmet`, `cors`, `compression`, `cookie-parser`, `morgan`, `express-rate-limit`, `winston`, `moment`, `moment-timezone`, `lodash`, `dotenv` ^10, `@xmldom/xmldom`.
+Runtime (observed): AWS SDK v3 clients `@aws-sdk/client-{cognito-identity-provider,lambda,s3,secrets-manager,ses,sns,sqs}` and `s3-request-presigner` (^3.1129.0, S3 resolved 3.1129.0); `express` ^4.17.1 (4.22.2), `mongoose` ^6.12.6 (6.13.11), `mongodb` ^4.0.0 (4.17.2; refresh 2026-10-15: `package.json` is unchanged between 4178ce4 and 84768b5 (`git diff` empty), so no package added, removed or bumped; commit 115ae4182 EL-5638 "Phase 3" moves more models from the native driver to Mongoose (new `*.v2.model.js` for activity_log, clinic_signature_updates, report_cover_page), the native `getDb()` path still exists for remaining legacy models; yarn.lock also holds a 7.6.0 entry, probably transitive of a dev package, unverified), `@hapi/joi` ^17, `express-validator` ^6 (legacy), `axios` ^1.20, `twilio` ^4.20 (4.23.0), `puppeteer` ^25.10 (25.10.0), `pdf-lib`, `pdfjs-dist` ^4.10 (PDF text extraction), `exceljs`, `archiver` ^4, `handlebars`, `multer` ^2.3 + `multer-s3`, `jsonwebtoken`, `jwks-rsa`, `bcryptjs`, `crypto-js`, `otplib`, `helmet`, `cors`, `compression`, `cookie-parser`, `morgan`, `express-rate-limit`, `winston`, `moment`, `moment-timezone`, `lodash`, `dotenv` ^10, `@xmldom/xmldom`.
 Dev: `mocha` 11, `chai` 6, `chai-as-promised`, `sinon` 22, `sinon-chai`, `proxyquire`, `aws-sdk-mock`, `mongodb-memory-server`, `nyc`, `eslint` 10 + prettier plugins, `husky`, `lint-staged`, `nodemon`, `mocha-junit-reporter`.
 Unused or suspicious (inferred from imports, not exhaustively verified): `.env.example` lists `MONGO_DB_HOST`, `SG_MAIL_TOKEN`, `SG_MAIL_SENDER_EMAIL`, `BUCKET`, `REGION`, `AWS_CARDIO_ONE_QUEUE_URL`; `util/config.js` reads none of the first five (it reads `AWS_S3_BUCKET`, `AWS_REGION`, ...), so the example file is stale. SendGrid is not imported anywhere (grep for `sendgrid` import found nothing).
 
@@ -33,7 +33,7 @@ Secret-manager key names: `DB_URI`, `JWT_SECRET`, `JWT_EXPIRATION_TIME`, `CRYPTO
 
 | Service | Use | Config names | Evidence |
 |---|---|---|---|
-| S3 | Single shared bucket (default literal fallback name in code when env unset): report PDFs read by `file_path`/`hf_file_path`, uploads (`Documents/`, `ManualUploads/`, `Clinii-Reports/rpm/`, `coverpages/`, `patient_letters/`, `connectivityReport/`, `accounts_logo/`, `provider_signatures/`, `invoices/`, `csp-violations/`, `sftp/`), reads `adts/<file>`; presigned GET URLs | `AWS_S3_BUCKET`, `AWS_REGION` | `util/v2/s3.v2.util.js`, `common/constant.js:322` |
+| S3 | Single shared bucket (default literal fallback name in code when env unset): report PDFs read by `file_path`/`hf_file_path`, uploads (`Documents/`, `ManualUploads/`, `account-documents/<account-name-lowercased-dashed>/{alert-protocol,clinic-protocol}.pdf` (new, EL-5597), `Clinii-Reports/rpm/`, `coverpages/`, `patient_letters/`, `connectivityReport/`, `accounts_logo/`, `provider_signatures/`, `invoices/`, `csp-violations/`, `sftp/`), reads `adts/<file>`; presigned GET URLs | `AWS_S3_BUCKET`, `AWS_REGION` | `util/v2/s3.v2.util.js`, `common/constant.js:322` |
 | SQS | Send only (no consumer in this repo), delay 10s | `AWS_BENCHMARK_QUEUE_URL`, `AWS_INTERGY_QUEUE_URL`, `AWS_ALERT_NOTIFICATION_QUEUE_URL`, `AWS_CARDIO_ONE_QUEUE_URL`, `AWS_SFTP_QUEUE_URL`, `AWS_BOT_QUEUE_URL` | `util/v2/sqs.v2.util.js`, `common/constant.js:331` |
 | SNS | Publish HL7 job ids with `account` message attribute | `AWS_SNS_HL7JOB_TOPIC_ARN`, `AWS_SNS_HL7JOB_TOPIC_REGION` | `services/v2/hl7job.service.js:164-176` |
 | SES | Emails: OTP, password reset, no-show letter | `AWS_SES_*`, `OTP_MAIL_SENDER`, `PASS_MAIL_SENDER`, `NOREPLY_MAIL_SENDER` | `util/v2/ses.v2.util.js` |
@@ -58,7 +58,7 @@ Secret-manager key names: `DB_URI`, `JWT_SECRET`, `JWT_EXPIRATION_TIME`, `CRYPTO
 
 ## Databases
 
-MongoDB only. URI from secret key `DB_URI`; connected twice at start: native driver (`util/database.js:8-22`, `getDb()` used by legacy models) and Mongoose (`database/index.js`, `runTransaction` implies replica set: `unknown`). Models in `models/v2` (about 74), shared with the HL7 parser (see edges). Database name comes from the URI.
+MongoDB only. URI from secret key `DB_URI`; connected twice at start: native driver (`util/database.js:8-22`, `getDb()` used by legacy models) and Mongoose (`database/index.js`, `runTransaction` implies replica set: `unknown`). Models in `models/v2` (about 74 plus the new `account_documents` collection, unique index on `account_id`, `models/v2/account_document.v2.model.js`), shared with the HL7 parser (see edges). `patients.insurance` (three insurance sub-documents) gained optional `authorization_code`, `treatment_start`, `treatment_end` (EL-5602, additive; `models/v2/patient.v2.model.js`). Database name comes from the URI.
 
 ## Code-level references to other services (candidate edges)
 
@@ -74,12 +74,17 @@ None of these targets is registered; except the parser, all are `target_register
 | 6 | API -> Intergy/API-job consumer via SQS `AWS_INTERGY_QUEUE_URL`: `{event_type:"JOB_PROCESSING", event_payload:{job_id}}` | API -> consumer | `services/v2/apiJob.v2.service.js:22-26` | observed |
 | 7 | API -> SFTP export consumer via SQS `AWS_SFTP_QUEUE_URL`: `{payload:{jobId}}` | API -> consumer | `events/SFTPEventEmitter.js:12-20` | observed |
 | 8 | API -> alert-notification worker via SQS `AWS_ALERT_NOTIFICATION_QUEUE_URL` (email/Slack/SMS alert payload, see interfaces.md) | API -> consumer | `services/v2/transmission.v2.service.js:610-661` | observed |
-| 9 | API -> crawler bot via SQS `AWS_BOT_QUEUE_URL`: `{eventType:"BOT_EVENT_TRIGGER", value:<patientId>}` (next-send update on manufacturer portals); and sync Lambda invoke `AWS_LAMBDA_FUNCTION_NAME_BOT` with `{eventType:"GET_DISCONNECTED_MONITORS", manufacturer, account}` (code comment marks the Lambda path DEPRECATED but `getDisconnectedMonitors` still calls it) | API -> bot | `services/sqs.js`, `services/updateNextSendInManufacturer.js:247`, `services/lambda.js:16-33`, `patient.v2.service.js:1204-1211` | observed |
+| 9 | API -> crawler bot via SQS (since EL-5444 the next-send update is sent only when the patient is not `information.in_office_only` and an active `manufacturer_accounts` record exists for the patient manufacturer and account; `services/updateNextSendInManufacturer.js:16-28`; the module now exports an object `{updateNextSendInManufacturer, isPatientEligibleForManufacturerUpdate}`) `AWS_BOT_QUEUE_URL`: `{eventType:"BOT_EVENT_TRIGGER", value:<patientId>}` (next-send update on manufacturer portals); and sync Lambda invoke `AWS_LAMBDA_FUNCTION_NAME_BOT` with `{eventType:"GET_DISCONNECTED_MONITORS", manufacturer, account}` (code comment marks the Lambda path DEPRECATED but `getDisconnectedMonitors` still calls it) | API -> bot | `services/sqs.js`, `services/updateNextSendInManufacturer.js:247`, `services/lambda.js:16-33`, `patient.v2.service.js:1204-1211` | observed |
 | 10 | API -> reminders Lambda (`AWS_LAMBDA_FUNCTION_NAME_TWILIO`): `{TYPE:"retry_by_next_contact_number", retryPatients:[{patientId, existingLogId}]}` after a failed Twilio status | API -> consumer | `services/v2/twilio.v2.service.js:187-190` | observed |
 | 11 | Twilio, PostGrid, Zoom, Clinii, BodyTrace -> API webhooks (see interfaces.md); Lambda/automation callers of `/v2/service/export-to-ehr` and `/v2/patient/no-show-patients/process-connectivity-report` with a service JWT (caller identity `unknown`) | external -> API | `routes/v2/service.v2.routes.js`, `routes/v2/patient.v2.routes.js:73` | observed |
 | 12 | Front end (`evoke-portal-front-end`, per `esdlc` agent docs; not registered) -> API | front end -> API | `middleware/cors.js`, `ALLOWED_ORIGINS` | inferred |
 | 13 | Rhythm/CardioOne SSO: Cognito M2M clients call `POST /v2/user/sso/profile` | external -> API | `routes/v2/user.v2.routes.js:19-26` | observed |
+| 15 | Deactivation (`PUT /admin/user/deactivate`) now deletes all `tokens` for the user (`tokenRepository.deleteTokensByUserId`, EL-5580); front end must handle 401 with `data.code` (see interfaces.md) | API -> front end | `controllers/admin.js:681-684`, `middleware/authorize.js` | observed |
 | 14 | CI -> `eks-yml-manifest` Bitbucket repo (Kustomize image tag bump) | CI -> manifest repo | `bitbucket-pipelines.yml:70-101` | observed |
+
+## Refresh 2026-10-15 (4178ce4..84768b5)
+
+No package, Dockerfile or pipeline change (only `package.json` checked by diff; `yarn.lock` and `bitbucket-pipelines.yml` are not in the changed-file list). New storage usage: S3 prefix `account-documents/` (same bucket). Twilio: `updateSmsOrVoiceLog` now catches a failed Twilio API fetch and falls back to webhook status (EL-5649), no new dependency. Cognito/SSO: sign-in and SSO profile now refuse blocked users (403). The parser `patients` collection gained optional insurance fields; nothing the parser writes was removed, so no breaking change was found for `manufacturer-hl7-parser`. No changed file references the portal front end, the billing-schedule repository or the Client EMR parser; the front end is affected only through the HTTP contract (interfaces.md); for the other two: `unknown`, no code reference found in the diff.
 
 ## Unknowns
 

@@ -1,16 +1,16 @@
 ---
 repository: manufacturer-hl7-parser
-analyzed_commit: e185ff36fe03c649cd7e9750e895c8c43f857c43
-analyzed_at: 2026-10-01T17:37:23Z
+analyzed_commit: 55bae1b09c246af044531301560276ec7f3ab3a2
+analyzed_at: 2026-10-15T08:31:52Z
 generator: aisdlc@1.0.0
 status: observed
 confidence: high
-evidence: [git ls-tree e185ff3, readme.md, src/**, hl7/**, pdf/**, tests/**]
+evidence: [git ls-tree 55bae1b, readme.md, src/**, hl7/**, pdf/**, tests/**]
 ---
 
 # Structure (Phase B)
 
-149 tracked files at `e185ff3`; 143 `.py`. No build step: the pipeline zips the working tree minus `tests/*` (see `build-release.md`).
+152 tracked files at `55bae1b` (149 at the onboarding commit `e185ff3`); `.py` count not recounted. No build step: the pipeline zips the working tree minus `tests/*` (see `build-release.md`).
 
 ## Top level
 
@@ -35,7 +35,7 @@ The local package `hl7/` has the same import name as the PyPI package `hl7`; the
 | `processor.py` (618 lines) | Pipeline steps called by `main.process` |
 | `delay_message_processing.py` | Rule-driven delay decision engine |
 | `manufacturer/` | `abbott`, `biotronik`, `boston`, `medtronic` (PDF + alert logic), `general` (shared helpers), `constants`; `__init__.py` maps manufacturer name to report/alert functions |
-| `database/` | `connection.py` (`Mongo` singleton), `query.py` (1016 lines), `user.py`, `utils.py`, `models/` (~31 collection models + `embeds/` 20 embedded documents) |
+| `database/` | `connection.py` (`Mongo` singleton), `query.py` (1080 lines), `user.py`, `utils.py`, `models/` (~31 collection models + `embeds/` 20 embedded documents) |
 | `notes/` | `automate.py`, `note_creator.py`, `noteCreator/*` (one module per section: arrhythmias, battery, burden, impedance, lead, pacing, sensing, threshold, ...), `query.py`, `constants.py` (708 lines) |
 | `analytics/` | `patientAnalytics.py`, `query.py`, `utils.py` |
 | `artanis/` | `sender.py`, `query.py`, `constants.py` (unreachable at this commit, see `architecture.md`) |
@@ -44,7 +44,7 @@ The local package `hl7/` has the same import name as the PyPI package `hl7`; the
 
 ## Size hotspots
 
-`src/database/query.py` 1016, `src/notes/constants.py` 708, `src/processor.py` 618, `src/manufacturer/medtronic.py` 359, `hl7/extractor/obxMapper.py` 355, `src/manufacturer/general.py` 295, `src/notes/automate.py` 276.
+`src/database/query.py` 1080, `src/notes/constants.py` 708, `src/processor.py` 618, `src/manufacturer/medtronic.py` 359, `hl7/extractor/obxMapper.py` 355, `src/manufacturer/general.py` 295, `src/notes/automate.py` 276.
 
 ## Dead or unreferenced code (observed by grep, medium confidence)
 

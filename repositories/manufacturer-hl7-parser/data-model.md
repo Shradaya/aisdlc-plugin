@@ -1,11 +1,11 @@
 ---
 repository: manufacturer-hl7-parser
-analyzed_commit: e185ff36fe03c649cd7e9750e895c8c43f857c43
-analyzed_at: 2026-10-01T17:37:23Z
+analyzed_commit: 55bae1b09c246af044531301560276ec7f3ab3a2
+analyzed_at: 2026-10-15T08:31:52Z
 generator: aisdlc@1.0.0
 status: observed
 confidence: high
-evidence: [src/database/connection.py, src/database/query.py, src/database/models/**, src/notes/query.py, src/analytics/query.py, src/events/user_activity_log.py, src/processor.py:139-219]
+evidence: [src/database/connection.py, src/database/query.py, src/database/models/**, src/notes/query.py, src/analytics/query.py, src/events/user_activity_log.py, src/processor.py:139-219, src/database/models/embeds/insurance.py]
 ---
 
 # Data model (Phase F)
@@ -13,7 +13,7 @@ evidence: [src/database/connection.py, src/database/query.py, src/database/model
 ## Connection
 
 - `connect(DATABASE_NAME, host=DB_URI)` in `src/database/connection.py:23`; both values come from the Secrets Manager secret (or local `.env`). Names only; values never recorded.
-- Single `Mongo` singleton wraps mongoengine `__raw__` queries; writes use pymongo `update_one` / `insert_one` with `session=Mongo.session`.
+- Single `Mongo` singleton wraps mongoengine `__raw__` queries; writes use pymongo `update_one` / `insert_one` with `session=Mongo.session`. `Mongo.raw_find_one(document, filter, projection)` (added by EL-5617, `connection.py:49`) is a pymongo `find_one` with the session, used to read a patient's stored `deviceInformation` fresh, bypassing the mongoengine lookup snapshot.
 - `processor.database_updates` (`processor.py:139-219`) runs a multi-document transaction, retried up to 5 times with backoff on `DuplicateKeyError`/`OperationFailure`. A failure whose `keyPattern` contains `oruControlId` is treated as a duplicate ORU. Transactions imply a replica set or sharded cluster (`unknown` from the repo).
 - Outside the transaction: `Mongo.upsert` via `.save()` (used for `cardio_one_api_logs`, `delayed_messages`) does not pass the session; reads and the `sequencers` `$inc` also run outside it (analyst finding, inferred).
 - The database is configured only by `DB_URI` / `DATABASE_NAME` and holds ~28 models, many unrelated to this pipeline: it is shared. Ownership is recorded in `system/repository-relationships.yaml` (developer answers) and otherwise `unknown`.
@@ -28,7 +28,7 @@ evidence: [src/database/connection.py, src/database/query.py, src/database/model
 
 | Collection | Write | Notes | Evidence |
 |---|---|---|---|
-| `patients` | insert (new) / `$set`, `$push` (existing) | account, names, dob, device, `serial_number` (unique), `evoke_id` (`EMC` + 8 digits from `sequencers`), manufacturer, send/bill dates, `implanted_billing_schedule` (day_31/day_91/day_custom), `deviceInformation`, `previous_devices`, `information`, insurance, guarantor, `initial_report_tab`, `hospital_id`. Contains PHI (names, DOB, MRN, insurance, guarantor). | `src/database/query.py:398-516` |
+| `patients` | insert (new) / `$set`, `$push` (existing) | account, names, dob, device, `serial_number` (unique), `evoke_id` (`EMC` + 8 digits from `sequencers`), manufacturer, send/bill dates, `implanted_billing_schedule` (day_31/day_91/day_custom), `deviceInformation`, `previous_devices`, `information`, insurance, guarantor, `initial_report_tab`, `hospital_id`. Contains PHI (names, DOB, MRN, insurance, guarantor). | `src/database/query.py:~440-560` (line numbers shifted by EL-5617; re-verify). Reconnect: a report received for a patient stored with `deviceInformation.is_monitor_disconnected` clears the disconnect flags, sets `previous_monitor_disconnected_at` and closes the last `monitor_disconnected_history` entry (`prepare_reconnect_fields`, `query.py:289`); history is preserved across a device change (EL-5617). The `insurance` / `secondary_insurance` / `tertiary_insurance` embeds also carry `authorization_code`, `treatment_start`, `treatment_end` (EL-5602, `embeds/insurance.py`); defaults `""` / `None`. |
 | `reports` | insert (a second insert for an HF report, `oruControlId` suffixed `-HF`) | `created_by` default "AWS LAMBDA"; `patient_serial_num`, `device_serial_number`, billing/diagnosis codes, `hl7_file_path`, `file_path`, `hf_file_path`, `hf_pages`, alert/warning flags, tab flags, `summary_report_flag`, `transmission_alert_information`, `gen_changed` | `query.py:533-650` |
 | `report_notes` | upsert by `reportId` | `evoke_notes`, `updated_by`, unix-int timestamps | `src/notes/query.py:236-252` |
 | `alert_metadata` | upsert by `patientId` | battery, sensing, pacing-percentage, arrhythmia flags | `src/notes/query.py:255-286` |

@@ -1,8 +1,8 @@
 ---
 repository: client-emr-hl7-parser
-analyzed_commit: b9615126ee17c4e2583e08ac81faaa9d12c63005
-analyzed_branch: EL-5353 (one commit ahead of main 6e4d67e)
-analyzed_at: 2026-10-09T00:00:00Z
+analyzed_commit: 542997c1b6c48c4e410090b6d49e92e02cd5c8ba
+analyzed_branch: main
+analyzed_at: 2026-10-15T08:46:00Z
 generator: aisdlc@1.0.0
 status: observed
 confidence: high
@@ -18,7 +18,7 @@ evidence: [main.py, src/config.py, src/eventHandler/__init__.py, src/eventHandle
 | Name | `client-emr-hl7-parser` (remote slug). readme.md titles it "Manufacturer HL7 Parser (Evoke Manufacturer Data Pipeline)"; deploy zips are `uat-client-emr.zip` and `prod-client-emr.zip` (`bitbucket-pipelines.yml`). | observed |
 | Local path | `${AISDLC_REPOS_ROOT}/client-emr-hl7-parser` | observed |
 | Remote | Bitbucket, workspace `evoke-medical-care` (`git remote -v`, SSH form) | observed |
-| Branch / commit | HEAD `b9615126ee17c4e2583e08ac81faaa9d12c63005` on branch `EL-5353`; parent `6e4d67e` is `main`. The one extra commit "EL-5353: Add Baptist Heart & Vascular Electrophysiology to Tenet mapper" touches the Tenet clinic mapping (`src/eventHandler/contants.py`). 456 commits in history. | observed |
+| Branch / commit | `origin/main` at `542997c1b6c48c4e410090b6d49e92e02cd5c8ba` ("Merged in EL-5353 (pull request #367)"). The earlier analysis (2026-10-09) was of branch `EL-5353` at `b9615126ee17c4e2583e08ac81faaa9d12c63005`, one commit ahead of `main` 6e4d67e ("EL-5353: Add Baptist Heart & Vascular Electrophysiology to Tenet mapper", touching `src/eventHandler/contants.py`); that PR is now merged, and `git diff b961512 origin/main` is empty, so the knowledge below still describes `main`. 456 commits in history at that analysis. | observed |
 | Type | Python AWS Lambda (not a long-running service). Handler `main.lambda_handler(event, context)`. Handler string configured on AWS is `unknown` (no infra in repo; readme says `main.lambda_handler`). | observed |
 | Language / runtime | Python. Lambda runtime version `unknown` (not declared). Code uses `X | None` and `tuple[...]` syntax and `zip(strict=)`, so Python >= 3.10 (`src/database/query.py`, `src/eventHandler/dft.py`). | inferred |
 | Key libraries | `hl7apy` 1.3.5, `pymongo` 4.17.0, `boto3` 1.43.52, `pymupdf` 1.28.0, `requests` 2.34.2, `Levenshtein` 0.27.3, `RapidFuzz` 3.14.5, `python-dateutil` (`requirements.txt`). `mongoengine` 0.29.3 is pinned but never imported (`git grep mongoengine -- '*.py'` returned nothing). | observed |

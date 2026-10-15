@@ -1,10 +1,10 @@
 {
   "repository": "client-emr-hl7-parser",
-  "analyzed_commit": "b9615126ee17c4e2583e08ac81faaa9d12c63005",
-  "analyzed_branch": "EL-5353",
-  "analyzed_at": "2026-10-09T00:00:00Z",
+  "analyzed_commit": "542997c1b6c48c4e410090b6d49e92e02cd5c8ba",
+  "analyzed_branch": "main",
+  "analyzed_at": "2026-10-15T08:46:00Z",
   "generator": "aisdlc@1.0.0",
-  "analysis_source": "Local clone at ${AISDLC_REPOS_ROOT}/client-emr-hl7-parser, clean working tree on branch EL-5353 (HEAD b961512). HEAD is one commit ahead of main 6e4d67e: EL-5353 adds a Baptist Heart & Vascular Electrophysiology alias to the Tenet mapper (src/eventHandler/contants.py). Everything else equals main. Read-only git only.",
+  "analysis_source": "Onboarding 2026-10-09: local clone on branch EL-5353 (HEAD b961512), one commit ahead of main 6e4d67e. Refresh 2026-10-15: origin/main is 542997c, the merge of that PR (#367); the tree equals b961512 (empty git diff), so no knowledge changed. Read-only git only.",
   "placement": "complete",
   "placement_reason": "Role, callers, delivery, data ownership, capabilities, rules and exclusions were confirmed by the developer on 2026-10-09. The inbound transport service and the creation-event trigger are not named (unknown).",
   "phases": {

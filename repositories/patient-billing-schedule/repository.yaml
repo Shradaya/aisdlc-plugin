@@ -18,8 +18,8 @@
     },
     "notes": "No lf-develop pipeline; every push to lf-qa, lf-uat or main zips the source and updates the Lambda with no tests or manual gate (build-release.md)."
   },
-  "analyzed_commit": "ec1d8894c633996d7fc9e7a9423d21521a981bf6",
-  "analyzed_at": "2026-10-05T00:00:00Z",
+  "analyzed_commit": "dea0eff5ed6fd7d5a9ee734cd132862a27a4fb31",
+  "analyzed_at": "2026-10-15T08:45:00Z",
   "generator": "aisdlc@1.0.0",
   "status": "current",
   "technology": {

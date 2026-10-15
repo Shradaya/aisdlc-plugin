@@ -1,7 +1,7 @@
 ---
 repository: client-emr-hl7-parser
-analyzed_commit: b9615126ee17c4e2583e08ac81faaa9d12c63005
-analyzed_at: 2026-10-09T00:00:00Z
+analyzed_commit: 542997c1b6c48c4e410090b6d49e92e02cd5c8ba
+analyzed_at: 2026-10-15T08:46:00Z
 generator: aisdlc@1.0.0
 status: observed
 confidence: high

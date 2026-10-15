@@ -1,10 +1,11 @@
 {
   "repository": "patient-billing-schedule",
-  "analyzed_commit": "ec1d8894c633996d7fc9e7a9423d21521a981bf6",
+  "analyzed_commit": "dea0eff5ed6fd7d5a9ee734cd132862a27a4fb31",
   "analyzed_branch": "main",
-  "analyzed_at": "2026-10-05T00:00:00Z",
+  "analyzed_at": "2026-10-15T08:45:00Z",
   "generator": "aisdlc@1.0.0",
-  "analysis_source": "git archive of main@ec1d889 (snapshot of 27 tracked files; equal to origin/main in the local clone). The clone itself was on branch EL-5444 with untracked files and was not used as evidence. Local clone path is set per developer in claude.env as AISDLC_REPO_PATIENT_BILLING_SCHEDULE.",
+  "analysis_source": "onboarding 2026-10-05: git archive of main@ec1d889 (27 tracked files). Full-study refresh 2026-10-15: exact git archive of origin/main@dea0eff (PR #182, 34 tracked files); the local checkout was not read",
+  "refresh": {"from_commit": "ec1d8894c633996d7fc9e7a9423d21521a981bf6", "to_commit": "dea0eff5ed6fd7d5a9ee734cd132862a27a4fb31", "kind": "full study (event-contract change: bot SQS payload batching and source field, EL-5444)", "commits": 12, "files_changed": 15, "phase_M_rerun": false, "note": "EL-5610 commit subjects say delete but the code archives live call tasks; Mongo.delete_many has no caller in src/. A tests/ folder now exists (45 test functions, pytest + mongomock) and is not run by the pipeline."},
   "placement": "complete",
   "placement_reason": "Role, callers, bot-event consumer, data ownership, capabilities, rules and exclusions were confirmed by the developer on 2026-10-05. The exact Lambda trigger wiring (EventBridge/SQS rules, queue names) stays unknown because it is not in the repository.",
   "phases": {
@@ -14,7 +15,7 @@
     "D": "complete",
     "E": "complete",
     "F": "complete",
-    "G": "complete (static only; no tests exist)",
+    "G": "complete (static only; refreshed 2026-10-15: pytest + mongomock tests exist, not run in CI; tests not run)",
     "H": "complete",
     "I": "complete (written by the orchestrator after the analyst's write was refused; no dependency audit run)",
     "J": "complete (written by the orchestrator after the analyst's write was refused)",
@@ -30,6 +31,8 @@
     "Whether the built deployment artifact contains the OIDC token file web-identity-token (script order says yes; artifact not inspected)",
     "Contents of .env-example (read denied)",
     "Advisory status of pinned dependencies",
+    "Whether the bot consumer handles the new BOT_EVENTS_TRIGGER batch type and the source field; whether this Lambda and rest-api-evoke use the same bot queue",
+    "Whether the live call task archive runs inside the patient transaction; owners and readers of live_call_tasks and manufacturer_accounts",
     "Product-language definitions of ideal billing date, billing window, backbill, next send and late date (recorded as inferred from code)"
   ]
 }

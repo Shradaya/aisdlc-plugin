@@ -1,12 +1,12 @@
 ---
 repository: evoke-portal-front-end
-analyzed_commit: 79953d33432479d03bcde9545050dbb9a7193ed8
+analyzed_commit: 35b36e323291354f6cb8fe43162c8f0dec9a1478
 analyzed_branch: main
-analyzed_at: 2026-10-02T00:00:00Z
+analyzed_at: 2026-10-15T08:45:00Z
 generator: aisdlc@1.0.0
 status: observed
 confidence: medium
-evidence: [src/hooks/useAuth.js, src/utils/routes.util.js, src/utils/auth.js, src/hooks/useSessionExpiry.js, src/app/lib/api.js, src/app/store/index.js, nginx.conf, Dockerfile, bitbucket-pipelines.yml, src/schemas]
+evidence: [src/hooks/useAuth.js, src/utils/routes.util.js, src/utils/auth.js, src/hooks/useSessionExpiry.js, src/app/lib/api.js, src/app/store/index.js, nginx.conf, Dockerfile, bitbucket-pipelines.yml, src/schemas, src/utils/auth.js, src/app/store/accountDocument/api/accountDocumentApi.js, src/components/common/accountDocument/AccountDocumentLink.js, src/static/account_document.js, src/hooks/useCloseModalPage.js]
 ---
 
 # evoke-portal-front-end: Security baseline (Phase I)
@@ -17,24 +17,25 @@ Server-side enforcement is outside this repository (`unknown`). Names only, no s
 
 - `POST /login`; an empty `data` response means an OTP step, then `POST /v2/mfa/otp/validate-login`. The JWT goes to `localStorage.authToken`; axios sends `Authorization: Bearer` with `withCredentials: true`.
 - Cognito: `GET /oauth/cognito` returns a URL, redirect, callback `/auth/cognito`, `POST /cognito/verify`. No AWS SDK or client ids in the SPA.
-- Session: JWT `exp` decoded client-side (no signature check, timers only); warning 5 minutes before expiry with `POST /v2/user/refresh-token`; any 401 (except `/login`, `/logout`) triggers expiry handling; forced logout does not call the server.
+- Session: JWT `exp` decoded client-side (no signature check, timers only); warning 5 minutes before expiry with `POST /v2/user/refresh-token`; any 401 (except URLs containing `/login` or `/logout`) goes through `handleUnauthorizedError(status, url, responseBody)` in `utils/auth.js`, called from `api.js`, `cacheApi.js` and `utils/http.js` with the 401 response body; it triggers session expiry (forced logout when no token) and returns a never-settling promise. If `data.code` is `ACCOUNT_DEACTIVATED` or `ACCOUNT_LOCKED` (`SESSION_BLOCKED_CODES`), `skipPreviousPathRestore` makes the next login land on the default page, not the previous path (EL-5580). Forced logout does not call the server.
+- OTP request: in the login OTP modal an HTTP 403 (or the request-limit code) shows the server message and calls `onOtpRequestBlocked` (`containers/AppPage/Header/OTPModal/index.js:62-67`). Add User 401 now goes through session expiry (commit subject only; `containers/Users/Table/index.js` not read in detail).
 - Password reset: `/reset-password?token=` (validated by API) and legacy `/reset/:authToken` (token in URL path).
 
 ## Authorization (observed)
 
-Client-side only: `ProtectedRoute` checks localStorage values against role lists, which a user can edit in DevTools. `/patient/:patientId` and `/patient/report/:reportId` have no role list. Hard-coded clinic names drive behavior (`/reports-assignment` requires clinic name Centra). `clinicReviewer` is commented out of `CLINIC_ROLES` (`constants.js`).
+Client-side only: account-document links render only for `EVOKE_ROLES` (`AccountDocumentLink.js`), also a client check; backend enforcement of `/v2/account-documents/*` is `unknown`. `ProtectedRoute` checks localStorage values against role lists, which a user can edit in DevTools. `/patient/:patientId` and `/patient/report/:reportId` have no role list. Hard-coded clinic names drive behavior (`/reports-assignment` requires clinic name Centra). `clinicReviewer` is commented out of `CLINIC_ROLES` (`constants.js`).
 
 ## PHI and PII (observed)
 
-Patient names, DOB, SSN, MRN, addresses, phones, insurance, clinical notes and PDFs are handled. SSN is masked in display but held in full in state and sent in the profile PUT. Patient search text and file paths go unencoded into GET query strings. Redux devTools is `true` in every build (`src/app/store/index.js:52`). 15 `createObjectURL` vs 1 `revokeObjectURL`. Microphone audio is streamed to the `transcribe` socket.
+Patient names, DOB, SSN, MRN, addresses, phones, insurance, clinical notes and PDFs are handled. SSN is masked in display but held in full in state and sent in the profile PUT. Patient search text and file paths go unencoded into GET query strings. Redux devTools is `true` in every build (`src/app/store/index.js:52`). 14 `createObjectURL` vs 2 `revokeObjectURL` (re-counted by grep on `35b36e3`; the new `AccountDocumentLink.js` revokes after 60 s). Microphone audio is streamed to the `transcribe` socket.
 
 ## XSS and unsafe sinks (observed)
 
-No `dangerouslySetInnerHTML` or `eval` (verified by grep). `LetterTemplatePreview.js` writes API-supplied HTML into an iframe with `sandbox="allow-same-origin"` (no scripts). Zoom `postMessage` checks `event.origin`. Server-supplied redirect URLs are used without an allowlist. 8 `target="_blank"` links, 3 with `rel="noopener"`.
+No `dangerouslySetInnerHTML` or `eval` (verified by grep). `LetterTemplatePreview.js` writes API-supplied HTML into an iframe with `sandbox="allow-same-origin"` (no scripts). Zoom `postMessage` checks `event.origin`. Server-supplied redirect URLs are used without an allowlist. 8 `target="_blank"` literals (re-counted; `rel` not re-counted, previously 3 with `noopener`). New: `AccountDocumentLink.js` calls `window.open("", "_blank")` without `noopener` and writes an iframe pointing at a blob URL of the fetched PDF (response type checked as `application/pdf`); `blob:` is allowed in `frame-src` in `nginx.conf`.
 
 ## Files (observed)
 
-Dropzone accept lists by extension; size limit is display-only; downloads via `js-file-download` and blob URLs.
+Account PDFs are fetched as blobs through `api` and displayed in a new tab, not saved. Dropzone accept lists by extension; size limit is display-only; downloads via `js-file-download` and blob URLs.
 
 ## nginx and CSP (observed)
 

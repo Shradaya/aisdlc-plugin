@@ -1,28 +1,28 @@
 ---
 repository: patient-billing-schedule
-analyzed_commit: ec1d8894c633996d7fc9e7a9423d21521a981bf6
+analyzed_commit: dea0eff5ed6fd7d5a9ee734cd132862a27a4fb31
 analyzed_branch: main
-analyzed_at: 2026-10-05T00:00:00Z
+analyzed_at: 2026-10-15T08:45:00Z
 generator: aisdlc@1.0.0
 status: observed
 confidence: medium
-evidence: [main.py, src/config.py, src/database/connection.py, src/database/query.py, src/database/schedule.py, src/database/inputParams.py, src/database/user.py, src/events/eventEmitter.py, src/events/billing_activity_logger.py, src/events/user_activity_log.py, src/utils/activityLogger.py, src/utils/aws.py, src/utils/slack.py, src/utils/constants.py, src/utils/date.py, src/utils/utils.py, src/utils/logger.py, bitbucket-pipelines.yml, requirements.txt, .gitignore, .vscode/launch-example.json]
+evidence: [main.py, src/config.py, src/database/connection.py, src/database/query.py, src/database/schedule.py, src/database/inputParams.py, src/database/user.py, src/events/eventEmitter.py, src/events/billing_activity_logger.py, src/events/user_activity_log.py, src/utils/activityLogger.py, src/utils/aws.py, src/utils/slack.py, src/utils/constants.py, src/utils/date.py, src/utils/utils.py, src/utils/logger.py, bitbucket-pipelines.yml, requirements.txt, requirements-dev.txt, tests/conftest.py, .gitignore, .vscode/launch-example.json]
 ---
 
 # Architecture (Phase C)
 
-Repository location: `${AISDLC_REPO_PATIENT_BILLING_SCHEDULE}` (remote name `patient-schedule-monitoring`). Claims are `observed` (seen in code at `ec1d889`, file:line cited) unless tagged `[inferred]` or `unknown` (with what was checked). Secrets and env are named by variable only. Not read: `.env-example` (read was denied by tooling); its contents are `unknown`. The deployed Lambda configuration (handler path, trigger wiring, memory, timeout, VPC, IAM) is not in the repo and is `unknown`.
+Repository location: `${AISDLC_REPO_PATIENT_BILLING_SCHEDULE}` (remote name `patient-schedule-monitoring`). Claims are `observed` (seen in code at `dea0eff` (refreshed from `ec1d889`; parts the diff did not touch were kept), file:line cited) unless tagged `[inferred]` or `unknown` (with what was checked). Secrets and env are named by variable only. Not read: `.env-example` (read was denied by tooling); its contents are `unknown`. The deployed Lambda configuration (handler path, trigger wiring, memory, timeout, VPC, IAM) is not in the repo and is `unknown`.
 
 ## 1. Shape of the system
 
-A single Python AWS Lambda, no web server, no framework, no scheduler inside the code. It decides, per patient and per billing code, which stored cardiac-device report should be marked billable for a billing window, and maintains the patient's schedule state (next send, late status, follow-up tasks, bot trigger). One process, synchronous, sequential (no threads or async). 27 tracked files, about 2,000 lines of Python, no tests directory (observed by file listing).
+A single Python AWS Lambda, no web server, no framework, no scheduler inside the code. It decides, per patient and per billing code, which stored cardiac-device report should be marked billable for a billing window, and maintains the patient's schedule state (next send, late status, follow-up tasks, bot trigger). One process, synchronous, sequential (no threads or async). 34 tracked files; `main.py` 329 lines, `src/database/query.py` 462, `src/database/schedule.py` 556. A `tests/` directory (pytest + mongomock, 45 test functions in 5 test files plus `conftest.py`) now exists but the pipeline does not run it (section 10).
 
 ## 2. Entry points
 
 | Entry | Where | Detail |
 |---|---|---|
 | Lambda handler | `lambda_handler(event, context)` in `main.py:266` | The exported function name; the deployed handler string is `unknown` (Lambda config outside repo) but `bitbucket-pipelines.yml` zips the repo root so `main.lambda_handler` is the only plausible handler `[inferred]`. |
-| CLI | `main.py:311` (`if __name__ == '__main__'`) | `python main.py --patient <patient _id>`; builds `{'patient_id': ...}` and calls `lambda_handler(event, None)`. Local-dev aid (`.vscode/launch-example.json`). `context` is `None`, so a Slack notification on error raises inside `notify_in_slack` (attribute access on `None`) and is swallowed by the outer `except` (section 8). |
+| CLI | `main.py:317` (`if __name__ == '__main__'`) | `python main.py --patient <patient _id>`; builds `{'patient_id': ...}` and calls `lambda_handler(event, None)`. Local-dev aid (`.vscode/launch-example.json`). `context` is `None`, so a Slack notification on error raises inside `notify_in_slack` (attribute access on `None`) and is swallowed by the outer `except` (section 8). |
 
 Event shapes accepted by `lambda_handler` (`main.py`, handler body):
 
@@ -39,13 +39,13 @@ No scheduled trigger (EventBridge/cron) is declared in the repo. How account-wid
 ```
 main.py                    handler + billing-window orchestration
 src/config.py              env/secret loading into ENV_VARS (module-scope side effect)
-src/database/connection.py Mongo singleton wrapper (pymongo)
+src/database/connection.py Mongo singleton wrapper (pymongo); adds guarded delete_many (unused outside tests)
 src/database/query.py      all reads/writes against Mongo collections; retry on WriteConflict
-src/database/schedule.py   per-code transaction, schedule/late/task/next-send updates, SQS bot event
+src/database/schedule.py   per-code transaction, schedule/late/task/next-send updates, live-call-task archive on deactivation, bot-event queue (queue_bot_event) and SQS flush (flush_bot_events)
 src/database/inputParams.py dataclasses UpdateBillablesContext, UpdateSchedulesContext
-src/database/user.py       lookup of the automation user id (cached module global)
+src/database/user.py       lookup of the automation user id (cached module global; only a found id is cached)
 src/events/eventEmitter.py in-process emitter + listener registration
-src/events/billing_activity_logger.py  writes billing_activity_logger collection
+src/events/billing_activity_logger.py  writes billing_activity_logger collection; live_call_tasks_archived also writes per-task user_activity_logs
 src/events/user_activity_log.py        writes user_activity_logs collection
 src/utils/constants.py     collection names, billing codes, window/day tables, flags
 src/utils/date.py, utils.py  date helpers, next-send cycle, billing-history lookup
@@ -54,9 +54,9 @@ src/utils/slack.py         Slack webhook notification + CloudWatch log URL build
 src/utils/logger.py        root logger setup
 ```
 
-Unreferenced code (observed by grep): `src/utils/activityLogger.py` (`event_logger`), `src/utils/format.py` (report/patient-name helpers), most of `src/utils/date.py` (`validate_date`, `convert_*`, `get_unix_timestamp`), `src/database/query.py` imports unused names, constants `COVER_COLLECTION`, `HL7_JOBS_COLLECTION`, `ADT_COLLECTION`, `ACK_COLLECTION`, `MANUFACTURER_BOT_INVOKE_PER_LATE_DATE_DELTA`, and `ENV_VARS.EVOKE_SLACK_URL` (loaded, never read). These look copied from the HL7 parser repo `[inferred]`.
+Unreferenced code (observed by grep): `src/utils/activityLogger.py` (`event_logger`), `src/utils/format.py` (report/patient-name helpers), most of `src/utils/date.py` (`validate_date`, `convert_*`, `get_unix_timestamp`), `src/database/query.py` imports unused names, constants `COVER_COLLECTION`, `HL7_JOBS_COLLECTION`, `ADT_COLLECTION`, `ACK_COLLECTION`, `MANUFACTURER_BOT_INVOKE_PER_LATE_DATE_DELTA`, and `ENV_VARS.EVOKE_SLACK_URL` (loaded, never read), and `MongoConnection.delete_many` (added with EL-5610, called only from tests; live call tasks are archived, not deleted). These look copied from the HL7 parser repo `[inferred]`.
 
-Dependency direction: `main` -> `database/schedule` -> `database/query` -> `database/connection`; `query` and `schedule` -> `events/eventEmitter` -> `events/*` -> `database/connection`. No cycle at import time.
+Dependency direction: `main` -> `database/schedule` -> `database/query` -> `database/connection`; `query` and `schedule` -> `events/eventEmitter` -> `events/*` -> `database/connection`; `schedule` also imports `database/user` (`get_user_id`). No cycle at import time.
 
 ## 4. Billing-window logic (structure only)
 
@@ -69,7 +69,7 @@ Data is driven by tables in `src/utils/constants.py`; `main.py` selects rows, `s
 - Window (`calculate_billing_period`): ideal date minus pre-days to plus post-days; constants per case (CardioMEMS, LINQ/summary-report devices, day-31, day-91, first-time vs recurring). If today is at or past the window end, `backbill_required` is set and the window widens to `days_pre_billing_date`/`days_after_billing_date`. A `PRE_NEXT_SEND_WINDOW` (7 days) variant is used when only `next_send` has been reached.
 - Early exits: before the window opens, processing continues only if `next_send`/`late_date` is reached or the patient is late; otherwise skip. Accounts whose initial-report tab for that manufacturer is not `evk_active` (read from `accounts.settings.manufacturer.<name>.initial_report_tab`) only get a `next_send` bump.
 - Application (`update_billables` in `src/database/schedule.py:35`): inside one Mongo transaction per (patient, code): find a candidate report in the window (ascending report date, descending when backbilling; summary reports preferred for summary devices), reset prior billable flags, assign a unique billing date (`differentiate_existing_billing_date` adds a day if the date collides with billing history or the previous patient's date via `PERSISTED_VALUES`), set the report billable, compute next cutoff, then `update_schedule` writes patient state.
-- Schedule state (`update_schedule`): next send / late date recomputation (`LATE_PATIENT_NEXT_SEND_CYCLE` 7, `LATE_PATIENT_OFFSET` 3), late status red/green, follow-up tasks (`first_call`, `second_call`, `third_call`, `letter` at +2/+9/+16/+20 days after late date, `suspend_date` +30), patient deactivation when no report exists within `DAYS_OFFSET_TO_SET_PATIENT_INACTIVE` (730 days) with reason `No Longer Monitoring`.
+- Schedule state (`update_schedule`): next send / late date recomputation (`LATE_PATIENT_NEXT_SEND_CYCLE` 7, `LATE_PATIENT_OFFSET` 3), late status red/green, follow-up tasks (`first_call`, `second_call`, `third_call`, `letter` at +2/+9/+16/+20 days after late date, `suspend_date` +30), patient deactivation when no report exists within `DAYS_OFFSET_TO_SET_PATIENT_INACTIVE` (730 days) with reason `No Longer Monitoring`. EL-5610: when `set_patient_inactive` is true, `update_schedule` calls `archive_live_call_tasks` (`src/database/schedule.py:478`, called at line 539) inside the same transaction, after `execute_billing_updates`. It sets every non-archived `live_call_tasks` document of the patient (`patient_id`) to `status: "archived"` (`archive_live_call_tasks_by_patient_id`, `src/database/query.py:300`) and emits an audit event. Despite the commit subject ("Delete live call tasks"), the code archives and does not delete `[observed]`.
 
 Exact day values and rules are in `src/utils/constants.py` and `main.py`; this file records structure, not a business specification. Rationale for individual constants is `unknown` (no docs, no comments beyond inline notes).
 
@@ -84,12 +84,14 @@ MongoDB only (`pymongo==4.6.3`; `mongoengine` is pinned in `requirements.txt` bu
 | `devices` + `device_types` | aggregate read | device model -> `summary_report`, short type |
 | `accounts` | aggregate read | initial report tab, billing anchor setting |
 | `tasks` | insert, archive | automated no-show follow-up tasks |
+| `live_call_tasks` | read (`patient_id`, status not archived), `update_many` by `_id` list setting `status: archived` | EL-5610: closed when a patient is deactivated at 730 days; the update passes the session, the preceding `find` does not |
+| `manufacturer_accounts` | read (`isActive`, `manufacturer`, `account`) | EL-5444: one `$or` query per flush decides which (manufacturer, account) groups get a bot event (`get_active_manufacturer_accounts`, `query.py:333`) |
 | `users` | read | id of user named `EVOKE AUTOMATED NOTES` (hard-coded in `src/database/user.py`) for activity logs |
-| `billing_activity_logger` | upsert + `$push` logs | audit of next-send/billing/bot actions |
-| `user_activity_logs` | upsert + `$push` logs | "Billing Date Suggested" entry for the report |
-| `manufacturer_crawler_report_status` | update (`upsert=False`) | bot invocation status |
+| `billing_activity_logger` | upsert + `$push` logs | audit of next-send/billing/bot actions; EL-5610 adds a `Live Call Tasks Archived` entry (`action`, `archived_count`, `archived_tasks`, `reason`) via event `live_call_tasks_archived` |
+| `user_activity_logs` | upsert + `$push` logs | "Billing Date Suggested" entry for the report; EL-5610 adds one `Archive Live Call Task` log per archived task (module `Live Call Task`, `action_from: Evoke`), written only when the automation user id resolves |
+| `manufacturer_crawler_report_status` | update (`upsert=False`) | bot status per patient: `Bot Event Queued...` action on success, `Fail` or `Skipped` record with reason otherwise. With `upsert=False` a write only lands if a status document for the filter already exists `[observed]` |
 
-Transactions: `update_billables` opens `Mongo._client.start_session()` and a transaction, sets `Mongo.session`, and all write helpers pass `session=self.session`; `find`, `find_one`, `aggregate` do NOT pass the session, so reads inside the transaction are not snapshot-isolated `[observed]`. Commit at end; on any exception the transaction aborts and the exception is re-raised. `MongoConnection.session` is process-global state. Whether the Mongo deployment is a replica set (required for transactions) is `unknown`.
+Transactions: `update_billables` opens `Mongo._client.start_session()` and a transaction, sets `Mongo.session`, and all write helpers pass `session=self.session`; `find`, `find_one`, `aggregate` do NOT pass the session (including the `find` inside the live-call-task archive), so reads inside the transaction are not snapshot-isolated `[observed]`. Commit at end; on any exception the transaction aborts and the exception is re-raised. `MongoConnection.session` is process-global state. Whether the Mongo deployment is a replica set (required for transactions) is `unknown`.
 
 Concurrency: write conflicts are retried up to `MAX_RETRIES` 3 with growing sleep (`retry_on_write_conflict`). Note the wrapper returns `None` after exhausting retries without raising (loop falls through), so a persistent conflict is silently dropped `[observed]`. Concurrent Lambda executions for the same patient have no lock `[inferred]`.
 
@@ -112,13 +114,17 @@ Inbound: the three event shapes in section 2 (async Lambda invoke from the parse
 
 Outbound:
 
-- SQS bot event (`send_bot_event_to_sqs`, `src/database/schedule.py:318`): to `MANUFACTURER_BOT_SQS_URL`, JSON `{"eventType":"BOT_EVENT_TRIGGER","value":"<patient _id>"}`; FIFO queues (URL ends `.fifo`) get `MessageGroupId=<patient id>` and a random `MessageDeduplicationId` (`src/utils/aws.py`), i.e. no real deduplication. Sent AFTER the Mongo transaction commits, so a send failure does not roll back DB changes. Consumer (the manufacturer crawler bot) is outside this repo, `unknown`. Triggered only when `late_date` exists, `next_send` was reached, the bot was not already invoked in this handler run (`PERSISTED_VALUES['bot_lambda_invoked']`), and the manufacturer/device-type exclusion (`MANUFACTURERS_BLOCKED_FOR_NEXT_SEND_UPDATE`, Boston Scientific ILR without a report) does not apply.
+- SQS bot event (EL-5444, rewritten). `update_billables` no longer sends per patient; after the transaction commits it calls `queue_bot_event(patient, next_send)` (`src/database/schedule.py:332`), which appends a reduced patient dict (`BOT_EVENT_PATIENT_KEYS`: `_id`, `name`, `manufacturer`, `account`, `next_send`) to the module-global `BOT_EVENT_QUEUE` and sets `PERSISTED_VALUES['bot_lambda_invoked']`. Patients with `information.in_office_only` true are not queued (recorded `Skipped`). Trigger conditions are unchanged (`late_date` exists, `next_send` reached, device/manufacturer exclusion, once per patient per run). `flush_bot_events()` (`schedule.py:392`) runs at the end of the handler: groups by `(manufacturer, account)`, drops groups without an active `manufacturer_accounts` record (recorded `Skipped` per patient, no SQS), then sends chunks of at most `BOT_EVENT_MAX_PATIENT_IDS` = 70 patients via `send_sqs_message` (`src/utils/aws.py`) to `MANUFACTURER_BOT_SQS_URL`.
+  - Single-patient chunk: `{"eventType":"BOT_EVENT_TRIGGER","value":"<patient _id>","source":"PATIENT SCHEDULE MONITORING"}`, FIFO `MessageGroupId` = patient id.
+  - Multi-patient chunk (new shape): `{"eventType":"BOT_EVENTS_TRIGGER","manufacturer":"<m>","account":"<a>","patient_ids":["<id>",...],"source":"PATIENT SCHEDULE MONITORING"}`, FIFO `MessageGroupId` = `<manufacturer>:<account>`. FIFO queues (URL ends `.fifo`) still get a random `MessageDeduplicationId`, so no real deduplication.
+  - Result per patient: `_is_sqs_send_ok` needs HTTP 200 and a `MessageId`; success writes a `Bot Event Queued` status, anything else (including a caught exception) writes a `Fail` record. No retry, no Slack alert.
+  - Events sit in process memory until the flush: a Lambda timeout or crash before it loses them with no record `[inferred]`. Consumer (manufacturer crawler bot) is outside this repo and `unknown`; whether it understands `BOT_EVENTS_TRIGGER`, `patient_ids` and `source` is `unknown` (see `change-impact.md`). Sender-side comparison: `rest-api-evoke` sends `{eventType:"BOT_EVENT_TRIGGER", value:<patientId>}` (no `source`) to its `AWS_BOT_QUEUE_URL` (`repositories/rest-api-evoke/architecture.md`); whether that is the same physical queue as `MANUFACTURER_BOT_SQS_URL` is `unknown` (URLs live in secrets/env).
 - Slack webhook (section 8).
 - Mongo log writes via in-process events (below).
 
-In-process events (`src/events/eventEmitter.py`): a synchronous emitter (`emit` calls listeners inline, no queue, no error isolation) with listeners registered at import: `next_send_update` -> `billing_activity_logger`; `billing_date_assigned` -> `user_activity_log.billing_date_assigned` and `report_billed`; `bot_lambda_invoked` -> `bot_lambda_invoked`. Emitted from `src/database/query.py` (`set_billable_true`, `execute_billing_updates`, `log_bot_invocation`). Because listeners run inline within the open transaction (using `Mongo.session`), a listener failure aborts the whole code's update.
+In-process events (`src/events/eventEmitter.py`): a synchronous emitter (`emit` calls listeners inline, no queue, no error isolation) with listeners registered at import: `next_send_update` -> `billing_activity_logger`; `billing_date_assigned` -> `user_activity_log.billing_date_assigned` and `report_billed`; `bot_lambda_invoked` -> `bot_lambda_invoked`; `live_call_tasks_archived` -> `live_call_tasks_archived` (EL-5610, registered in `eventEmitter.py:33`). Emitted from `src/database/query.py` (`set_billable_true`, `execute_billing_updates`, `log_bot_invocation`) and `src/database/schedule.py` (`archive_live_call_tasks`). Because listeners run inline within the open transaction (using `Mongo.session`), a listener failure aborts the whole code's update (now including the live-call-task archive audit write). `log_bot_invocation` calls made by the flush run outside any transaction (`Mongo.session` is `None`).
 
-Module global mutable state across patients in one invocation: `PERSISTED_VALUES` (reset after each patient by `update` with a deep copy of defaults, `main.py` handler loop), `user_id` cache in `src/database/user.py`. Warm Lambda containers reuse these globals `[inferred]`.
+Module global mutable state across patients in one invocation: `PERSISTED_VALUES` (reset after each patient by `update` with a deep copy of defaults, `main.py` handler loop), `BOT_EVENT_QUEUE` (EL-5444; module-level list, emptied by each flush), `user_id` cache in `src/database/user.py`. Warm Lambda containers reuse these globals `[inferred]`.
 
 Scheduled jobs / background workers: none in the repo.
 
@@ -128,8 +134,8 @@ Scheduled jobs / background workers: none in the repo.
 - Per transaction: abort and re-raise (`update_billables`), which lands in the per-patient handler above.
 - After the loop: if `errors`, `notify_in_slack(context, joined_messages)` posts one message to the webhook in `ENV_VARS.LF_SLACK_URL` containing function name, the error text in a code block, and a CloudWatch log-stream link built from `context.invoked_function_arn`, `log_group_name`, `log_stream_name` (`src/utils/slack.py`). `requests.post` has no timeout, no retry, no status check beyond `print`. Error text includes patient serial numbers (identifiers sent to Slack; PHI sensitivity is a review point `[inferred]`).
 - Top level: the whole handler body is inside `try/except Exception` that only logs (`log.info(e)`), then returns `None`. Result: the Lambda reports SUCCESS to the invoker even on fatal errors (e.g. bad JSON, DB failure in `get_patient`, Slack failure), so Lambda retries, DLQ, and SQS redrive never trigger from code failures `[observed]`. Import-time failures (secrets, Mongo connection) do surface as invocation errors.
-- Bot SQS failure: logs the error, writes a `Fail` record to `manufacturer_crawler_report_status` via `log_bot_invocation` (no Slack alert, no retry).
-- No metrics, tracing, health checks, or idempotency keys. Logging is plain `logging` at INFO to the Lambda log group (`src/utils/logger.py`); payloads such as the period dict and patient fields are logged (log content sensitivity `inferred`).
+- Bot SQS failure: an exception from `send_sqs_message` is caught per chunk and logged, a non-OK response logs the patient ids, and each patient in the chunk gets a `Fail` record via `_log_bot_event_failure` (no Slack alert, no retry). EL-5444 `finally`: the handler's `finally` calls `flush_bot_events()` again inside its own `try/except` that logs `Failed to flush bot events`, so events queued before a fatal error in the main body are still sent; on the normal path the queue is already empty and the second call is a no-op (`main.py:300-314`).
+- Handler still returns `None` and the top-level `except` still only logs. No metrics, tracing, health checks, or idempotency keys. Logging is plain `logging` at INFO to the Lambda log group (`src/utils/logger.py`); payloads such as the period dict and patient fields are logged (log content sensitivity `inferred`).
 - Time: `get_current_date()` uses server-local `datetime.now()` truncated to midnight, naive datetimes; the Lambda timezone is normally UTC `[inferred]`, so "today" is a UTC date. The Lambda timeout versus the number of patients per account run is `unknown`.
 
 ## 9. Authentication and authorization
@@ -138,7 +144,7 @@ None in code. The Lambda has no inbound auth logic (trusts invoker via IAM, `inf
 
 ## 10. Build and deploy (architecture-relevant)
 
-`bitbucket-pipelines.yml`: branch `lf-qa`, `lf-uat`, `main` each zip the working directory (deleting `.gitignore`, the pipelines file, and `.git` first), upload to S3 (`$DEV_LAMBDA_RESOURCE_BUCKET` or `$PROD_LAMBDA_RESOURCE_BUCKET`), and run `aws lambda update-function-code ... --publish` for `$QA_LAMBDA_NAME`, `$UAT_LAMBDA_NAME`, `$PROD_LAMBDA_NAME` using Bitbucket OIDC (`$AWS_ROLE_ARN`). Pushing to `main` deploys to production with no test, lint, or approval step in the pipeline. Dependencies are NOT installed in the pipeline: the zip contains only repo files, so `requirements.txt` packages (`pymongo`, `requests`, `python-dateutil`, etc.) must come from a Lambda layer or the base image, which is `unknown`. `requirements.txt` is UTF-16 encoded (pip needs it as such or may fail) `[observed]`. Python runtime version `unknown`.
+`bitbucket-pipelines.yml`: branch `lf-qa`, `lf-uat`, `main` each zip the working directory (deleting `.gitignore`, the pipelines file, and `.git` first), upload to S3 (`$DEV_LAMBDA_RESOURCE_BUCKET` or `$PROD_LAMBDA_RESOURCE_BUCKET`), and run `aws lambda update-function-code ... --publish` for `$QA_LAMBDA_NAME`, `$UAT_LAMBDA_NAME`, `$PROD_LAMBDA_NAME` using Bitbucket OIDC (`$AWS_ROLE_ARN`). Pushing to `main` deploys to production with no test, lint, or approval step in the pipeline (the new `tests/` suite and `requirements-dev.txt` are not wired in; no pytest step in `bitbucket-pipelines.yml`). Dependencies are NOT installed in the pipeline: the zip contains only repo files, so `requirements.txt` packages (`pymongo`, `requests`, `python-dateutil`, etc.) must come from a Lambda layer or the base image, which is `unknown`. `requirements.txt` is UTF-16 encoded (pip needs it as such or may fail) `[observed]`. Python runtime version `unknown`.
 
 ## 11. Unknowns summary
 
@@ -146,5 +152,6 @@ None in code. The Lambda has no inbound auth logic (trusts invoker via IAM, `inf
 - Triggers: SQS queue name/DLQ/batch settings, any EventBridge schedule, API Gateway, and who sends `accounts` messages.
 - Contents of `.env-example` (read denied).
 - Mongo topology (replica set), indexes, and document schema ownership (no schema files; only fields touched by queries are known).
-- Bot SQS consumer behavior and queue type (FIFO or standard).
+- Bot SQS consumer behavior and queue type (FIFO or standard); whether it accepts `BOT_EVENTS_TRIGGER`, `patient_ids` and `source`; whether `MANUFACTURER_BOT_SQS_URL` equals `rest-api-evoke`'s `AWS_BOT_QUEUE_URL`.
+- Whether `rest-api-evoke` or the portal read `live_call_tasks` and handle the `archived` status written here.
 - Whether `manufacturer-hl7-parser` is the only direct-invoke caller (confirmed for that repo only).

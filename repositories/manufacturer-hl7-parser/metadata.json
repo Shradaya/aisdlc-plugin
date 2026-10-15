@@ -1,10 +1,12 @@
 {
   "repository": "manufacturer-hl7-parser",
-  "analyzed_commit": "e185ff36fe03c649cd7e9750e895c8c43f857c43",
+  "analyzed_commit": "55bae1b09c246af044531301560276ec7f3ab3a2",
   "analyzed_branch": "main",
-  "analyzed_at": "2026-10-01T17:37:23Z",
+  "analyzed_at": "2026-10-15T08:31:52Z",
   "generator": "aisdlc@1.0.0",
-  "analysis_source": "git archive snapshot of main@e185ff3 (developer checkout was on lf-uat during onboarding and was not read)",
+  "analysis_source": "git archive snapshot of main@e185ff3 at onboarding (2026-10-01); partial refresh 2026-10-15 from origin/main@55bae1b via read-only git diff/show (local checkout was at 0bc85fd and was not read)",
+  "refreshed_artifacts": ["data-model", "conventions", "testing", "structure", "overview", "change-impact"],
+  "refresh_note": "Partial refresh: no structural trigger (build, framework, service, deployment, DB technology, API/event contract, dependency graph unchanged). Artifacts not listed (architecture, dependencies, interfaces, security, build-release) keep their e185ff3 provenance and were not re-verified.",
   "placement": "incomplete",
   "placement_reason": "Owner repositories of the shared MongoDB collections were not named, product-language term definitions were not provided, and the purpose of the Abbott ILR delay was not stated; these stay unknown.",
   "phases": {

@@ -1,11 +1,11 @@
 ---
 repository: manufacturer-hl7-parser
-analyzed_commit: e185ff36fe03c649cd7e9750e895c8c43f857c43
-analyzed_at: 2026-10-01T17:37:23Z
+analyzed_commit: 55bae1b09c246af044531301560276ec7f3ab3a2
+analyzed_at: 2026-10-15T08:31:52Z
 generator: aisdlc@1.0.0
 status: observed
 confidence: medium
-evidence: [tests/conftest.py, tests/unit/**, requirements.txt, bitbucket-pipelines.yml, src/config.py, src/database/connection.py]
+evidence: [tests/conftest.py, tests/unit/**, tests/unit/src_database/**, requirements.txt, bitbucket-pipelines.yml, src/config.py, src/database/connection.py]
 ---
 
 # Testing profile (Phase G)
@@ -20,7 +20,7 @@ pytest style (12 of 13 test files) with `unittest.mock`, `SimpleNamespace` and `
 
 | Layer | Framework | Command | Scope | Prerequisites | CI stage | Required for merge | Typical runtime | Test data strategy | Known failures/flakiness |
 |---|---|---|---|---|---|---|---|---|---|
-| unit | pytest + mock | `pytest tests/unit` from repo root (inferred; not documented) | 13 files, ~60 tests, ~1,550 lines: `src/utils/date.py` (`validate_date`, `get_next_bill_send_date`, `TimeConverter`), `src/notes/utils.py`, `src/delay_message_processing.py`, `src/database/query.py` (`create_billing_diagnosis_code`, `delete_live_call_task_by_patient_id`, `upsert_into_patients`), `src/processor.py` (`map_billing_codes`, `update_billing_codes` only), note creators (burden, arrhythmias, battery, pacing percentage) | Importable `src.config` (see Environment Requirements) | none | No (no pipeline gate) | unknown | In-code fakes and mocks | See Flaky section |
+| unit | pytest + mock | `pytest tests/unit` from repo root (inferred; not documented) | 16 files, ~87 tests (the earlier ~60 plus 27 test functions counted in the three files added by EL-5617/EL-5602; `test_upsert_into_patients.py` was changed and not recounted), ~1,550 lines before those additions: `src/utils/date.py` (`validate_date`, `get_next_bill_send_date`, `TimeConverter`), `src/notes/utils.py`, `src/delay_message_processing.py`, `src/database/query.py` (`create_billing_diagnosis_code`, `delete_live_call_task_by_patient_id`, `upsert_into_patients`, patient insurance defaults), `Mongo.raw_find_one`, the `Insurance` embed, `src/processor.py` (`map_billing_codes`, `update_billing_codes` only), note creators (burden, arrhythmias, battery, pacing percentage) | Importable `src.config` (see Environment Requirements) | none | No (no pipeline gate) | unknown | In-code fakes and mocks | See Flaky section |
 | integration | not present | none | Checked: `tests/` tree, fixtures, pipeline: no Mongo/AWS integration tests | | none | No | unknown | none | unknown |
 | contract | not present | none | Checked: no schema/contract tests for SQS payloads, billing Lambda or Mongo | | none | No | unknown | none | unknown |
 | API | not present (no HTTP surface) | none | | | none | No | unknown | none | unknown |

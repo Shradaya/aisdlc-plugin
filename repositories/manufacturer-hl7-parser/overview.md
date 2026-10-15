@@ -1,8 +1,8 @@
 ---
 repository: manufacturer-hl7-parser
-analyzed_commit: e185ff36fe03c649cd7e9750e895c8c43f857c43
+analyzed_commit: 55bae1b09c246af044531301560276ec7f3ab3a2
 analyzed_branch: main
-analyzed_at: 2026-10-01T17:37:23Z
+analyzed_at: 2026-10-15T08:31:52Z
 generator: aisdlc@1.0.0
 status: observed
 confidence: high
@@ -18,13 +18,13 @@ evidence: [main.py, src/processor.py, src/config.py, src/delay_message_processin
 | Name | manufacturer-hl7-parser ("Evoke Manufacturer Data Pipeline", `readme.md:1`) | observed |
 | Remote | `git@bitbucket.org:evoke-medical-care/manufacturer-hl7-parser.git` | observed |
 | Local path | `${AISDLC_REPOS_ROOT}/manufacturer-hl7-parser` (resolved from `claude.env`) | observed |
-| Base branch | `main` (local and `origin/main` both at `e185ff3`) | observed |
-| Analyzed commit | `e185ff36fe03c649cd7e9750e895c8c43f857c43` ("Merged in EL-5477 (pull request #1350)", 2026-10-01T09:59:14Z) | observed |
+| Base branch | `main` (`origin/main` at `55bae1b`; the local checkout was at `0bc85fd`, two commits behind) | observed |
+| Analyzed commit | `55bae1b09c246af044531301560276ec7f3ab3a2` ("Merged in EL-5602 (pull request #1369)", 2026-10-15T01:52:40Z); onboarded at `e185ff3` (EL-5477, 2026-10-01) | observed |
 | Type | Event-driven Python AWS Lambda pipeline (no HTTP surface) | observed |
 | Language | Python; 3.10+ implied by `X \| None` annotations (`src/processor.py:555`); exact Lambda runtime `unknown` (no IaC, Dockerfile or runtime file checked) | inferred |
-| Size | 149 tracked files at the analyzed commit, 143 `.py` | observed |
+| Size | 152 tracked files at the analyzed commit | observed |
 
-Analysis was made from an exact `git archive` snapshot of `main@e185ff3`. The developer's checkout was on branch `lf-uat` at onboarding time and was not read.
+Onboarding analysis was made from an exact `git archive` snapshot of `main@e185ff3`; the 2026-10-15 refresh read `origin/main` through read-only git (`diff`, `show`), covering the two merged PRs EL-5617 and EL-5602. The developer's checkout was on branch `lf-uat` at onboarding time and was not read.
 
 ## Purpose (as observed in code)
 

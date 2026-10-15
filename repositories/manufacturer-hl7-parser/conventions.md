@@ -1,7 +1,7 @@
 ---
 repository: manufacturer-hl7-parser
-analyzed_commit: e185ff36fe03c649cd7e9750e895c8c43f857c43
-analyzed_at: 2026-10-01T17:37:23Z
+analyzed_commit: 55bae1b09c246af044531301560276ec7f3ab3a2
+analyzed_at: 2026-10-15T08:31:52Z
 generator: aisdlc@1.0.0
 status: observed
 confidence: medium
@@ -20,7 +20,7 @@ evidence: [src/**, hl7/**, tests/**, readme.md, bitbucket-pipelines.yml, git log
 
 ## Patterns to follow when changing code
 
-- Database access only through the `Mongo` singleton (`find`, `find_one`, `upsert`, `raw_upsert`, `run_aggregation`, `remove_document`); queries live in `src/database/query.py`, `src/notes/query.py`, `src/analytics/query.py`.
+- Database access only through the `Mongo` singleton (`find`, `find_one`, `raw_find_one`, `upsert`, `raw_upsert`, `run_aggregation`, `remove_document`); queries live in `src/database/query.py`, `src/notes/query.py`, `src/analytics/query.py`.
 - New manufacturer behavior: add `create_report_*`/`create_alert_*` functions and register them in the mapping in `src/manufacturer/__init__.py` (keyed by canonical `sending_facility` name).
 - New delay behavior: add a `DelayRule` in `src/delay_message_processing.py`.
 - Custom exceptions in `src/utils/customExceptions.py`; `lambda_handler` decides notify/swallow/re-raise.
