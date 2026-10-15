@@ -64,11 +64,11 @@
       "to": "manufacturer-crawler",
       "kind": "event",
       "direction": "from -> to",
-      "description": "Bot events on the bot queue (MANUFACTURER_BOT_SQS_URL) for late patients, queued during the run and sent once after the patient loop (observed at dea0eff, EL-5444): a single patient sends BOT_EVENT_TRIGGER with value (patient id) plus a source field (\"PATIENT SCHEDULE MONITORING\"); two or more patients of one manufacturer and account send the new BOT_EVENTS_TRIGGER with manufacturer, account and up to 70 patient_ids, FIFO group id manufacturer:account. In-office-only patients and pairs without an active manufacturer_accounts record are skipped. Whether the consumer accepts the batch type is unknown.",
+      "description": "Bot events on the bot queue (MANUFACTURER_BOT_SQS_URL) for late patients, queued during the run and sent once after the patient loop (observed at dea0eff, EL-5444): a single patient sends BOT_EVENT_TRIGGER with value (patient id) plus a source field (\"PATIENT SCHEDULE MONITORING\"); two or more patients of one manufacturer and account send the new BOT_EVENTS_TRIGGER with manufacturer, account and up to 70 patient_ids, FIFO group id manufacturer:account. In-office-only patients and pairs without an active manufacturer_accounts record are skipped. The receiver in manufacturer-crawler accepts both payload shapes (observed at d6aa388: extra fields allowed, no cap on patient_ids, manufacturer must be one of Medtronic, Boston Scientific, Biotronik, Abbott, account must match an active manufacturer_accounts record; invalid payloads are dropped with a Slack alert).",
       "evidence": ["src/database/schedule.py:flush_bot_events", "src/utils/constants.py:BOT_EVENT_TYPE,BOT_EVENTS_TYPE,BOT_EVENT_MAX_PATIENT_IDS", "src/utils/aws.py", "developer answer 2026-10-05 (bot consumer)"],
       "status": "human-confirmed",
-      "target_registered": false,
-      "target_identity": "name taken from developer's selection; repository name unconfirmed"
+      "target_registered": true,
+      "target_identity": "manufacturer-crawler registered 2026-10-15; the receiver code (main.py, eventHandler/event_schema.py at d6aa388) handles these event types (observed); that it is the bot consumer on the queue named in the sender is evidenced by event names and the README only, queue identity unknown"
     },
     {
       "from": "patient-billing-schedule",
@@ -282,8 +282,53 @@
       "description": "BOT_EVENT_TRIGGER messages on the bot queue update next send in the manufacturer portals (production only; since EL-5444 only for patients that are not in_office_only with an active manufacturer_accounts record). patient-billing-schedule may send to a bot queue with an additional BOT_EVENTS_TRIGGER batch type and a source field; whether it is the same queue is unknown. A synchronous Lambda call for GET_DISCONNECTED_MONITORS is marked DEPRECATED in code but still used; it is excluded from product documentation at the developer's request.",
       "evidence": ["services/sqs.js", "services/lambda.js:16", "services/updateNextSendInManufacturer.js", "services/v2/patient.v2.service.js:696-705,1204", "developer answer 2026-10-02 (downstream round 1)"],
       "status": "human-confirmed",
-      "target_registered": false,
-      "target_identity": "name taken from developer's selection; repository name unconfirmed"
+      "target_registered": true,
+      "target_identity": "manufacturer-crawler registered 2026-10-15; the receiver code (main.py, eventHandler/event_schema.py at d6aa388) handles these event types (observed); that it is the bot consumer on the queue named in the sender is evidenced by event names and the README only, queue identity unknown"
+    },
+    {
+      "from": "manufacturer-crawler",
+      "to": "rest-api-evoke",
+      "kind": "database",
+      "direction": "shared data",
+      "description": "Shared MongoDB. The crawler reads manufacturer_accounts (credentials, isActive, schedule) and sets isActive=false, schedule=false and haltInfo on a portal login error; rest-api-evoke owns manufacturer_accounts. The crawler owns manufacturer_crawler_report_status, manufacturer_crawler_account_status, biotronik_exported_reports and noshow_disconnected_logs, and reads patients (written by rest-api-evoke and patient-billing-schedule).",
+      "evidence": [
+        "utils/accounts.py",
+        "database/getPatient.py",
+        "database/export.py",
+        "eventHandler/disconnected_monitors.py",
+        "developer answer 2026-10-15 (data ownership)"
+      ],
+      "status": "human-confirmed",
+      "target_registered": true,
+      "note": "Readers of noshow_disconnected_logs and the S3 no-show prefix are unknown (rest-api-evoke is a candidate)."
+    },
+    {
+      "from": "manufacturer-crawler",
+      "to": "manufacturer-hl7-parser",
+      "kind": "database",
+      "direction": "shared data",
+      "description": "Shared MongoDB: manufacturer-hl7-parser creates reports; the crawler reads them and writes transmission_alert_information on them (Medtronic, Abbott and Boston Scientific flows).",
+      "evidence": [
+        "manufacturer/Medtronic_Carelink/trackAlert.py",
+        "database/updateDocument.py",
+        "developer answer 2026-10-15 (data ownership)"
+      ],
+      "status": "human-confirmed",
+      "target_registered": true
+    },
+    {
+      "from": "manufacturer-crawler",
+      "to": "patient-billing-schedule",
+      "kind": "database",
+      "direction": "shared data",
+      "description": "manufacturer_crawler_report_status is written by the crawler (one replaced row per patient_id) and by patient-billing-schedule (Skipped and Fail rows for bot events it did not send); the crawler reads patients.next_send as a BSON datetime that patient-billing-schedule maintains.",
+      "evidence": [
+        "database/export.py",
+        "database/getPatient.py",
+        "src/database/schedule.py (patient-billing-schedule)"
+      ],
+      "status": "observed",
+      "target_registered": true
     },
     {
       "from": "rest-api-evoke",

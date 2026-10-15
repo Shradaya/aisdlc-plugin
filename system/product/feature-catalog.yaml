@@ -14,10 +14,10 @@ features:
     name: Device Transmission Report Ingestion
     status: active
     introduced_by: baseline
-    capabilities: [device-transmission-report-ingestion]
+    capabilities: [device-transmission-report-ingestion, transmission-alert-capture-and-biotronik-export]
     product_document: capabilities/device-transmission-report-ingestion.md
     user_workflows: [user-workflows/process-device-transmission.md, user-workflows/manual-and-in-office-transmission-upload.md]
-    repositories: [manufacturer-hl7-parser, rest-api-evoke]
+    repositories: [manufacturer-hl7-parser, rest-api-evoke, manufacturer-crawler]
   - id: automated-report-notes-and-alerts
     name: Automated Report Notes and Alerts
     status: active
@@ -138,3 +138,19 @@ features:
     product_document: capabilities/patient-communication.md
     user_workflows: [user-workflows/follow-up-no-show-patients.md]
     repositories: [evoke-portal-front-end, rest-api-evoke]
+  - id: manufacturer-portal-next-send-updates
+    name: Manufacturer Portal Next Send Updates
+    status: active
+    introduced_by: baseline
+    capabilities: [manufacturer-portal-next-send-updates]
+    product_document: capabilities/manufacturer-portal-next-send-updates.md
+    user_workflows: [user-workflows/keep-next-send-in-step-with-manufacturer-portal.md]
+    repositories: [manufacturer-crawler, patient-billing-schedule, rest-api-evoke]
+  - id: manufacturer-portal-account-health
+    name: Manufacturer Portal Account Health
+    status: active
+    introduced_by: baseline
+    capabilities: [manufacturer-portal-account-health]
+    product_document: capabilities/manufacturer-portal-account-health.md
+    user_workflows: []
+    repositories: [manufacturer-crawler, rest-api-evoke]

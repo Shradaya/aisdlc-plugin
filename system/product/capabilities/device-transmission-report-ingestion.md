@@ -47,12 +47,30 @@ evoke-portal-front-end calls the upload routes (`/upload`, see [Administration a
 Customer visibility (supersedes the inferred "internal" statement below): customer-visible, human-confirmed 2026-10-02.
 Workflows: [manual and in-office upload](../user-workflows/manual-and-in-office-transmission-upload.md). Rules: [transmission intake rules](../business-rules/transmission-intake-rules.md).
 
+## Contribution of manufacturer-crawler: Transmission Alert Capture and Biotronik Export
+
+Provenance: manufacturer-crawler @ d6aa388a03c12e777846a704818ba5903a021a4f, analyzed 2026-10-15T08:55:00Z, aisdlc@1.0.0; status observed; confidence medium (evidence: `manufacturer/Medtronic_Carelink/trackAlert.py`, `manufacturer/Abbott_Merlin/transmission_crawler.py`, `manufacturer/Biotronik/biotronik.py`, `eventHandler/cron_job.py`, `database/updateDocument.py`; developer answers 2026-10-15).
+
+After a report exists, a back-end bot (`manufacturer-crawler`, no end users) enriches the transmission with data from the manufacturer's portal:
+
+- **Alert capture (Medtronic and Abbott):** the bot reads the portal's alert priority and description for the transmission and stores them on the stored report and on that day's HF report as `transmission_alert_information`. Reports of the last 24 hours are swept; after a transmission is handled it is marked viewed and dismissed in the portal.
+- **Biotronik export:** on the patient's due date the bot exports the patient's report from the Biotronik portal to the EMR, but only when the portal holds a transmission newer than the last export. Each export is recorded in `biotronik_exported_reports` (owned by the crawler, developer-confirmed). See [Manufacturer portal sync rules](../business-rules/manufacturer-portal-sync-rules.md).
+
+The crawler does not create reports and does not download or parse report files; reports are created by manufacturer-hl7-parser.
+
+Customer visibility: internal (proposed, status: inferred; not confirmed by the developer).
+
+Open questions for this contribution: which screens display `transmission_alert_information` is unknown; Boston Scientific alert capture was not audited in detail; why only Medtronic and Abbott capture alerts is unknown.
+
+Known gap: related technical capability for retrieving disconnected monitors exists; it is deliberately kept out of product documentation (technical knowledge only, see `repositories/manufacturer-crawler/interfaces.md`).
+
 ## Implemented by
 
 | Repository | Role |
 |---|---|
+| manufacturer-crawler | Transmission alert capture (Medtronic, Abbott) and Biotronik export from the manufacturer portals (back-end bot Lambda); see [architecture](../../../repositories/manufacturer-crawler/architecture.md) |
 | rest-api-evoke | Manual upload, in-office file parsing, BodyTrace and Clinii intake (portal back end) |
-| manufacturer-hl7-parser | Sole implementation: Lambda pipeline (`main.py`, `src/processor.py`, `src/manufacturer/*`, `hl7/*`, `pdf/*`) |
+| manufacturer-hl7-parser | Report creation (the HL7 pipeline; sole implementation of that part): Lambda pipeline (`main.py`, `src/processor.py`, `src/manufacturer/*`, `hl7/*`, `pdf/*`) |
 
 Upstream (not onboarded, developer-confirmed): manufacturer adapters on Windows EC2 and a custom file-sync service that copies files to S3. See `system/architecture/system-overview.md`.
 

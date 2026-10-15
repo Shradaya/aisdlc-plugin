@@ -79,3 +79,18 @@ Provenance: client-emr-hl7-parser @ b9615126ee17c4e2583e08ac81faaa9d12c63005, 20
 | IDCO ORU | Outbound result message carrying discrete device data from the manufacturer's original file; product meaning of "IDCO" not confirmed | Event `IDCO_ORU_CREATION`, job type `IDCO_ORU_R01` | inferred |
 | ACK | Acknowledgement message accepting (AA), rejecting (AR) or reporting an error (AE) for a received HL7 message | Event `ACK_PARSING`; `acks` collection | inferred |
 | Client account alias | A lower-case sending-application or facility name mapped to the client account whose handler is used | `APPLICATION_FACILITY_MAPPER` | observed |
+
+## Terms from manufacturer-crawler
+
+Provenance: manufacturer-crawler @ d6aa388a03c12e777846a704818ba5903a021a4f, 2026-10-15T08:55:00Z, aisdlc@1.0.0. The three definitions below are written from the code and are **inferred**, pending the developer's wording. "Next send" is defined in the sections above.
+
+| Term | Definition (inferred) | Used in code | Status |
+|---|---|---|---|
+| Halted account | A manufacturer portal account that the crawler bot has set inactive (schedule off) after the portal rejected its credentials; it stays halted until reactivated elsewhere | `utils/accounts.py` `setAccountsAsHalted`; `manufacturer_accounts.haltInfo` (halted by "Bot", reason, time) | inferred |
+| Disconnected monitor | A patient's home monitor that a manufacturer portal lists as not communicating; a technical retrieval exists but is outside product documentation | `eventHandler/disconnected_monitors.py` | inferred |
+| No-show | A patient who did not send a transmission when expected; the crawler's disconnected-monitor results are logged under a "no-show" name | `noshow_disconnected_logs`, S3 no-show prefix | inferred |
+
+### Open questions (manufacturer-crawler terms)
+
+- Wording of the three terms above is unconfirmed.
+- The existing "Bot event" entry under patient-billing-schedule says a bot event makes the crawler "fetch data for a late patient". The crawler code shows a bot event makes it set the portal's next-send date (and, for Biotronik, export a report); it does not fetch data into Evoke. That entry was not edited (it belongs to another repository's section) and needs a decision.

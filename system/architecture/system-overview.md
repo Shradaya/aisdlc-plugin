@@ -1,6 +1,6 @@
 # System Overview
 
-Provenance: assembled at onboarding of `manufacturer-hl7-parser` (analyzed commit e185ff36fe03c649cd7e9750e895c8c43f857c43, 2026-10-01, aisdlc@1.0.0) extended on 2026-10-05 with `patient-billing-schedule` (analyzed commit ec1d8894c633996d7fc9e7a9423d21521a981bf6, aisdlc@1.0.0) and on 2026-10-02 with `rest-api-evoke` (analyzed commit 4178ce47396c524dfd22a4dd107927b3b28eb100, 2026-10-01T17:57:10Z, aisdlc@1.0.0). Edges are those in `system/repository-relationships.yaml`; status per edge is shown. Four repositories are onboarded (the parser, the portal back end, the portal front end and patient-billing-schedule); everything else is unregistered. Per-repository detail lives in `repositories/<repo>/architecture.md` and is not repeated here.
+Provenance: assembled at onboarding of `manufacturer-hl7-parser` (analyzed commit e185ff36fe03c649cd7e9750e895c8c43f857c43, 2026-10-01, aisdlc@1.0.0) extended on 2026-10-05 with `patient-billing-schedule` (analyzed commit ec1d8894c633996d7fc9e7a9423d21521a981bf6, aisdlc@1.0.0) and on 2026-10-02 with `rest-api-evoke` (analyzed commit 4178ce47396c524dfd22a4dd107927b3b28eb100, 2026-10-01T17:57:10Z, aisdlc@1.0.0). Edges are those in `system/repository-relationships.yaml`; status per edge is shown. Extended on 2026-10-15 with `manufacturer-crawler` (analyzed commit d6aa388a03c12e777846a704818ba5903a021a4f, aisdlc@1.0.0). Repositories onboarded include the parser, the portal back end, the portal front end, patient-billing-schedule, client-emr-hl7-parser and manufacturer-crawler; everything else is unregistered. Per-repository detail lives in `repositories/<repo>/architecture.md` and is not repeated here.
 
 ## Confirmed picture: ingestion (manufacturer-hl7-parser)
 
@@ -100,6 +100,37 @@ flowchart LR
 
 Per-repository detail: [patient-billing-schedule](../../repositories/patient-billing-schedule/architecture.md).
 
+## Confirmed picture: portal bot (manufacturer-crawler)
+
+Provenance: added 2026-10-15 for `manufacturer-crawler` (analyzed commit d6aa388a03c12e777846a704818ba5903a021a4f, 2026-10-15T08:55:00Z, aisdlc@1.0.0). Back-end portal bot with no end users (developer-confirmed). One container image is deployed to two Lambdas.
+
+```mermaid
+flowchart LR
+  B[patient-billing-schedule] -->|BOT_EVENT_TRIGGER, BOT_EVENTS_TRIGGER| Q[Bot queue<br/>unregistered, wiring unknown]
+  API[rest-api-evoke] -->|BOT_EVENT_TRIGGER| Q
+  Q --> C[manufacturer-crawler<br/>Lambda, headless browser]
+  API -->|synchronous invoke| C
+  EB[EventBridge schedule] --> C2[Second Lambda, same image]
+  C <-->|read/write| DB[(Shared MongoDB)]
+  C2 <-->|read/write| DB
+  C -->|sign in, set next send, export, read alerts| MP[Manufacturer portals<br/>Abbott, Biotronik, Boston Scientific, Medtronic]
+  C2 --> MP
+  C -->|progress, errors, screenshots| SL[Slack, S3]
+```
+
+| Edge | Kind | Status |
+|---|---|---|
+| patient-billing-schedule -> bot queue -> manufacturer-crawler | event | human-confirmed (queue unknown) |
+| rest-api-evoke -> bot queue -> manufacturer-crawler | event | human-confirmed (queue unknown) |
+| rest-api-evoke -> manufacturer-crawler (synchronous invoke) | api | human-confirmed (disconnected monitors, technical knowledge only) |
+| EventBridge schedule -> second Lambda from the same image | event | human-confirmed (rule and cadence unknown) |
+| manufacturer-crawler <-> shared MongoDB | database | human-confirmed (ownership under Data ownership) |
+| manufacturer-crawler -> manufacturer portals | third-party (browser) | observed |
+
+Path of the next-send update: patient-billing-schedule (late patients whose next send was reached) or rest-api-evoke (staff edit of next send) -> bot queue -> manufacturer-crawler reads the patient and the account from MongoDB -> signs in to the manufacturer portal -> reads the portal's next send and sets the one derived from Evoke's record -> records before and after in `manufacturer_crawler_report_status`. The crawler does not write `patients`.
+
+Per-repository detail: [manufacturer-crawler](../../repositories/manufacturer-crawler/architecture.md). Product: [Manufacturer Portal Next Send Updates](../product/capabilities/manufacturer-portal-next-send-updates.md), [Manufacturer Portal Account Health](../product/capabilities/manufacturer-portal-account-health.md).
+
 ## Confirmed picture: client EMR integration (client-emr-hl7-parser)
 
 Provenance: added 2026-10-09 for `client-emr-hl7-parser` (analyzed commit b9615126ee17c4e2583e08ac81faaa9d12c63005, aisdlc@1.0.0). Back-end Lambda with no end users (developer-confirmed).
@@ -135,6 +166,7 @@ Per-repository detail: [client-emr-hl7-parser](../../repositories/client-emr-hl7
 - Shared MongoDB: developer-confirmed that `rest-api-evoke` owns the application and configuration data (accounts, users, hospitals, alert configurations, report templates, HL7 and SFTP jobs, billing and RPM, outreach data). `patients`, `reports`, `report_notes`, `tasks`, `sequencers` and `cardio_one_api_logs` are shared between `rest-api-evoke` and `manufacturer-hl7-parser` with no single owner. The parser writes `patients`, `reports`, `report_notes`, `alert_metadata`, `patient_analytics`, `sequencers`, `devices`, `leads`, `tasks`, `live_call_tasks` (delete only), `cardio_one_api_logs`, `delayed_messages`, `user_activity_logs`; it only reads `accounts`, `manufacturers`, `device_types`, `users`, `device_group`, `report_templates`, `report_note_sections`, `report_note_alert_protocols`. Owners of any other collection: unknown.
 - patient-billing-schedule: human-confirmed owner of the collections `billing_activity_logger` and `manufacturer_crawler_report_status`. In the shared database it updates (never inserts) `patients` and `reports`, inserts and archives `tasks`, upserts `user_activity_logs`, and reads `accounts`, `users`, `devices` and `device_types`; the schema owner of the shared collections is not confirmed (inferred from code).
 - client-emr-hl7-parser: human-confirmed owner of `adts`, `adts_book_keeping` and `acks`. It reads `reports`, `report_cover_pages`, `hl7jobs`, `report_notes`, `accounts`, `users`, `devices`, `manufacturers`, reads and writes `patients`, `patient_diagnoses` and `sequencers`, and inserts `tasks`; the schema owner of those shared collections is unconfirmed. Its S3 prefixes `orus/`, `dfts/`, `ehr_orus/`, `adts/` and `acks/` are written by this repository.
+- manufacturer-crawler (developer-confirmed 2026-10-15): owns `manufacturer_crawler_report_status`, `manufacturer_crawler_account_status`, `biotronik_exported_reports` and `noshow_disconnected_logs`. It shares `manufacturer_accounts` (owned by `rest-api-evoke`; the bot sets accounts inactive) and `reports` (created by `manufacturer-hl7-parser`; the bot adds `transmission_alert_information`), and only reads `patients`. This conflicts with the patient-billing-schedule bullet above, which names patient-billing-schedule as owner of `manufacturer_crawler_report_status`; both repositories write that collection (see Open questions).
 - S3 processed bucket: PDFs written by the pipeline; readers unknown (the API reads report file paths written by the pipeline, status inferred).
 - Report data is created by the pipeline (or by manual upload and intake in the API) and then edited by staff through the API.
 
@@ -142,7 +174,9 @@ Per-repository detail: [client-emr-hl7-parser](../../repositories/client-emr-hl7
 
 | Capability | Path across repositories |
 |---|---|
-| Device Transmission Report Ingestion | adapters -> file-sync -> S3 -> manufacturer-hl7-parser -> MongoDB + processed S3; manual upload, in-office files, BodyTrace and Clinii -> rest-api-evoke -> MongoDB |
+| Device Transmission Report Ingestion | adapters -> file-sync -> S3 -> manufacturer-hl7-parser -> MongoDB + processed S3; manual upload, in-office files, BodyTrace and Clinii -> rest-api-evoke -> MongoDB; EventBridge schedule -> manufacturer-crawler -> manufacturer portal (Medtronic, Abbott alert capture; Biotronik export) -> MongoDB `reports` / `biotronik_exported_reports` |
+| Manufacturer Portal Next Send Updates (internal, proposed) | patient-billing-schedule or rest-api-evoke -> bot queue -> manufacturer-crawler -> manufacturer portal; outcome -> MongoDB `manufacturer_crawler_report_status` |
+| Manufacturer Portal Account Health (internal, proposed) | manufacturer-crawler -> manufacturer portal (login error) -> MongoDB `manufacturer_accounts` (inactive) and `manufacturer_crawler_account_status`; Slack notice |
 | Automated Report Notes and Alerts | manufacturer-hl7-parser (reads note configuration from MongoDB) -> MongoDB; portal -> rest-api-evoke (alert configuration, protocols, dispatch) -> alert-notification worker |
 | Billing Code and Schedule Assignment | manufacturer-hl7-parser -> MongoDB, patient-billing-schedule, Benchmark queue; portal -> rest-api-evoke (billing validation, RPM, invoices) -> Benchmark and CardioOne consumers |
 | Billing Window Scheduling | parser (after a report is stored), rest-api-evoke (mechanism unknown) or an SQS / EventBridge account batch -> patient-billing-schedule -> MongoDB (billable report, billing dates, next send, late date, tasks, inactivation) -> crawler bot queue for late patients |
@@ -159,7 +193,7 @@ Per-repository detail: [client-emr-hl7-parser](../../repositories/client-emr-hl7
 | Dashboard and Notifications | portal -> rest-api-evoke (analytics, notifications) and realtime socket service (presence, notification refresh) |
 | Patient Communication | portal -> Zoom Phone iframe; portal -> rest-api-evoke (communication logs, letters, live calls); dictation via the realtime socket service |
 
-Repository architecture: [client-emr-hl7-parser](../../repositories/client-emr-hl7-parser/architecture.md), [manufacturer-hl7-parser](../../repositories/manufacturer-hl7-parser/architecture.md), [rest-api-evoke](../../repositories/rest-api-evoke/architecture.md), [patient-billing-schedule](../../repositories/patient-billing-schedule/architecture.md).
+Repository architecture: [client-emr-hl7-parser](../../repositories/client-emr-hl7-parser/architecture.md), [manufacturer-hl7-parser](../../repositories/manufacturer-hl7-parser/architecture.md), [rest-api-evoke](../../repositories/rest-api-evoke/architecture.md), [patient-billing-schedule](../../repositories/patient-billing-schedule/architecture.md), [manufacturer-crawler](../../repositories/manufacturer-crawler/architecture.md).
 
 ## Open questions
 
@@ -171,4 +205,5 @@ Repository architecture: [client-emr-hl7-parser](../../repositories/client-emr-h
 - Whether the CardioOne consumer accepts both event spellings used by the two repositories is unknown.
 - Whether the portal still calls the legacy v1 endpoints that remain mounted is unknown.
 - client-emr-hl7-parser: identity and repository of the inbound EMR transport service and of the trigger that turns the hl7job topic into creation events; whether `client-ehr-hl7-export` is the real repository name of the delivery service; schema owners of the shared collections it touches. Note: earlier text in this document names client-ehr-hl7-export as the consumer of the rest-api-evoke SNS job; per the developer (2026-10-09) the topic feeds an unnamed trigger that invokes client-emr-hl7-parser, and client-ehr-hl7-export delivers its S3 output.
+- manufacturer-crawler: queue names, event source mapping and whether the two senders share one bot queue; the EventBridge schedule and cadence; Lambda timeout, memory and concurrency; which collection owner is correct for `manufacturer_crawler_report_status` (crawler per the developer 2026-10-15, patient-billing-schedule per the earlier confirmation; both write it); whether anything updates `patients.next_send` after the portal changes; the glossary "Bot event" definition differs from the crawler's behavior. Disconnected monitors are excluded from product documentation by the developer.
 - patient-billing-schedule: the queue, EventBridge rule and producer for account batches, how rest-api-evoke triggers it, the schema owner of the shared collections it updates, and the repository name of the crawler bot consumer are unknown.

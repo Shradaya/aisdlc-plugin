@@ -79,6 +79,30 @@
         "notes": "No lf-develop pipeline; every push to lf-qa, lf-uat or main zips the source and updates the Lambda with no tests or manual gate (build-release.md)."
       }
     },
+    "manufacturer-crawler": {
+      "path": "${AISDLC_REPOS_ROOT}/manufacturer-crawler",
+      "role": "Python AWS Lambda (container image with Selenium and headless Chrome) that logs into the Abbott, Biotronik, Boston Scientific and Medtronic manufacturer portals to keep a patient's next-send date in step with Evoke (single and batched bot events), capture transmission alert information, export Biotronik reports, retry failed crawls and fetch disconnected monitors",
+      "system_role": "Developer-confirmed (2026-10-15): back-end portal bot with no end users; triggered through the bot queue by patient-billing-schedule and rest-api-evoke (BOT_EVENT_TRIGGER, BOT_EVENTS_TRIGGER), synchronously by rest-api-evoke (GET_DISCONNECTED_MONITORS) and by an EventBridge schedule into a second Lambda built from the same image; owns the crawler status and log collections, shares manufacturer_accounts (owned by rest-api-evoke, halted by the bot) and reports (created by manufacturer-hl7-parser, annotated by the bot), reads patients",
+      "base_branch": "main",
+      "domains": [
+        "transmission-ingestion"
+      ],
+      "depends_on": [],
+      "provides": [
+        "manufacturer-portal-next-send-updates",
+        "disconnected-monitor-retrieval",
+        "transmission-alert-capture-and-biotronik-export",
+        "manufacturer-portal-account-health"
+      ],
+      "deployment": {
+        "type": "aws-lambda-container-image",
+        "pipeline": "bitbucket-pipelines.yml",
+        "environments": {
+          "main": "Production (one image deployed to two Lambda functions: MANUFACTURE_BOT_LAMBDA and EVENTBRIDGE_BOT_LAMBDA, variable names only)"
+        },
+        "notes": "Only main has a pipeline; every push builds the image as :latest and updates both functions with no tests or manual gate. Other environments unknown (build-release.md)."
+      }
+    },
     "client-emr-hl7-parser": {
       "path": "${AISDLC_REPOS_ROOT}/client-emr-hl7-parser",
       "role": "Python AWS Lambda (EMR integration) that builds outbound HL7 messages (ORU_R01, DFT_P03, IDCO ORU) from Evoke reports for client EMR accounts and parses inbound ADT, ORM, ORU and ACK messages from them, creating or updating patients, onboarding tasks, ADT records and acknowledgements in the shared Evoke MongoDB",
