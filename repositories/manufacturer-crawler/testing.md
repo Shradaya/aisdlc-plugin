@@ -68,7 +68,7 @@ None in the repo: no fixtures, sample HTML pages, recorded responses, seed data 
 
 ## Fixtures and Mocks
 
-None. No test double exists for: Selenium driver (`create_chrome_driver` in `main.py` builds a real `webdriver.Chrome`), MongoDB (`setConnection`), Secrets Manager (`utils/secretString.get_secret`, called at import), SQS/Slack (`utils/slack.py`), S3 (`utils/exportToS3.py`), the clock (`utils/dates.py`, `get_utc_now`). Import-time side effects (`SECRET = get_secret()` in `utils/config.py`, temp directories at `main.py` import) mean any test module importing `main` or `utils` must patch `boto3`/env before import.
+None. No test double exists for: Selenium driver (`create_chrome_driver` in `main.py` builds a real `webdriver.Chrome`), MongoDB (`setConnection`), Secrets Manager (`utils/secretString.get_secret`, called at import), SQS/Slack (`utils/slack.py`), S3 (`utils/exportToS3.py`), the clock (`utils/dates.py`, `get_utc_now`). Import-time side effects (`the module-level SECRET set from get_secret()` in `utils/config.py`, temp directories at `main.py` import) mean any test module importing `main` or `utils` must patch `boto3`/env before import.
 
 ## Environment Requirements
 

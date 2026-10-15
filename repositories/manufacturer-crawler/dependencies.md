@@ -76,7 +76,7 @@ Indirect (pins only, not imported): annotated-types 0.8.0, attrs 26.1.0, certifi
 
 Environment variable names (code only): `SM_NAME`, `SM_REGION`, `PROCESSED_BUCKET`, `S3_NOSHOW_KEY_PREFIX`, `SLACK_URL` (override of the secret's value), `LOCAL_EXECUTION`, `CHROME_BINARY_LOCATION_PATH`, `SELENIUM_SERVICE_EXECUTABLE_PATH`, `LOG_LEVEL`, `AWS_BATCH_JOB_ID` (used only in a Slack message). Pipeline variables: `AWS_REGION`, `AWS_ROLE_ARN`, `MANUFACTURE_BOT_ECR_REGISTRY`, `MANUFACTURE_BOT_IMAGE`, `MANUFACTURE_BOT_LAMBDA`, `EVENTBRIDGE_BOT_LAMBDA`. No values recorded.
 
-Credential handling (names only): manufacturer portal usernames and passwords live in the `manufacturer_accounts` collection; the password is a JWT (HS256) wrapping an AES-CBC ciphertext, decrypted in process with `BOT_SECRET_KEY_PROD` (database/db_secret.py). The secret is fetched at import time (`SECRET = get_secret()`); on failure the secret stays empty and `process_event` returns an error ack (main.py:186).
+Credential handling (names only): manufacturer portal usernames and passwords live in the `manufacturer_accounts` collection; the password is a JWT (HS256) wrapping an AES-CBC ciphertext, decrypted in process with `BOT_SECRET_KEY_PROD` (database/db_secret.py). The secret is fetched at import time (`the module-level SECRET set from get_secret()`); on failure the secret stays empty and `process_event` returns an error ack (main.py:186).
 
 ## Internal repository dependencies (shared MongoDB, no code or package link)
 
