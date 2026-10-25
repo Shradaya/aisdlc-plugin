@@ -1,0 +1,36 @@
+# Testing policy (spec §14, §26, §35). JSON-compatible YAML; '#' comments only on their own lines.
+{
+  "layers": ["unit", "integration", "contract", "API", "component", "end-to-end", "data-quality", "migration", "performance", "security", "smoke"],
+  "layer_record_fields": ["layer", "framework", "command", "scope", "prerequisites", "ci_stage", "required_for_merge", "typical_runtime", "test_data_strategy", "known_failures"],
+  "unknown_value_rule": "Record `unknown` together with evidence of what was checked.",
+  "derive_test_matrix_from": ["jira_acceptance_criteria", "feature_specification", "repository_testing_profiles", "changed_interfaces", "database_data_changes", "known_regression_surfaces"],
+  "matrix_artifact": "tasks/{ticket}/validation.md",
+  "validation_completion": {
+    "all_mandatory_layers_pass": true,
+    "all_required_static_checks_pass": true,
+    "all_required_migration_checks_pass": true,
+    "every_acceptance_criterion_has_evidence": true,
+    "known_failures": "resolved or covered by an approved waiver recorded in validation.md"
+  },
+  "regression": {
+    "bug_requires_regression_test": true,
+    "waiver_when_technically_impossible": "explicit waiver recorded in validation.md"
+  },
+  "black_box": {
+    "test_author": "test-writer",
+    "test_author_inputs": ["approved specification (bug: ticket plus black-box expected/actual behavior)", "repository testing profile", "repository interface description", "existing tests for conventions"],
+    "test_author_must_not_read": ["implementation code", "diffs", "implementation plan", "implementer explanations"],
+    "implementer_may_edit_tests": false,
+    "failure_feedback_to_implementer": "failing test output only"
+  },
+  "ui": {
+    "applies_to": "repositories with \"ui\": true in config/repositories.yaml",
+    "browser_framework": "Playwright",
+    "layer": "end-to-end",
+    "required_when": "the specification has Design references, or acceptance criteria describe user-visible behavior",
+    "target": "local dev server started by the Playwright webServer setting, with backend calls mocked; a deployed non-production environment only when the developer names it",
+    "evidence": "per screen and state screenshots under tasks/{ticket}/validation-evidence/ui/, compared with the pinned design by review",
+    "test_data": "synthetic only; no real patient data, credentials or production URLs"
+  },
+  "prohibited": ["disabling tests to pass CI", "deleting failing tests without documented replacement coverage", "running tests against production"]
+}

@@ -1,49 +1,78 @@
-# aisdlc
+# aisdlc plugins
 
-**aisdlc** is a Claude Code plugin that runs an AI-assisted software development lifecycle (AI-SDLC) as a governed, repeatable workflow. It is the control plane for the lifecycle: it holds knowledge *about* your code repositories (not their source) and drives work through explicit stages with enforced gates.
+Two Claude Code plugins for the AI-SDLC lifecycle, published from one marketplace (`aisdlc-marketplace`):
 
-Commands are invoked as `/aisdlc:<skill>` inside Claude Code (for example `/aisdlc:bug`, `/aisdlc:feature`, `/aisdlc:status`).
+- **aisdlc-dev** — the developer side: `/aisdlc-dev:<skill>` commands, subagents, workflows, and hooks that enforce the lifecycle gates (ticket required, approved specification before implementation, commit format, no secrets in audit records), from ticket through specification, implementation, review, commit, PR and release hand-off.
+- **aisdlc-design** — the designer side: `/aisdlc-design:<skill>` commands and hooks for authoring UI/UX prototypes under a design ticket, previewing them in a local web app, and committing them to a design repository for developers to consume.
 
-## What it does
+A designer installs only `aisdlc-design` and never sees the developer commands; a developer installs only `aisdlc-dev`. The two share a core (state engine, workspace/path resolution, config loaders) kept once in `packages/aisdlc-core/` and vendored into each plugin.
 
-The plugin walks a task through a full lifecycle — Understand, Analyze, Specify, Approve, Plan, Implement, Validate, Review, Commit, PR, CI, Merge, Release, Consolidate Knowledge, Clean Up, Complete — with hard rules enforced by hooks (every task needs a ticket, features need an approved spec before implementation, commits must match `<ticket>: <summary>`, `task.yaml` is only ever changed through the state CLI, audit records never contain secrets, and more).
+## Layout
 
-### Layout
+| Path | Purpose |
+|---|---|
+| `.claude-plugin/marketplace.json` | Marketplace manifest listing both plugins |
+| `packages/aisdlc-core/` | Canonical shared core (vendored into each plugin by `scripts/sync-core.js`) |
+| `scripts/sync-core.js` | Vendor the shared core into each plugin; `--check` for CI |
+| `plugins/aisdlc-dev/` | Developer plugin: `skills/`, `agents/`, `hooks/`, `workflows/`, `scripts/`, `config/`, `templates/` |
+| `plugins/aisdlc-design/` | Designer plugin: `skills/`, `agents/`, `hooks/`, `workflows/`, `scripts/`, `config/`, `templates/` (workspace + `preview/` app) |
 
-- The plugin itself is **not** stored here. It is installed from `~/.claude/plugin`, the `aisdlc-plugin` branch of this repository checked out as a worktree (marketplace `aisdlc-marketplace`; install steps are in its README):
-  - `skills/<name>/SKILL.md` — the procedures behind each `/aisdlc:<skill>` command.
-  - `agents/` — specialized sub-agents (reviewers, analysts, planners).
-  - `workflows/` — lifecycle references per task type (bug, feature, refactor, ...).
-  - `hooks/` — pre/post tool and session hooks that enforce the gates (they do nothing outside an aisdlc workspace).
-  - `scripts/` — state, graph and git-hosting CLIs, shared libraries and gate tests.
-- `config/` — workspace config: the repository registry (`repositories.yaml`), `integrations.yaml` and `workspace.yaml`. Task types, policies, testing policy and schemas ship in the plugin's `config/`; a same-named file here overrides the plugin default.
-- `repositories/<repo>/` — generated knowledge about each registered repository.
-- `system/` — architecture, decisions, and durable product knowledge.
-- `web/` — a read-only documentation site (usage guide + repository browser).
+Each plugin carries only the JS it needs; the vendored core under `plugins/<plugin>/scripts/{lib,state}/` is a copy of `packages/aisdlc-core/` (a hosted-marketplace install copies only the plugin's own subtree, so the core cannot be referenced across directories).
 
-See `CLAUDE.md` for the invariants and `aisdlc.markdown` for the full specification.
+## Requirements
 
-## Setup
+- Claude Code, and Node.js (hooks and CLIs run with `node`). The design preview app needs Node 20+.
+- Developer: an aisdlc **dev** workspace — a folder with `config/repositories.yaml`, `tasks/`, `repositories/`, `system/`. Credentials as environment variables only (never in files): `JIRA_EMAIL`, `JIRA_API_TOKEN`, `BITBUCKET_EMAIL`, `BITBUCKET_API_TOKEN`.
+- Designer: an aisdlc **design** workspace — a folder with `config/repositories.yaml`, `designs/`, `design-system/`, `tasks/`, `preview/`. Optionally a Claude Design design system identifier in `claude.env` (`AISDLC_DESIGN_SYSTEM`, identifier only).
 
-1. Copy the example config files and fill in your own values (paths only, never secrets):
-   - `claude.env.example` → `claude.env` (set `AISDLC_REPOS_ROOT` to the folder holding your clones)
-   - `.mcp.json.example` → `.mcp.json` (Jira/Bitbucket MCP server; credentials come from environment variables)
-2. Open the workspace in Claude Code with the plugin (install once with `/plugin marketplace add ~/.claude/plugin` then `/plugin install aisdlc@aisdlc-marketplace`; after editing the plugin, update it with `/plugin marketplace update aisdlc-marketplace`), start Claude Code from this folder, then run `/aisdlc:status` to check configuration and `/aisdlc:add-repo` to register a repository.
+## Install
 
-## Running the web app
+Add the marketplace once, then install the plugin for your role (choose user scope when asked):
 
-The `web/` folder is a read-only [VitePress](https://vitepress.dev) site: the usage guide plus a browser for the repository and system knowledge generated by the plugin. It requires **Node 20+**.
-
-```bash
-cd web
-npm install
-
-npm run dev       # regenerate docs, then start the dev server (http://localhost:5173)
-npm run build     # regenerate docs, then build the static site into .vitepress/dist
-npm run preview   # serve the built site
-npm run sync      # only regenerate the generated docs (repos, system, status) and nav
+```
+/plugin marketplace add ~/.claude/plugin
+/plugin install aisdlc-dev@aisdlc-marketplace       # developers
+/plugin install aisdlc-design@aisdlc-marketplace    # designers
 ```
 
-`npm run dev` and `npm run build` run the sync step automatically. While `dev` is running, re-run `npm run sync` to pick up newly registered repositories or knowledge changes — the dev server hot-reloads. With zero registered repositories the site still builds and explains how to add one.
+Restart Claude Code in your workspace so the hooks load.
 
-For details on what the sync reads, the build-time secret scan, and freshness handling, see `web/README.md`.
+- Developer: start Claude Code in the dev workspace. `/aisdlc-dev:init` scaffolds one if needed; `/aisdlc-dev:status` lists repositories and active tasks.
+- Designer: start Claude Code in the design workspace. `/aisdlc-design:init` scaffolds one (including the `preview/` app).
+
+Do not also start Claude Code with `--plugin-dir` for this folder; the plugin would load twice.
+
+## The design → development handoff
+
+1. Designer: `/aisdlc-design:design <DESIGN-TICKET>` authors a prototype under `designs/<DESIGN-TICKET>/` (HTML/CSS, or Claude Design then export), previews it by ticket number (`cd preview && npm install && npm run dev`), approves it, and `/aisdlc-design:commit <DESIGN-TICKET>` commits and pushes it to the design repository.
+2. Developer: `/aisdlc-dev:add-repo <name> <path> --kind design` registers that design repository (read-only source).
+3. Developer: during `/aisdlc-dev:feature <TICKET>` on a UI repository, the `design-link` step reads `designs/<DESIGN-TICKET>/` from the design repo, records a versioned hashed snapshot under `system/designs/<DESIGN-TICKET>/`, and pins it in the feature specification. Approving the specification covers the pinned design version.
+
+## Update
+
+After pulling or editing plugin files, refresh Claude Code's installed copies and restart:
+
+```
+/plugin marketplace update aisdlc-marketplace
+```
+
+If you edited `packages/aisdlc-core/`, run `node scripts/sync-core.js` first to re-vendor the core into both plugins (CI should run `node scripts/sync-core.js --check`).
+
+## Checks
+
+```bash
+node plugins/aisdlc-dev/scripts/validation/test-gates.js
+node plugins/aisdlc-dev/scripts/validation/test-repo-paths.js
+node plugins/aisdlc-dev/scripts/validation/cred-check.js      # run from a dev workspace
+node plugins/aisdlc-design/scripts/validation/test-gates-design.js
+node scripts/sync-core.js --check
+claude plugin validate .
+```
+
+## Uninstall
+
+```
+/plugin uninstall aisdlc-dev@aisdlc-marketplace
+/plugin uninstall aisdlc-design@aisdlc-marketplace
+/plugin marketplace remove aisdlc-marketplace
+```

@@ -1,0 +1,17 @@
+{
+  "name": "aisdlc-marketplace",
+  "owner": { "name": "Evoke Medical Care" },
+  "description": "AI-SDLC lifecycle plugins: aisdlc-dev for developers and aisdlc-design for UI/UX designers.",
+  "plugins": [
+    {
+      "name": "aisdlc-dev",
+      "source": "./plugins/aisdlc-dev",
+      "description": "AI-SDLC engineering lifecycle and governance plugin (developer side)."
+    },
+    {
+      "name": "aisdlc-design",
+      "source": "./plugins/aisdlc-design",
+      "description": "AI-SDLC design-authoring plugin (designer side)."
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+node_modules/
+.env
+.env.*
+claude.env
+logs/*.jsonl
+tasks/*/.lock
+preview/dist/

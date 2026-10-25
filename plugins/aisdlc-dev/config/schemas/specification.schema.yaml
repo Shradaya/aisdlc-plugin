@@ -1,0 +1,62 @@
+# Logical structure of tasks/<ticket>/specification.md (spec §23). JSON-compatible YAML.
+# The artifact is Markdown; this schema describes the parsed form: one entry per mandatory section, in order.
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aisdlc/specification.schema.yaml",
+  "title": "aisdlc feature specification",
+  "type": "object",
+  "required": ["ticket", "title", "sections"],
+  "properties": {
+    "ticket": { "type": "string", "pattern": "^[A-Z][A-Z0-9]*-\\d+$" },
+    "title": { "type": "string", "minLength": 1 },
+    "sections": {
+      "type": "array",
+      "minItems": 29,
+      "maxItems": 29,
+      "prefixItems": [
+        { "properties": { "number": { "const": 1 }, "heading": { "const": "Executive Summary" } } },
+        { "properties": { "number": { "const": 2 }, "heading": { "const": "Problem Statement" } } },
+        { "properties": { "number": { "const": 3 }, "heading": { "const": "Business Objective" } } },
+        { "properties": { "number": { "const": 4 }, "heading": { "const": "Functional Requirements" } } },
+        { "properties": { "number": { "const": 5 }, "heading": { "const": "Non-Functional Requirements" } } },
+        { "properties": { "number": { "const": 6 }, "heading": { "const": "Scope" } }, "description": "Contains In Scope and Out of Scope subsections." },
+        { "properties": { "number": { "const": 7 }, "heading": { "const": "Assumptions" } } },
+        { "properties": { "number": { "const": 8 }, "heading": { "const": "Open Questions" } } },
+        { "properties": { "number": { "const": 9 }, "heading": { "const": "Current System Behavior" } } },
+        { "properties": { "number": { "const": 10 }, "heading": { "const": "Proposed System Behavior" } } },
+        { "properties": { "number": { "const": 11 }, "heading": { "const": "User / Consumer Flow" } } },
+        { "properties": { "number": { "const": 12 }, "heading": { "const": "Architecture Changes" } } },
+        { "properties": { "number": { "const": 13 }, "heading": { "const": "Repository Impact" } } },
+        { "properties": { "number": { "const": 14 }, "heading": { "const": "API / Interface Changes" } } },
+        { "properties": { "number": { "const": 15 }, "heading": { "const": "Database / Data Changes" } } },
+        { "properties": { "number": { "const": 16 }, "heading": { "const": "Event / Messaging Changes" } } },
+        { "properties": { "number": { "const": 17 }, "heading": { "const": "Security Considerations" } } },
+        { "properties": { "number": { "const": 18 }, "heading": { "const": "Error Handling" } } },
+        { "properties": { "number": { "const": 19 }, "heading": { "const": "Backward Compatibility" } } },
+        { "properties": { "number": { "const": 20 }, "heading": { "const": "Performance Considerations" } } },
+        { "properties": { "number": { "const": 21 }, "heading": { "const": "Observability" } } },
+        { "properties": { "number": { "const": 22 }, "heading": { "const": "Testing Requirements" } } },
+        { "properties": { "number": { "const": 23 }, "heading": { "const": "Deployment Considerations" } } },
+        { "properties": { "number": { "const": 24 }, "heading": { "const": "Rollback / Recovery Strategy" } } },
+        { "properties": { "number": { "const": 25 }, "heading": { "const": "Acceptance Criteria" } } },
+        { "properties": { "number": { "const": 26 }, "heading": { "const": "Risks" } } },
+        { "properties": { "number": { "const": 27 }, "heading": { "const": "Dependencies" } } },
+        { "properties": { "number": { "const": 28 }, "heading": { "const": "Alternatives Considered" } } },
+        { "properties": { "number": { "const": 29 }, "heading": { "const": "Decisions Required" } } }
+      ],
+      "items": {
+        "type": "object",
+        "required": ["number", "heading", "applicable"],
+        "properties": {
+          "number": { "type": "integer" },
+          "heading": { "type": "string" },
+          "applicable": { "type": "boolean", "description": "false requires not_applicable_reason" },
+          "not_applicable_reason": { "type": "string", "description": "Section must state 'Not applicable' and why." },
+          "content": { "type": "string" }
+        },
+        "if": { "properties": { "applicable": { "const": false } } },
+        "then": { "required": ["not_applicable_reason"] }
+      }
+    }
+  }
+}

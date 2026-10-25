@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>aisdlc design preview</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <strong class="brand">aisdlc design preview</strong>
+      <label>Ticket
+        <select id="ticket" aria-label="Design ticket"></select>
+      </label>
+      <label id="screen-wrap" hidden>Screen
+        <select id="screen" aria-label="Screen"></select>
+      </label>
+      <button id="refresh" type="button">Refresh</button>
+      <span id="status" class="status" role="status"></span>
+    </header>
+    <main class="stage">
+      <iframe
+        id="frame"
+        title="Prototype preview"
+        sandbox="allow-same-origin allow-forms allow-scripts allow-popups"
+      ></iframe>
+      <p id="empty" class="empty" hidden>
+        No prototypes yet. Author one with <code>/aisdlc-design:design &lt;DESIGN-TICKET&gt;</code>, then Refresh.
+      </p>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

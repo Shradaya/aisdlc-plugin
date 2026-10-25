@@ -1,0 +1,6 @@
+{
+  "name": "aisdlc-design",
+  "version": "1.0.0",
+  "description": "AI-SDLC design-authoring plugin (designer side): author UI/UX prototypes under a design ticket, preview them, and commit them to a design repository for developers to consume.",
+  "author": { "name": "Evoke Medical Care" }
+}

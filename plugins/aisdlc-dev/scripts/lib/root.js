@@ -1,0 +1,52 @@
+// Workspace root resolution, shared by hooks and scripts across both plugins (aisdlc-dev, aisdlc-design).
+//
+// This file is the canonical copy under packages/aisdlc-core/. Each plugin vendors its own copy inside its
+// own subtree (plugins/<plugin>/scripts/lib/root.js) because a plugin installed from a hosted marketplace is
+// copied as its own self-contained subtree: a sibling packages/ directory is NOT present at ${CLAUDE_PLUGIN_ROOT}
+// on the user's machine. Keep the vendored copies in sync via scripts/sync-core.js. Do not add plugin-specific
+// logic here.
+//
+// The plugin is installed outside the workspace (e.g. the plugin cache), so the aisdlc workspace (the folder with
+// config/repositories.yaml, tasks/, logs/, and for the design plugin designs/) is found separately:
+//   1. AISDLC_ROOT (explicit; do not set it globally, it would activate the hooks in every project)
+//   2. CLAUDE_PROJECT_DIR, then the current directory, or the nearest parent of either, that is an aisdlc workspace
+// Returns null outside a workspace. Hooks must then do nothing; CLIs must say so and stop.
+const fs = require("fs");
+const path = require("path");
+
+const isWorkspace = (dir) => Boolean(dir) && fs.existsSync(path.join(dir, "config", "repositories.yaml"));
+
+function resolveRoot() {
+  if (process.env.AISDLC_ROOT) return path.resolve(process.env.AISDLC_ROOT.trim());
+  for (const start of [process.env.CLAUDE_PROJECT_DIR, process.cwd()]) {
+    // the folder itself, then its parents, so a subfolder of the workspace (web/, preview/, tasks/<ticket>/) still resolves it
+    for (let dir = start && path.resolve(start); dir; ) {
+      if (isWorkspace(dir)) return dir;
+      const parent = path.dirname(dir);
+      dir = parent === dir ? null : parent;
+    }
+  }
+  return null;
+}
+
+const NOT_WORKSPACE = "Not inside an aisdlc workspace. Run from the workspace folder (it contains config/repositories.yaml) or set AISDLC_ROOT.";
+
+// The installed plugin's root. Claude Code sets CLAUDE_PLUGIN_ROOT when it runs a hook or CLI from a plugin; each
+// plugin's own root is used so that ${pluginRoot}/config resolves to that plugin's shipped defaults. When the env
+// var is unset (e.g. direct test invocation), fall back to the plugin root inferred from this file's location:
+// a vendored copy lives at <plugin>/scripts/lib/root.js, so the plugin root is two levels up.
+function pluginRoot() {
+  if (process.env.CLAUDE_PLUGIN_ROOT) return path.resolve(process.env.CLAUDE_PLUGIN_ROOT);
+  return path.resolve(__dirname, "..", "..");
+}
+
+// Generic config (task-types.yaml, policies.yaml, testing-policy.yaml, schemas/) ships with the plugin in
+// <pluginRoot>/config. A file of the same relative path in the workspace's config/ overrides the plugin default.
+// Workspace-specific config (repositories.yaml, integrations.yaml, workspace.yaml) is read from the workspace only.
+// `root` is the workspace root (from resolveRoot); `pRoot` defaults to the calling plugin's root.
+function configPath(root, rel, pRoot = pluginRoot()) {
+  const workspaceFile = path.join(root, "config", rel);
+  return fs.existsSync(workspaceFile) ? workspaceFile : path.join(pRoot, "config", rel);
+}
+
+module.exports = { resolveRoot, isWorkspace, configPath, NOT_WORKSPACE, pluginRoot, get PLUGIN_ROOT() { return pluginRoot(); } };

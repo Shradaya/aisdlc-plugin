@@ -1,0 +1,5 @@
+# Registered repositories (managed by /aisdlc-dev:add-repo). JSON-compatible YAML.
+# Required per repo: path, role, base_branch (must be "main"), domains, depends_on, provides.
+{
+  "repositories": {}
+}

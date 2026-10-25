@@ -1,0 +1,7 @@
+# Cross-repository relationships (spec §12, add-repo Phase M3). JSON-compatible YAML.
+# status: human-confirmed (developer answered) | observed (seen in code, not contradicted) | inferred | conflicted
+# Endpoints that are not registered repositories carry source_registered / target_registered: false.
+# Consumer ids for unregistered targets are descriptive identifiers taken from the developer's answers; their actual repository names are unconfirmed.
+{
+  "edges": []
+}

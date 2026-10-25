@@ -1,0 +1,39 @@
+# Logical structure of tasks/<ticket>/impact-analysis.md (spec §21.3, §32). JSON-compatible YAML.
+# The artifact is Markdown; this schema describes the parsed form.
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "aisdlc/impact-analysis.schema.yaml",
+  "title": "aisdlc impact analysis",
+  "type": "object",
+  "required": ["ticket", "ticket_summary", "affected_domains", "repositories", "evidence"],
+  "properties": {
+    "ticket": { "type": "string", "pattern": "^[A-Z][A-Z0-9]*-\\d+$" },
+    "ticket_summary": { "type": "string" },
+    "affected_domains": { "type": "array", "items": { "type": "string" } },
+    "repositories": {
+      "type": "array",
+      "description": "Directly affected, indirectly affected, and reviewed-and-excluded repositories.",
+      "items": {
+        "type": "object",
+        "required": ["repository", "classification", "reason", "evidence", "confidence", "required_change"],
+        "properties": {
+          "repository": { "type": "string" },
+          "classification": { "enum": ["direct", "indirect", "excluded"] },
+          "reason": { "type": "string", "minLength": 1 },
+          "evidence": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "confidence": { "enum": ["high", "medium", "low"] },
+          "required_change": { "type": "boolean" }
+        }
+      }
+    },
+    "apis_interfaces": { "type": "string" },
+    "database_data": { "type": "string" },
+    "events_messaging": { "type": "string" },
+    "infrastructure": { "type": "string" },
+    "security": { "type": "string" },
+    "testing": { "type": "string" },
+    "documentation": { "type": "string" },
+    "deployment": { "type": "string" },
+    "evidence": { "type": "array", "items": { "type": "string" } }
+  }
+}
