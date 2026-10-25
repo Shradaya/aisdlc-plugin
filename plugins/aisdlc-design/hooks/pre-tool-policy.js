@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // PreToolUse enforcement hook (design plugin). Mirrors the dev hook's layered gate, scoped to the design lifecycle:
-// prototype files under designs/<DESIGN-TICKET>/ are writable only between DESIGN_APPROVED and COMMITTED, commits
-// must match '<DESIGN-TICKET>: <summary>' on branch <DESIGN-TICKET>, and the usual dangerous-op/secret blocks apply.
+// prototype files under designs/<DESIGN-TICKET>/prototype/ are authored during drafting (DESIGN_BRIEF onward) and,
+// once the design is approved, are hash-pinned so any change after approval requires reapproval (through COMMITTED);
+// commits must match '<DESIGN-TICKET>: <summary>' on branch <DESIGN-TICKET>, and the usual dangerous-op/secret blocks apply.
 // Reads the hook event JSON on stdin; exits 2 with a reason on stderr to block. No-op outside a design workspace.
 const fs = require("fs");
 const path = require("path");
@@ -39,6 +40,7 @@ function designWriteReason(id) {
   const st = lc.states, i = st.indexOf(t.task.status);
   if (i < st.indexOf(lc.source_edit_min_state) || i > st.indexOf(lc.source_edit_max_state))
     return `Design task ${id} is in ${t.task.status}; prototype edits are not allowed in this state (allowed ${lc.source_edit_min_state}..${lc.source_edit_max_state}).`;
+  if (i < st.indexOf("DESIGN_APPROVED")) return null;
   const a = t.approvals && t.approvals.design;
   if (!a || a.status !== "approved") return "Design has not been approved.";
   if (a.artifact_hash !== designHash(id)) return `Design for ${id} changed after approval; reapproval required.`;

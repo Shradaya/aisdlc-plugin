@@ -4,7 +4,7 @@
   "design": {
     "states": ["CREATED","TICKET_READY","DESIGN_BRIEF","DESIGN_DRAFTED","AWAITING_DESIGN_APPROVAL","DESIGN_APPROVED","COMMITTED","COMPLETED"],
     "skip": { "DESIGN_APPROVED": ["COMMITTED"] },
-    "source_edit_min_state": "DESIGN_APPROVED",
+    "source_edit_min_state": "DESIGN_BRIEF",
     "source_edit_max_state": "COMMITTED"
   },
   "failure_states": ["BLOCKED","WAITING_FOR_INPUT","WAITING_FOR_APPROVAL","CONFLICTED","FAILED","CANCELLED"],

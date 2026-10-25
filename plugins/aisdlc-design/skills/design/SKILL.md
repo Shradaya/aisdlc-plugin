@@ -39,7 +39,7 @@ All state changes go through `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-st
    - Approve: `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js approve <DESIGN-TICKET> design` (records approver + hash), then `... transition <DESIGN-TICKET> DESIGN_APPROVED`.
    - Request changes: collect the changes, return to step 4 (new version), then step 6. Any material edit to `tasks/<DESIGN-TICKET>/design.md` changes the hash and requires re-running `approve`.
    - Reject task: `reject <DESIGN-TICKET> design "<reason>"` then `transition <DESIGN-TICKET> CANCELLED --reason "<reason>"`.
-7. Commit: once approved, stop and tell the designer to run `/aisdlc-design:commit <DESIGN-TICKET>` to commit and push the design so developers can consume it. (Prototype files under `designs/<DESIGN-TICKET>/prototype/` become writable only now, enforced by the hook.)
+7. Commit: once approved, stop and tell the designer to run `/aisdlc-design:commit <DESIGN-TICKET>` to commit and push the design so developers can consume it. (Prototype files under `designs/<DESIGN-TICKET>/prototype/` are authored during drafting; after approval the hook hash-pins them, so any change requires reapproval.)
 
 ## Outputs
 `designs/<DESIGN-TICKET>/{design.md,prototype/**,versions/v<N>/snapshot.md,versions/v<N>/snapshot.sha256,children.yaml}`; `tasks/<DESIGN-TICKET>/{brief.md,design.md,task.yaml,execution-log.jsonl}`; task state at DESIGN_APPROVED.

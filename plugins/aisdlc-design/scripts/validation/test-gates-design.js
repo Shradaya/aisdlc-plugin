@@ -26,9 +26,15 @@ fs.mkdirSync(path.dirname(proto), { recursive: true });
 
 t("no task: prototype edit blocked", write(proto), 2);
 state("init", "DESIGN-1", "design");
-for (const s of ["TICKET_READY","DESIGN_BRIEF","DESIGN_DRAFTED","AWAITING_DESIGN_APPROVAL"]) state("transition", "DESIGN-1", s);
+// Before the brief exists, prototype authoring is blocked (CREATED/TICKET_READY are below source_edit_min_state).
+state("transition", "DESIGN-1", "TICKET_READY");
+t("prototype edit before brief blocked", write(proto), 2);
+// From DESIGN_BRIEF through DESIGN_DRAFTED the author drafts the prototype freely (pre-approval drafting).
+for (const s of ["DESIGN_BRIEF"]) state("transition", "DESIGN-1", s);
+t("prototype authoring allowed during brief/draft", write(proto), 0);
+for (const s of ["DESIGN_DRAFTED","AWAITING_DESIGN_APPROVAL"]) state("transition", "DESIGN-1", s);
 fs.writeFileSync(path.join(W, "tasks/DESIGN-1/design.md"), "design v1");
-t("prototype edit before approval blocked", write(proto), 2);
+t("prototype authoring still allowed awaiting approval", write(proto), 0);
 t("design.md (task artifact) write allowed", write(path.join(W, "tasks/DESIGN-1/design.md")), 0);
 t("direct task.yaml edit blocked", write(path.join(W, "tasks/DESIGN-1/task.yaml")), 2);
 t("illegal skip to COMMITTED blocked (no approval)", state("transition", "DESIGN-1", "COMMITTED").status, 2);
