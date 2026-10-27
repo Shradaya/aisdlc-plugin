@@ -13,14 +13,56 @@ const fs = require("fs");
 const { execFileSync } = require("child_process");
 
 const API = "https://api.bitbucket.org/2.0";
-// Exit after stdout is flushed and the HTTP sockets have closed (an immediate process.exit trips a libuv assertion on Windows).
-// Throwing a sentinel stops the caller's flow, so nothing after out() runs.
+
+// Finishing the process reliably on Windows is the whole trick here.
+//   - We must print exactly one JSON line and have it captured by the caller.
+//   - We must exit with the intended code (0/1/2), not hang.
+// Three historical failure modes to avoid:
+//   1. Calling process.exit() while a handle is mid-close (the undici/fetch socket tearing down)
+//      trips "Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)" on Windows. So we must NOT
+//      hard-exit on the network paths; we let the loop end on its own once nothing keeps it alive.
+//   2. Relying on the loop to drain naturally while fetch's keepalive socket stays open: the process
+//      lingers, the caller times out (exit code -1) and buffered stdout is lost. Fixed by closing
+//      undici's global dispatcher (destroyConnections) after the response so no socket lingers.
+//   3. Losing stdout if the process ends before the OS buffer flushed. Fixed by writing with a
+//      drain callback and setting process.exitCode (not process.exit) so the natural exit uses it.
+// Flow: out() records the result and code and throws a Done sentinel to unwind; the single top-level
+// finalizer writes the JSON line, sets process.exitCode, and tears down the HTTP agent so the loop
+// can end cleanly with that code.
 class Done extends Error {}
+let RESULT = null; // { payload, code }
 const out = (o, code = 0) => {
-  console.log(JSON.stringify(o));
-  process.exitCode = code;
+  RESULT = { payload: o, code };
   throw new Done();
 };
+
+// Best-effort teardown of Node's global fetch (undici) dispatcher so no keepalive socket keeps the
+// event loop alive. Guarded: older/newer runtimes may not expose these symbols.
+async function closeHttp() {
+  try {
+    const sym = Object.getOwnPropertySymbols(globalThis).find(
+      (s) => s.description === "undici.globalDispatcher.1"
+    );
+    const dispatcher = sym && globalThis[sym];
+    if (dispatcher && typeof dispatcher.close === "function") {
+      await dispatcher.close();
+    }
+  } catch {
+    // ignore: if we cannot close it, the setTimeout safety net below still bounds the run.
+  }
+}
+
+// Write one line to stdout, flush it, set the exit code, then let the loop end naturally.
+// A hard process.exit() is avoided here because it crashes on Windows when the HTTP socket is
+// mid-close (failure mode 1 above). If something still holds the loop open, the unref'd timer
+// forces an exit as a last resort well after any in-flight teardown has settled.
+async function finish(payload, code) {
+  const line = JSON.stringify(payload) + "\n";
+  process.exitCode = code;
+  await new Promise((resolve) => process.stdout.write(line, resolve));
+  await closeHttp();
+  setTimeout(() => process.exit(code), 3000).unref();
+}
 
 const email = process.env.BITBUCKET_EMAIL;
 const token = process.env.BITBUCKET_API_TOKEN;
@@ -36,7 +78,14 @@ function repoSlug(repoPath) {
 async function call(method, path, body) {
   const r = await fetch(API + path, {
     method,
-    headers: { Authorization: auth, Accept: "application/json", ...(body ? { "Content-Type": "application/json" } : {}) },
+    // keepalive:false so the connection does not hold the event loop open after the response is read.
+    keepalive: false,
+    headers: {
+      Authorization: auth,
+      Accept: "application/json",
+      Connection: "close",
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
     body: body ? JSON.stringify(body) : undefined,
   });
   const json = await r.json().catch(() => ({}));
@@ -83,8 +132,17 @@ async function main() {
     out({ ok: true, id: c.id, inline: Boolean(body.inline), url: c.links?.html?.href });
   } else out({ ok: false, error: `unknown command ${cmd}` }, 1);
 }
-main().catch((e) => {
-  if (e instanceof Done) return;
-  console.log(JSON.stringify({ ok: false, error: String(e.message || e).slice(0, 300) }));
-  process.exitCode = 1;
-});
+
+main()
+  .then(() => {
+    // main always finishes by calling out() (which throws Done); reaching here means no result was
+    // recorded, which is a logic error.
+    if (!RESULT) RESULT = { payload: { ok: false, error: "no result produced" }, code: 1 };
+  })
+  .catch((e) => {
+    if (e instanceof Done) return; // expected unwind; RESULT is already set
+    RESULT = { payload: { ok: false, error: String(e.message || e).slice(0, 300) }, code: 1 };
+  })
+  .finally(() => {
+    finish(RESULT.payload, RESULT.code);
+  });

@@ -69,6 +69,24 @@ node scripts/sync-core.js --check
 claude plugin validate .
 ```
 
+### Bitbucket PR helper
+
+`plugins/aisdlc-dev/scripts/git-hosting/bitbucket-pr.js` is the Bitbucket Cloud PR helper used by the `create-pr`, `pull-request` and `pr-review` skills. It reads `BITBUCKET_EMAIL` / `BITBUCKET_API_TOKEN` from the environment only (values are never printed), writes exactly one JSON line to stdout, and exits `0` on success, `1` on error, `2` when a credential is missing. Commands:
+
+```
+node .../bitbucket-pr.js status  <repo-path> <pr-id>
+node .../bitbucket-pr.js comment <repo-path> <pr-id> <file|-> <line> <text-file>
+node .../bitbucket-pr.js create  <repo-path> <source> <dest> <title> <description-file> [--draft]
+```
+
+Smoke test (no network, no credentials needed): with both credential variables unset it prints the missing-credentials JSON and exits `2`.
+
+```bash
+node plugins/aisdlc-dev/scripts/git-hosting/bitbucket-pr.js status x 1   # exit 2 when creds unset
+```
+
+Note: the helper tears down Node's global fetch connection before returning so the process exits promptly with the correct code on Windows; it deliberately avoids a hard `process.exit()` on the network paths, which trips a libuv assertion while the HTTP socket is closing.
+
 ## Uninstall
 
 ```
