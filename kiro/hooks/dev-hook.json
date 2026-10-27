@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "aisdlc-dev gate",
+      "trigger": "PreToolUse",
+      "description": "Enforce aisdlc dev lifecycle gates: source edits only after spec approval, commit format/branch, no force-push or secret leakage.",
+      "matcher": "fs_write|str_replace|fs_append|execute_pwsh",
+      "action": {
+        "type": "command",
+        "command": "node \"%AI_SDLC_PLUGIN_HOME%\\kiro\\hooks\\dev-pre-tool-policy.js\""
+      }
+    }
+  ]
+}
