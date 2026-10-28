@@ -39,7 +39,7 @@ The QA hooks act only in a folder whose `config/workspace.yaml` has `"kind": "qa
    - `package.json` (with `@playwright/test` pinned)
    - `playwright.config.ts`
    - `fixtures/{env,qa,pdf}.ts` and `tests/{auth.setup,seed.spec}.ts`
-   - `specs/`, `tasks/`, `logs/`, `CLAUDE.md`
+   - `tasks/`, `logs/`, `CLAUDE.md` (each ticket later adds `tests/<TICKET>/` and `tasks/<TICKET>/spec.md`)
    - `.claude/settings.json`: enables the plugin for this project and denies reading `.env` and `.auth/` (merged into an existing file, never replacing it)
 
    Then, with your consent, it installs Playwright and Chromium (about 150 MB) and generates Playwright's own test agents (`init-agents --loop=claude`). The init script keeps your existing `.mcp.json` entries when it does this.
@@ -70,7 +70,7 @@ The QA hooks act only in a folder whose `config/workspace.yaml` has `"kind": "qa
 | `/aisdlc-qa:test <TICKET> [--env <name>]` | The main flow (checkpoints 1–8 below). Resumes from wherever the ticket is and stops at every QA decision. `--env` picks the environment from `config/environments.yaml`. |
 | `/aisdlc-qa:run <TICKET> [--watch\|--ui\|--headless] [--build <id>] [--only S1,S3] [--video]` | Run the ticket's tests:<br>• `--watch` (default): a visible, slowed-down browser.<br>• `--ui`: Playwright UI mode.<br>• `--headless`: no window.<br>• `--video`: also record video (off by default; the per-step screenshots are the proof).<br>Each run gets a new evidence folder. Use it for the first run, after a test fix, and to re-verify a developer's fix. |
 | `/aisdlc-qa:publish <TICKET>` | After sign-off, attach the report, screenshots and a results comment to Jira |
-| `/aisdlc-qa:commit <TICKET>` | Commit the tests and `specs/<TICKET>.md` on branch `<TICKET>`, ready for the regression suite |
+| `/aisdlc-qa:commit <TICKET>` | Commit `tests/<TICKET>/` and `tasks/<TICKET>/spec.md` on branch `<TICKET>`, ready for the regression suite |
 | `/aisdlc-qa:check "<what to check>" [--env <name>] [--video]` | A quick check without a ticket. It explores the app black-box (never its source), writes `checks/<slug>.spec.ts` and runs it while you watch. The proof stays local in `test-results/<slug>/run-<yyyymmdd-hhmmss>/`. No Jira, no gates, never production. Promote it later with `/aisdlc-qa:test <TICKET>`. |
 | `/aisdlc-qa:status [TICKET]` | Read-only overview, including developer replies on tickets that are waiting for a fix |
 | `/aisdlc-qa:add-env <name> <url>` · `--block-host <host>` or `=<host>` | Add or change a test environment, or block a production host |
@@ -112,9 +112,11 @@ The lifecycle contract is [`workflows/qa.md`](workflows/qa.md).
 
 ## Where things live
 
-- **Tests:** `tests/<feature-area>/<scenario>.spec.ts`. They import `test`, `expect` and `qaStep` from `fixtures/qa.ts` and are tagged `@<TICKET>`, `@<TICKET>-S<n>` and `@<TICKET>-AC<n>`. Run one ticket's tests anywhere with `npx playwright test --grep @<TICKET>`.
-- **Scenarios:** `specs/<TICKET>.md`, the approved scenarios, committed next to the tests.
-- **Task files:** `tasks/<TICKET>/` holds `jira.md`, `scenarios.md`, `results.md` and the evidence. This folder is temporary and not committed; Jira keeps the long-term copy.
+- **Tests:** one folder per ticket, `tests/<TICKET>/s<n>-<scenario>.spec.ts`. They import `test`, `expect` and `qaStep` from `fixtures/qa.ts` and are tagged `@<TICKET>`, `@<TICKET>-S<n>` and `@<TICKET>-AC<n>`. Run one ticket with `npx playwright test tests/<TICKET>`; `npx playwright test` runs the whole regression suite. The hook blocks a file in `tests/<TICKET>/` whose tags name another ticket.
+- **Helpers:** a ticket's own shared locators and actions go in `tests/<TICKET>/helpers.ts`. Helpers that two or more tickets need move to `fixtures/`.
+- **Scenarios:** `tasks/<TICKET>/spec.md`, an exact copy of the approved `scenarios.md`. It's the one file of `tasks/<TICKET>/` that is committed (a `.gitignore` exception), next to the ticket's tests.
+- **Task files:** the rest of `tasks/<TICKET>/` (`jira.md`, `scenarios.md`, `results.md`, the evidence) is temporary and not committed; Jira keeps the long-term copy.
+- **Older workspaces** with `specs/<TICKET>.md` or `tests/<feature-area>/` folders: `node <plugin>/scripts/init/aisdlc-qa-init.js <workspace> --migrate-layout --dry-run` shows the moves to the per-ticket layout. Run it again without `--dry-run`, then commit the move.
 - **Evidence for each run:** `tasks/<TICKET>/evidence/run-<N>/` contains the HTML report, traces and `screenshots/<TICKET>-S<n>/<nn>-<step>.png`. The failing step's screenshot ends in `-FAILED`, and tabs a step opened (a PDF, a popup) are saved as `<nn>-<step>-tab<k>.png`. Video is recorded only with `--video`.
 - **Checks:** `checks/<slug>.spec.ts` (gitignored). Their proof is in `test-results/<slug>/run-<yyyymmdd-hhmmss>/`: `screenshots/`, `trace.zip`, `report/` and `result.json`. Playwright's own output goes to `test-results/.playwright/`, which it empties on every run, so earlier proof survives.
 

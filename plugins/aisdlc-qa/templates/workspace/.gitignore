@@ -17,9 +17,16 @@ blob-report/
 # Ad-hoc checks (/aisdlc-qa:check); commit one only on request (git add -f), or promote it with /aisdlc-qa:test
 checks/
 
+# Console logs of the Playwright MCP browser tool (planner and generator agents)
+.playwright-mcp/
+
 # Runtime task state and evidence (keep the folder, not its contents); Jira holds the long-term evidence
 tasks/*
 !tasks/.gitkeep
+# The approved spec of each ticket is committed next to its tests (tests/<TICKET>/); everything else in tasks/<TICKET>/ stays local
+!tasks/*/
+tasks/*/*
+!tasks/*/spec.md
 
 # Runtime audit logs (keep the folder via .gitkeep)
 logs/*.jsonl

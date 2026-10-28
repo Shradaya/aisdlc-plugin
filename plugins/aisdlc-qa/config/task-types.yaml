@@ -58,7 +58,7 @@
       "AWAITING_DEV_FIX": ["you", "Waiting for the developer to fix the defects reported on {T}. Once the fix is deployed, run /aisdlc-qa:run {T} to re-verify."],
       "AWAITING_RESULTS_SIGNOFF": ["you", "Review tasks/{T}/results.md and the HTML report, then sign off, re-run or reject when Claude asks: /aisdlc-qa:test {T}."],
       "RESULTS_SIGNED_OFF": ["claude", "Attach the evidence to Jira with /aisdlc-qa:publish {T} (or commit the tests with /aisdlc-qa:commit {T} if Jira writes are disabled)."],
-      "EVIDENCE_PUBLISHED": ["claude", "Commit the tests and specs/{T}.md on branch {T}: /aisdlc-qa:commit {T}."],
+      "EVIDENCE_PUBLISHED": ["claude", "Commit tests/{T}/ and tasks/{T}/spec.md on branch {T}: /aisdlc-qa:commit {T}."],
       "COMMITTED": ["you", "Push branch {T} and open a pull request so the tests join the regression suite; then /aisdlc-qa:commit {T} marks the task complete."],
       "COMPLETED": ["none", "Nothing further; the tests for {T} are part of the regression suite."]
     },

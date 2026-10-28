@@ -49,6 +49,9 @@ const mode = loginCheck ? "login-check" : args.includes("--ui") ? "ui" : args.in
 const only = (opt("--only") || "").split(",").map((s) => s.trim()).filter(Boolean);
 if (only.some((s) => !/^S\d+$/.test(s))) done({ ok: false, error: "--only takes scenario IDs like S1,S3" }, 1);
 const grep = only.length ? only.map((s) => `@${ticket}-${s}\\b`).join("|") : `@${ticket}\\b`;
+// Each ticket has its own folder tests/<T>/: pass it so Playwright loads only that ticket's files. The grep still
+// selects the tests (and --only the scenarios); without the folder (old layouts) the grep alone does.
+const folder = fs.existsSync(path.join(ROOT, "tests", ticket)) ? [`tests/${ticket}`] : [];
 
 const policy = readYaml(configPath(ROOT, "qa-policy.yaml"), {}) || {};
 const fileEnv = loadEnv(ROOT);
@@ -61,7 +64,7 @@ else delete childEnv.QA_VIDEO;
 
 if (mode === "ui") {
   // UI mode is interactive: hand it to the QA and return. It has its own timeline and step snapshots.
-  const child = spawn(process.execPath, [cli, "test", "--ui", "--grep", grep], {
+  const child = spawn(process.execPath, [cli, "test", ...folder, "--ui", "--grep", grep], {
     cwd: ROOT, env: childEnv, detached: true, stdio: "ignore", windowsHide: true,
   });
   child.unref();
@@ -96,7 +99,7 @@ if (mode === "watch") delete childEnv.QA_HEADLESS;
 
 // The html/json reporters and their output paths come from playwright.config.ts (driven by QA_EVIDENCE_DIR); passing
 // --reporter here would replace them with defaults. Exit status 1 just means some tests failed.
-const r = spawnSync(process.execPath, [cli, "test", "--grep", grep, "--no-deps"], {
+const r = spawnSync(process.execPath, [cli, "test", ...folder, "--grep", grep, "--no-deps"], {
   cwd: ROOT, env: { ...childEnv, PLAYWRIGHT_HTML_OPEN: "never" }, stdio: ["ignore", "inherit", "inherit"],
 });
 const s = summarize(ROOT, ticket, n);

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Scaffold a QA workspace into a folder. The folder is both the aisdlc QA workspace (config/, tasks/, logs/, CLAUDE.md)
-// and the QA Playwright test repository (package.json, playwright.config.ts, tests/, specs/, fixtures/).
+// and the QA Playwright test repository (package.json, playwright.config.ts, tests/<TICKET>/, fixtures/); each ticket's approved spec is
+// tasks/<TICKET>/spec.md, committed next to its tests.
 // Usage:
 //   node aisdlc-qa-init.js [target-dir] [--only workspace] [--dry-run] [--force]
 //   node aisdlc-qa-init.js [target-dir] --mcp-backup   before `npx playwright init-agents`, which overwrites .mcp.json
@@ -9,6 +10,11 @@
 //        reuse Jira settings from an aisdlc-dev workspace (found next to or above the target when no path is given):
 //        its "atlassian" server from .mcp.json (merged next to the others, never replacing the file) and the Jira site
 //        URL (its jira.base_url, else JIRA_URL in that server entry) when ours is empty. Never reads claude.env or .env.
+//   node aisdlc-qa-init.js [target-dir] --migrate-layout [--dry-run] [--force]
+//        move an existing workspace to one folder per ticket: specs/<T>.md -> tasks/<T>/spec.md, and test files under
+//        tests/<feature-area>/ that name exactly one ticket -> tests/<T>/ (header rewritten to tasks/<T>/spec.md; a
+//        helper moves only with all its importers). Lists what it leaves; never moves auth.setup.ts or seed.spec.ts;
+//        never touches the git index; appends the tasks/*/spec.md .gitignore exception when missing.
 // Templates ship in <plugin>/templates. Existing files are never overwritten unless --force; .gitignore is merged
 // line by line (missing lines appended) and .claude/settings.json additively (permissions and enabled plugins added,
 // nothing removed). Never runs npm; never creates claude.env, .env, .mcp.json or node_modules.
@@ -37,6 +43,107 @@ function writeYaml(f, obj) {
   const lines = fs.readFileSync(f, "utf8").split(/\r?\n/);
   const header = lines.slice(0, Math.max(0, lines.findIndex((l) => l.trim() && !l.trim().startsWith("#"))));
   fs.writeFileSync(f, (header.length ? header.join("\n") + "\n" : "") + JSON.stringify(obj, null, 2) + "\n");
+}
+
+// The .gitignore lines that keep each ticket's approved spec committed while the rest of tasks/<TICKET>/ stays local.
+const SPEC_EXCEPTION = [
+  "# The approved spec of each ticket is committed next to its tests (tests/<TICKET>/); everything else in tasks/<TICKET>/ stays local",
+  "!tasks/*/",
+  "tasks/*/*",
+  "!tasks/*/spec.md",
+];
+
+// Move an existing workspace from the old layout (specs/<T>.md, tests/<feature-area>/...) to one folder per ticket
+// (tasks/<T>/spec.md, tests/<T>/...). Files are moved on disk only; the QA commits the move.
+if (flag("--migrate-layout")) {
+  const TICKET = /^[A-Z][A-Z0-9]*-\d+$/;
+  const rel = (p) => path.relative(target, p).replace(/\\/g, "/");
+  const moves = [], left = [];
+  // specs/<T>.md -> tasks/<T>/spec.md
+  const specs = path.join(target, "specs");
+  if (fs.existsSync(specs)) for (const f of fs.readdirSync(specs)) {
+    const m = f.match(/^([A-Za-z][A-Za-z0-9]*-\d+)\.md$/);
+    if (!m) { if (![".gitkeep", "README.md"].includes(f)) left.push({ path: `specs/${f}`, reason: "not a <TICKET>.md spec" }); continue; }
+    const to = path.join(target, "tasks", m[1].toUpperCase(), "spec.md");
+    if (fs.existsSync(to) && !force) left.push({ path: `specs/${f}`, reason: `${rel(to)} already exists (use --force to overwrite)` });
+    else moves.push({ from: path.join(specs, f), to, content: fs.readFileSync(path.join(specs, f)) });
+  }
+  // tests/<feature-area>/** (and loose files directly under tests/) -> tests/<T>/
+  const tests = path.join(target, "tests");
+  const candidates = [];
+  if (fs.existsSync(tests)) for (const e of fs.readdirSync(tests, { withFileTypes: true })) {
+    const p = path.join(tests, e.name);
+    if (e.isFile()) { if (!["auth.setup.ts", "seed.spec.ts"].includes(e.name)) candidates.push({ file: p, dir: tests }); continue; }
+    if (!e.isDirectory() || TICKET.test(e.name)) continue; // already a ticket folder
+    for (const s of fs.readdirSync(p, { withFileTypes: true })) {
+      if (s.isDirectory()) left.push({ path: rel(path.join(p, s.name)), reason: "nested folder (import paths would change): move by hand" });
+      else candidates.push({ file: path.join(p, s.name), dir: p });
+    }
+  }
+  // Relative imports between files under tests/ (fixtures/ imports keep working: the folder depth does not change).
+  const texts = new Map(candidates.map((c) => [c.file, fs.readFileSync(c.file, "utf8")]));
+  const resolveImport = (from, spec) => {
+    const base = path.resolve(path.dirname(from), spec);
+    return [base, ...[".ts", ".js", ".mts", ".cts"].map((e) => base + e)].find((p) => texts.has(p)) || null;
+  };
+  const importsOf = (file) => [...texts.get(file).matchAll(/(?:from|import)\s*\(?\s*['"](\.{1,2}\/[^'"]+)['"]/g)]
+    .map((m) => resolveImport(file, m[1])).filter(Boolean);
+  // Proposed destination per file: specs by their one ticket; other files (helpers) by the tickets importing them.
+  const dest = new Map(), why = new Map();
+  for (const c of candidates) {
+    if (c.dir === tests) { why.set(c.file, "loose file directly under tests/: move it to tests/<TICKET>/ by hand (its import paths change)"); continue; }
+    if (!/\.spec\.ts$/.test(c.file)) continue;
+    const ids = [...new Set([...texts.get(c.file).matchAll(/@([A-Z][A-Z0-9]*-\d+)(?:-(?:S|AC)\d+)?\b/g)].map((m) => m[1]))];
+    if (ids.length === 1) dest.set(c.file, ids[0]);
+    else why.set(c.file, ids.length ? `names several tickets (${ids.join(", ")})` : "names no ticket");
+  }
+  // A helper moves only when every file importing it moves to the same ticket folder; a file moves only when every
+  // tests/ file it imports moves with it. Repeat until stable, so no import is left pointing at the wrong place.
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (const c of candidates.filter((c) => c.dir !== tests && !/\.spec\.ts$/.test(c.file))) {
+      const importers = candidates.filter((o) => importsOf(o.file).includes(c.file));
+      const owners = [...new Set(importers.map((o) => dest.get(o.file) || "?"))];
+      const t = importers.length && owners.length === 1 && owners[0] !== "?" ? owners[0] : null;
+      if (t && !dest.has(c.file)) { dest.set(c.file, t); why.delete(c.file); changed = true; }
+      if (!t) {
+        if (dest.delete(c.file)) changed = true;
+        why.set(c.file, importers.length ? `imported by tests of ${owners.map((o) => (o === "?" ? "files that stay" : o)).join(", ")}: helpers several tickets need belong in fixtures/` : "not imported by any test here");
+      }
+    }
+    for (const [file, t] of [...dest]) {
+      const stray = importsOf(file).filter((i) => dest.get(i) !== t);
+      if (stray.length) { dest.delete(file); why.set(file, `imports ${stray.map(rel).join(", ")}, which does not move to tests/${t}/`); changed = true; }
+    }
+  }
+  for (const c of candidates) {
+    const t = dest.get(c.file);
+    if (!t) { left.push({ path: rel(c.file), reason: why.get(c.file) || "not moved" }); continue; }
+    const to = path.join(tests, t, path.basename(c.file));
+    if (fs.existsSync(to)) { left.push({ path: rel(c.file), reason: `${rel(to)} already exists` }); continue; }
+    const text = texts.get(c.file).replace(/\/\/\s*spec:\s*specs\/([A-Za-z][A-Za-z0-9]*-\d+)\.md/g, (_, k) => `// spec: tasks/${k.toUpperCase()}/spec.md`);
+    moves.push({ from: c.file, to, content: Buffer.from(text) });
+  }
+  // .gitignore: append the spec exception when missing (never rewrite existing lines).
+  const gi = path.join(target, ".gitignore");
+  const have = fs.existsSync(gi) ? fs.readFileSync(gi, "utf8") : "";
+  const gitignore = have.split(/\r?\n/).includes("!tasks/*/spec.md") ? "already has the tasks/<TICKET>/spec.md exception" : "appended the tasks/<TICKET>/spec.md exception";
+  if (!dryRun) {
+    for (const m of moves) {
+      fs.mkdirSync(path.dirname(m.to), { recursive: true });
+      fs.writeFileSync(m.to, m.content);
+      fs.unlinkSync(m.from);
+    }
+    for (const d of new Set(moves.map((m) => path.dirname(m.from))))
+      if (d !== specs && d !== tests && fs.existsSync(d) && !fs.readdirSync(d).length) fs.rmdirSync(d);
+    if (gitignore.startsWith("appended")) fs.writeFileSync(gi, have.trimEnd() + "\n\n" + SPEC_EXCEPTION.join("\n") + "\n");
+  }
+  console.log(JSON.stringify({
+    ok: true, dry_run: dryRun, workspace: target,
+    moves: moves.map((m) => ({ from: rel(m.from), to: rel(m.to) })), left, gitignore,
+    next: moves.length ? "Review, then commit the move (git add -A tests specs tasks/*/spec.md; git commit on the ticket branch)." : "Nothing to move.",
+  }, null, 2));
+  process.exit(0);
 }
 
 // Reuse Jira settings from an aisdlc-dev workspace.

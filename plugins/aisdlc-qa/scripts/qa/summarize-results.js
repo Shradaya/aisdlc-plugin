@@ -9,10 +9,11 @@ const path = require("path");
 const ANSI = /\x1b\[[0-9;]*m/g;
 const rel = (root, p) => (p ? path.relative(root, p).replace(/\\/g, "/") : null);
 
-// Scenario IDs declared in scenarios.md: headings like "### S3 — Title" or "## S3: Title".
+// Scenario IDs of the ticket: headings like "### S3 — Title" or "## S3: Title" in the approved tasks/<T>/spec.md, else
+// in tasks/<T>/scenarios.md (before the spec copy exists).
 function scenarioIds(root, ticket) {
-  const f = path.join(root, "tasks", ticket, "scenarios.md");
-  if (!fs.existsSync(f)) return [];
+  const f = ["spec.md", "scenarios.md"].map((n) => path.join(root, "tasks", ticket, n)).find((p) => fs.existsSync(p));
+  if (!f) return [];
   return [...fs.readFileSync(f, "utf8").matchAll(/^#{2,4}\s*(S\d+)\b/gm)].map((m) => m[1]);
 }
 

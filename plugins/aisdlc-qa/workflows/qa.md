@@ -18,7 +18,7 @@ Loops (the `skip` map): request changes (AWAITING_SCENARIO_APPROVAL → SCENARIO
 | 2 | Environment ready | TICKET_READY -> ENVIRONMENT_READY | Claude + QA confirms env, build, synthetic data | test, `env-check.js`, `run-tests.js --login-check` | `environment` in task state, `.auth/<env>.json` |
 | 3 | Scenarios drafted | ENVIRONMENT_READY -> SCENARIOS_DRAFTED | Claude | playwright-test-planner (optional exploration), scenario-writer | `tasks/<T>/exploration.md`, `tasks/<T>/scenarios.md` |
 | 4 | **Scenario approval** | -> AWAITING_SCENARIO_APPROVAL -> SCENARIOS_APPROVED | QA | test | `approvals.scenarios` (hash of `scenarios.md`) |
-| 5 | Tests generated | SCENARIOS_APPROVED -> TESTS_GENERATED | Claude | playwright-test-generator, qa-test-reviewer | `specs/<T>.md`, `tests/**` on branch `<T>` |
+| 5 | Tests generated | SCENARIOS_APPROVED -> TESTS_GENERATED | Claude | playwright-test-generator, qa-test-reviewer | `tasks/<T>/spec.md`, `tests/<T>/**` on branch `<T>` |
 | 6 | Tests executed (QA watches) | TESTS_GENERATED -> TESTS_EXECUTED | Claude runs, QA watches | run, `run-tests.js` | `tasks/<T>/evidence/run-<N>/`, `runs.<N>` |
 | 7 | Failure triage | TESTS_EXECUTED | QA decides per failure | test, results-analyst, playwright-test-healer | `tasks/<T>/results.md` |
 | 7a | **Defect reported on Jira** | TESTS_EXECUTED -> AWAITING_DEV_FIX | Claude drafts, QA approves the comment | test, `evidence-pack.js --defect`, `jira-attach.js defect` | `defects.D<k>` (open), Jira comment + screenshots |
@@ -31,7 +31,7 @@ Loops (the `skip` map): request changes (AWAITING_SCENARIO_APPROVAL → SCENARIO
 
 ## Gates
 
-- **Scenario approval** is explicit QA approval (`approve <T> scenarios`), pinned to the sha256 of `tasks/<T>/scenarios.md`. The state engine refuses SCENARIOS_APPROVED, TESTS_GENERATED, TESTS_EXECUTED, RESULTS_SIGNED_OFF and COMMITTED without it, or when `scenarios.md` changed since. The hook blocks writes to `tests/**` and `specs/**` outside SCENARIOS_APPROVED..COMMITTED or with a changed `scenarios.md` (Write/Edit, shell writes, and the Playwright generator's MCP write tool).
+- **Scenario approval** is explicit QA approval (`approve <T> scenarios`), pinned to the sha256 of `tasks/<T>/scenarios.md`. The state engine refuses SCENARIOS_APPROVED, TESTS_GENERATED, TESTS_EXECUTED, RESULTS_SIGNED_OFF and COMMITTED without it, or when `scenarios.md` changed since. The hook blocks writes to `tests/<T>/**` and `tasks/<T>/spec.md` outside SCENARIOS_APPROVED..COMMITTED or with a changed `scenarios.md` (Write/Edit, shell writes, and the Playwright generator's MCP write tool).
 - **Expected results** come from the ticket's acceptance criteria only. Exploration makes steps concrete; a difference between ticket and app is a suspected defect, never a new expectation. A healed test never loosens an assertion or changes an expected value; that is a scenario change and needs reapproval.
 - **Defects** are recorded in task state (`defects.D<k>`: scenario, severity, status open/fixed/waived, Jira comment). The engine refuses AWAITING_RESULTS_SIGNOFF and RESULTS_SIGNED_OFF while any defect is open. Fixed needs a passing re-run confirmed by the QA; waived needs the QA's explicit choice and a reason.
 - **Results sign-off** is explicit QA approval (`approve <T> signoff`), pinned to the sha256 of `tasks/<T>/results.md`. The engine refuses EVIDENCE_PUBLISHED and COMMITTED without it.
@@ -43,6 +43,10 @@ Loops (the `skip` map): request changes (AWAITING_SCENARIO_APPROVAL → SCENARIO
 - **Playwright** runs through `run-tests.js`, `run-check.js` or `pw.js`, which apply the production guard and drop `NO_COLOR` (Windows PowerShell 5.1 turns its warning into an error). Runs are judged by exit code and the JSON report, never by stderr.
 - **Commits** must be `<T>: <summary>` (one line, no body) on branch `<T>`, for a task whose scenarios and results are approved; commit on `main`, force-push and history rewrite are blocked. The first commit of a new QA repository is the only exception.
 - **Ticket drift**: before generating tests and before publishing, the ticket is re-fetched; a material change moves the task to JIRA_CHANGED → SCENARIO_REVIEW_REQUIRED and the scenarios need reapproval.
+
+## Layout
+
+Everything about one ticket lives together. `tests/<T>/` holds its tests (`s<n>-<scenario-slug>.spec.ts`, header `// spec: tasks/<T>/spec.md`) and, if needed, `tests/<T>/helpers.ts`; the folder names the ticket, and the hook blocks a file in it whose tags name another ticket. Helpers two or more tickets need go in `fixtures/`. `tasks/<T>/spec.md` is an exact copy of the approved `scenarios.md`, refreshed at every re-approval, and the only file of `tasks/<T>/` that is committed (a `.gitignore` exception). `npx playwright test tests/<T>` runs one ticket; `npx playwright test` runs the regression suite. Older workspaces (`specs/<T>.md`, `tests/<feature-area>/`) move over with `node ${CLAUDE_PLUGIN_ROOT}/scripts/init/aisdlc-qa-init.js <workspace> --migrate-layout [--dry-run] [--force]`; until then their old files can be read and run, but new writes go only to the per-ticket paths.
 
 ## Evidence
 

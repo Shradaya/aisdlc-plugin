@@ -27,7 +27,7 @@ The QA's description; `config/environments.yaml`; the running app (black-box). N
    - `import { test, expect } from '../fixtures/qa';` (and `openedPdf` from `'../fixtures/pdf'` when a document opens in a new tab).
    - One `test('<description>', async ({ page, qaStep }) => { ... })`, no ticket tags; every step one `await qaStep('<n>. <step>', async () => { ... })` with its web-first `expect`s inside.
    - The same locator, document and safety rules as ticket tests (`${CLAUDE_PLUGIN_ROOT}/skills/test/SKILL.md` step 6): role/label/test-id locators, no fixed waits, synthetic data, no credentials. For a document in a new tab assert the response and the PDF text that identifies it, never `toHaveTitle` on the PDF tab.
-   `checks/` is the only place tests may be written without an approved ticket (the hook allows it; `tests/` and `specs/` stay gated). It is gitignored: commit a check only when the QA asks (`git add -f`).
+   `checks/` is the only place tests may be written without an approved ticket (the hook allows it; `tests/<TICKET>/` and `tasks/<TICKET>/spec.md` stay gated). It is gitignored: commit a check only when the QA asks (`git add -f`).
 4. Run it so the QA can watch: `node ${CLAUDE_PLUGIN_ROOT}/scripts/qa/run-check.js checks/<slug>.spec.ts [--env <name>] [--headless] [--video] [--build <id>]` (10-minute timeout). It signs in first (outside the proof), then runs the check with a visible, slowed-down browser. Judge by its exit code and final JSON line, not by stderr. Video only with `--video`: the per-step screenshots (and new-tab screenshots) are the proof.
 5. Report: passed/failed per step with its screenshot path, the error's first line for a failure, and **the proof folder** `test-results/<slug>/run-<yyyymmdd-hhmmss>/` (`screenshots/`, `trace.zip`, `report/`, `result.json`). Offer to open the report in the background: `node ${CLAUDE_PLUGIN_ROOT}/scripts/qa/pw.js show-report test-results/<slug>/run-<time>/report`.
 6. If the check failed because the test itself was wrong (locator, timing), fix the spec and run again; never weaken an expected result to make it pass. If the app is wrong, say so plainly with the evidence; reporting it on a ticket is the QA's choice.
@@ -41,5 +41,5 @@ Environment refused or unreachable, or login failing: report the reason and stop
 
 ## Safety restrictions
 - Black-box only: never read application source. Never production; synthetic data only.
-- Nothing is posted to Jira; nothing under `tests/` or `specs/` is written (those need a ticket with approved scenarios).
+- Nothing is posted to Jira; nothing under `tests/` or in `tasks/<TICKET>/spec.md` is written (those need a ticket with approved scenarios).
 - Never read `.env` or `.auth/`, never print credentials.

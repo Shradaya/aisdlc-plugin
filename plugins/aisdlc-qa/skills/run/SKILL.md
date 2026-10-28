@@ -8,7 +8,7 @@ disable-model-invocation: true
 # run
 
 ## Purpose
-Execute the tests tagged `@<TICKET>` against the ticket's environment in a way the QA can follow, and keep the evidence of every run in `tasks/<TICKET>/evidence/run-<N>/`. Triage, defect reporting and sign-off continue in the `test` skill.
+Execute the ticket's tests (folder `tests/<TICKET>/`, tagged `@<TICKET>`) against the ticket's environment in a way the QA can follow, and keep the evidence of every run in `tasks/<TICKET>/evidence/run-<N>/`. Triage, defect reporting and sign-off continue in the `test` skill.
 
 ## Invocation conditions
 Explicit `/aisdlc-qa:run <TICKET> [--watch|--ui|--headless] [--build <id>] [--only S1,S3] [--video]`, or step 7 of `${CLAUDE_PLUGIN_ROOT}/skills/test/SKILL.md`. The task must be in TESTS_GENERATED, TESTS_EXECUTED, AWAITING_DEV_FIX or AWAITING_RESULTS_SIGNOFF.
@@ -31,6 +31,8 @@ Playwright installed in the workspace (`/aisdlc-qa:init`); for a form login, `QA
 6. Open the HTML report for the QA in the background: `node ${CLAUDE_PLUGIN_ROOT}/scripts/qa/pw.js show-report tasks/<TICKET>/evidence/run-<N>/report` (it shows each step with its screenshot, and the trace viewer for each test).
 7. Show: run number, environment and build, passed/failed/flaky/skipped, uncovered scenarios, and per failed test the scenario, failing step and first line of the error, with the path of its failing-step screenshot.
 8. Continue with triage: step 8 of `${CLAUDE_PLUGIN_ROOT}/skills/test/SKILL.md` (when run during re-verification, its step 11 first).
+
+By hand, outside the plugin: `npx playwright test tests/<TICKET>` runs one ticket (its folder), and `npx playwright test` with no argument runs the whole regression suite (every ticket's folder). `run-tests.js` passes the ticket folder too when it exists, and still selects by `@<TICKET>` (`--only S1,S3` by `@<TICKET>-S<n>`), so older layouts without the folder keep working.
 
 ## Outputs
 `tasks/<TICKET>/evidence/run-<N>/**`, `runs.<N>` in task state, state TESTS_EXECUTED.

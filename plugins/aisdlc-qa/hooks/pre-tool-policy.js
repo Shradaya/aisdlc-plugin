@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // PreToolUse enforcement hook (QA plugin). Mirrors the design hook's layered gate, scoped to the QA lifecycle:
-// - tests/** and specs/** are written only while a QA task is between SCENARIOS_APPROVED and COMMITTED and its
-//   approved tasks/<T>/scenarios.md is unchanged (hash-pinned), so tests always follow QA-approved scenarios;
+// - a ticket's files live together: tests/<T>/** and tasks/<T>/spec.md are written only while task <T> is between
+//   SCENARIOS_APPROVED and COMMITTED and its approved tasks/<T>/scenarios.md is unchanged (hash-pinned), so tests always
+//   follow QA-approved scenarios; spec.md is only ever an exact copy of that scenarios.md;
 // - Jira writes go through scripts/jira/jira-attach.js only: defect comments while tests are executed / awaiting the
 //   fix, final evidence only after sign-off;
 // - Playwright never runs against a production host;
@@ -59,38 +60,57 @@ function testWriteReason(id) {
   return null;
 }
 
-// Classify a workspace path: specs/<T>.md, other specs/, or tests/** (setup and seed files are workspace plumbing).
+// Classify a workspace path. Each ticket's files live together:
+//   tasks/<T>/spec.md          the approved scenarios (a copy of tasks/<T>/scenarios.md), committed with the tests
+//   tests/<T>/**               the ticket's tests and its helpers.ts; the folder names the ticket
+// tests/auth.setup.ts and tests/seed.spec.ts are workspace plumbing. Anything else under tests/ (old feature-area
+// folders, loose files) and specs/ is the old layout: read it, but write new files only in the ticket's folders
+// (scripts/init/aisdlc-qa-init.js --migrate-layout moves existing ones).
+const TICKET = /^[a-z][a-z0-9]*-\d+$/;
 function gatedPath(n) {
   if (!n.startsWith(RROOT + "/")) return null;
   const rel = n.slice(RROOT.length + 1);
-  const spec = rel.match(/^specs\/([a-z][a-z0-9]*-\d+)\.md$/);
-  if (spec) return { ticket: spec[1].toUpperCase() };
-  if (/^specs\/readme\.md$/.test(rel)) return null;
-  if (/^specs\//.test(rel)) return { ticket: null };
-  if (/^tests\//.test(rel) && !/^tests\/(auth\.setup|seed\.spec)\.ts$/.test(rel)) return { ticket: null };
+  const spec = rel.match(/^tasks\/([^/]+)\/spec\.md$/);
+  if (spec && TICKET.test(spec[1])) return { kind: "spec", ticket: spec[1].toUpperCase() };
+  if (/^tests\/(auth\.setup|seed\.spec)\.ts$/.test(rel)) return null;
+  const test = rel.match(/^tests\/([^/]+)\/./);
+  if (test && TICKET.test(test[1])) return { kind: "test", ticket: test[1].toUpperCase() };
+  if (/^tests\//.test(rel)) return { kind: "legacy-test" };
+  if (/^specs\//.test(rel)) return { kind: "legacy-spec" };
   return null;
 }
 
-// Tickets a test file belongs to: its @<T>, @<T>-S<n>, @<T>-AC<n> tags and its "// spec: specs/<T>.md" header.
+// Tickets a test file names: its @<T>, @<T>-S<n>, @<T>-AC<n> tags and its "// spec: tasks/<T>/spec.md" header.
 function ticketsIn(text) {
   const s = String(text || "");
-  const ids = [...s.matchAll(/@([A-Z][A-Z0-9]*-\d+)(?:-(?:S|AC)\d+)?\b/g), ...s.matchAll(/specs\/([A-Z][A-Z0-9]*-\d+)\.md/g)].map((m) => m[1]);
+  const ids = [...s.matchAll(/@([A-Z][A-Z0-9]*-\d+)(?:-(?:S|AC)\d+)?\b/g), ...s.matchAll(/tasks\/([A-Z][A-Z0-9]*-\d+)\/spec\.md/g)].map((m) => m[1]);
   return [...new Set(ids)];
 }
 
-// Every active ticket the file (old or new content) belongs to must be ready; tickets whose tasks are finished are
-// ignored (regression tests keep their old tags). With no active ticket, some QA task must be ready: test changes
-// always happen under a ticket whose scenarios QA approved.
-function checkTestWrite(file, content) {
+const sameText = (a, b) => String(a).replace(/\r\n/g, "\n") === String(b).replace(/\r\n/g, "\n");
+
+// Gate a write to a ticket file. `content` is the full new content when known (Write, the generator's MCP tool), else
+// null (an Edit, a shell write); `whole` says whether it is the full file.
+function checkTestWrite(file, content, whole) {
   const g = gatedPath(norm(file));
   if (!g) return;
-  if (g.ticket) { const r = testWriteReason(g.ticket); if (r) block(r); return; }
-  const own = ticketsIn(fs.existsSync(file) ? fs.readFileSync(file, "utf8") : "");
-  const active = [...new Set([...ticketsIn(content), ...own])].filter((id) => taskOf(id));
-  for (const id of active) { const r = testWriteReason(id); if (r) block(r); }
-  if (!active.length && !activeTasks().some((t) => !testWriteReason(t.task.id)))
-    block("No QA task is ready for test writing (scenarios approved and unchanged, state SCENARIOS_APPROVED..COMMITTED). Tag tests with @<TICKET>.");
+  if (g.kind === "legacy-spec")
+    block(`specs/ is the old layout: the approved spec of a ticket is tasks/<TICKET>/spec.md (move existing ones with ${MIGRATE}).`);
+  if (g.kind === "legacy-test")
+    block(`Put this ticket's tests in tests/<TICKET>/ (only tests/auth.setup.ts and tests/seed.spec.ts live directly under tests/; move old feature-area folders with ${MIGRATE}).`);
+  const r = testWriteReason(g.ticket);
+  if (r) block(r);
+  if (g.kind === "spec") {
+    // spec.md is only ever the approved scenarios.md, copied whole.
+    const approved = path.join(ROOT, "tasks", g.ticket, "scenarios.md");
+    if (!whole || !sameText(content, fs.readFileSync(approved, "utf8")))
+      block(`tasks/${g.ticket}/spec.md must be an exact copy of the approved tasks/${g.ticket}/scenarios.md; copy that file over it instead of editing.`);
+    return;
+  }
+  const other = ticketsIn(content).filter((id) => id !== g.ticket);
+  if (other.length) block(`This file is in tests/${g.ticket}/ but names ${other.join(", ")}; a ticket's tests live only in its own folder (tests/<TICKET>/).`);
 }
+const MIGRATE = "node ${CLAUDE_PLUGIN_ROOT}/scripts/init/aisdlc-qa-init.js <workspace> --migrate-layout";
 
 // .env / .env.<name> (not .env.example) as a file argument, and commands that print or search file content.
 const DOT_ENV = /(^|[\s"'=/\\])\.env(?!\.example\b)(\.[\w-]+)?(?=$|[\s"'|;&)])/i;
@@ -119,15 +139,15 @@ if (["Write", "Edit", "NotebookEdit", "MultiEdit"].includes(tool)) {
   if (/(^|\/)(credentials|secrets)\//.test(n) || /\.(pem|key)$/.test(n)) block("Protected path.");
   if (n.startsWith(RROOT + "/.auth/")) block(".auth/ holds saved login sessions; it is written only by the Playwright setup project.");
   const content = input.content ?? input.new_string ?? (input.edits || []).map((e) => e.new_string).join("\n");
-  checkTestWrite(target, content);
+  checkTestWrite(target, content, tool === "Write");
   process.exit(0);
 }
 
 if (tool === "mcp__playwright-test__generator_write_test" || tool === "mcp__playwright-test__planner_save_plan") {
   // The Playwright generator and planner write files through their MCP server ({ fileName, code } / { fileName, ... },
-  // relative to the workspace root); the same gate applies. A plan saved under specs/ before approval is blocked.
+  // relative to the workspace root); the same gate applies. The planner saving a plan into tests/ or specs/ is blocked.
   const file = input.fileName || (tool.endsWith("save_plan") ? "specs/plan.md" : "tests/generated.spec.ts");
-  checkTestWrite(path.resolve(ROOT, file), input.code || "");
+  checkTestWrite(path.resolve(ROOT, file), input.code || "", tool.endsWith("write_test"));
   process.exit(0);
 }
 
@@ -150,7 +170,11 @@ if (tool === "Bash" || tool === "PowerShell") {
   if (/git\s+add\b[^|;&\n]*(\.auth\b|claude\.env)/i.test(cmd)) block("Saved login sessions (.auth/) and claude.env are never committed.");
 
   // task state integrity
-  if (/task\.yaml/.test(cmd) && /(>|sed\s+-i|set-content|out-file|add-content|tee\b|rm\b|remove-item|mv\b|move-item)/i.test(cmd) && !/aisdlc-state\.js/.test(cmd))
+  // Only commands that write to task.yaml (a redirect into it, or a writing command naming it); reads such as
+  // `git check-ignore -v tasks/<T>/task.yaml`, `cat` or `Get-Content` pass, and so do `2>&1` / `>$null`.
+  if (!/aisdlc-state\.js/.test(cmd) && (
+    />>?\s*["']?[^\s|;&>"']*task\.yaml/i.test(cmd) ||
+    /(^|[|;&(]\s*|\s)(sed\s+-i|tee|set-content|add-content|out-file|clear-content|rm|del|remove-item|ri|mv|move-item|cp|copy-item|truncate|vi|vim|nano|notepad|code)\b[^|;&\n]*task\.yaml/i.test(cmd)))
     block("task.yaml may only be changed through scripts/state/aisdlc-state.js.");
 
   // Jira: only through jira-attach.js, and only at the right point in the lifecycle.
@@ -203,16 +227,24 @@ if (tool === "Bash" || tool === "PowerShell") {
     if (branch !== m[1]) block(`Active QA task requires branch ${m[1]} (current: ${branch || "unknown"}).`);
   }
 
-  // shell writes into tests/ or specs/ follow the same gate as Write/Edit.
+  // Shell writes into tests/ or the ticket specs follow the same gate as Write/Edit: every tests/ or specs/ path, and
+  // every tasks/<T>/spec.md, named by a writing command is checked. spec.md may only be copied from its scenarios.md.
   const isStateTool = /aisdlc-state\.js/.test(cmd);
-  const writeish = /(>>?\s|sed\s+-i|set-content|add-content|out-file|\btee\b|new-item|copy-item|move-item|\bmv\b|\bcp\b)/i;
+  const writeish = /(>>?\s|sed\s+-i|set-content|add-content|out-file|\btee\b|new-item|copy-item|move-item|\bmv\b|\bcp\b|\bni\b|\bcopy\b|\bmove\b)/i;
   if (!isStateTool && writeish.test(cmd)) {
     const lc = cmd.replace(/\\/g, "/");
-    for (const m of lc.matchAll(/specs\/([a-z][a-z0-9]*-\d+)\.md/gi)) { const r = testWriteReason(m[1].toUpperCase()); if (r) block(r); }
-    if (/(^|[\s"'=/])tests\/(?!auth\.setup\.ts|seed\.spec\.ts)\S/.test(lc)) {
-      const ids = ticketsIn(cmd).filter((id) => taskOf(id));
-      for (const id of ids) { const r = testWriteReason(id); if (r) block(r); }
-      if (!ids.length && !activeTasks().some((t) => !testWriteReason(t.task.id))) block("No QA task is ready for test writing (scenarios approved and unchanged).");
+    for (const m of lc.matchAll(/(?:^|[\s"'=(])((?:\.\/)?(?:tests|specs)\/[^\s"'|;&)]+|(?:\.\/)?tasks\/[^\s"'/|;&)]+\/spec\.md)/gi)) {
+      const p = m[1].replace(/^\.\//, "");
+      const g = gatedPath(norm(path.resolve(cwd, p)));
+      if (!g) continue;
+      if (g.kind === "spec") {
+        const copy = new RegExp(`(\\bcp|copy-item|\\bcopy)\\s+["']?(\\.\\/)?tasks\\/${g.ticket}\\/scenarios\\.md["']?\\s+["']?(\\.\\/)?tasks\\/${g.ticket}\\/spec\\.md`, "i");
+        const r = testWriteReason(g.ticket);
+        if (r) block(r);
+        if (!copy.test(lc)) block(`tasks/${g.ticket}/spec.md is only ever a copy of the approved tasks/${g.ticket}/scenarios.md: cp tasks/${g.ticket}/scenarios.md tasks/${g.ticket}/spec.md`);
+        continue;
+      }
+      checkTestWrite(path.resolve(cwd, p), cmd, false);
     }
   }
 }

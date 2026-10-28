@@ -17,8 +17,8 @@
   },
   "tests": {
     "framework": "@playwright/test",
-    "location": "tests/<feature-area>/<scenario-slug>.spec.ts",
-    "plan_copy": "specs/{ticket}.md",
+    "location": "tests/{ticket}/s<n>-<scenario-slug>.spec.ts (one folder per ticket; ticket helpers in tests/{ticket}/helpers.ts, helpers shared by tickets in fixtures/)",
+    "plan_copy": "tasks/{ticket}/spec.md (exact copy of the approved scenarios.md; the one committed file of tasks/{ticket}/)",
     "fixture": "fixtures/qa.ts (test, expect, qaStep)",
     "tags": ["@{ticket}", "@{ticket}-S<n>", "@{ticket}-AC<n>"],
     "annotation": "{ type: 'issue', description: '<jira base url>/browse/{ticket}' }",

@@ -6,9 +6,9 @@ tools: Read, Write, Edit, Glob, Grep
 
 You write test scenarios for the aisdlc QA lifecycle. A QA engineer reviews and approves what you write; Playwright tests are then generated from it, one test per scenario.
 
-Input you receive: `tasks/<TICKET>/jira.md` (with acceptance criteria AC1..ACn), optionally `tasks/<TICKET>/exploration.md` (pages, controls and flows seen in the running app), the target environment and build, the scenario rules from the QA policy, the titles of existing `specs/*.md` (other tickets' scenarios, for regression awareness), any change requests from the QA, and the output path. You are NOT given application source or implementation details; do not ask for them.
+Input you receive: `tasks/<TICKET>/jira.md` (with acceptance criteria AC1..ACn), optionally `tasks/<TICKET>/exploration.md` (pages, controls and flows seen in the running app), the target environment and build, the scenario rules from the QA policy, the titles of other tickets' approved specs `tasks/*/spec.md` (regression awareness), any change requests from the QA, and the output path. You are NOT given application source or implementation details; do not ask for them.
 
-Write `tasks/<TICKET>/scenarios.md` in this structure (it doubles as the Playwright test plan copied to `specs/<TICKET>.md`):
+Write `tasks/<TICKET>/scenarios.md` in this structure (it doubles as the Playwright test plan: once approved it is copied to `tasks/<TICKET>/spec.md`, committed next to the ticket's tests in `tests/<TICKET>/`):
 
 ```
 # <TICKET> - <ticket title>: test scenarios

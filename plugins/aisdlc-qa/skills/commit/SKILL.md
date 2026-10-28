@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Commit a signed-off QA ticket's Playwright tests and its approved scenarios (specs/<TICKET>.md) to the QA test repository on branch <TICKET>, with the commit message '<TICKET>: <summary>', then guide the push and pull request that add them to the regression suite. Use only when the QA engineer runs /aisdlc-qa:commit.
+description: Commit a signed-off QA ticket's Playwright tests (tests/<TICKET>/) and its approved scenarios (tasks/<TICKET>/spec.md) to the QA test repository on branch <TICKET>, with the commit message '<TICKET>: <summary>', then guide the push and pull request that add them to the regression suite. Use only when the QA engineer runs /aisdlc-qa:commit.
 argument-hint: <ticket-number>
 disable-model-invocation: true
 ---
@@ -20,13 +20,13 @@ Explicit `/aisdlc-qa:commit <TICKET>`. The task is at EVIDENCE_PUBLISHED, or at 
 ## Procedure
 1. Confirm the state and approvals via `get`. At COMMITTED: ask whether the branch is pushed and the pull request opened; if yes, `transition <TICKET> COMPLETED` and stop.
 2. Branch: `git rev-parse --abbrev-ref HEAD` must be `<TICKET>`. If on `main`, `git checkout <TICKET>` (or `git checkout -b <TICKET>` if the tests were written on `main`, carrying the uncommitted changes over). Never commit on `main` (the hook blocks it).
-3. Stage only this ticket's files, by explicit path: `specs/<TICKET>.md` and the files under `tests/` tagged `@<TICKET>` (`git status --porcelain -- tests specs`, then check each file for the tag). If `fixtures/`, `playwright.config.ts` or `config/` changed for this ticket, list them and ask whether to include them. Never stage `tasks/`, `logs/`, `.auth/`, `claude.env`, `.mcp.json` or `node_modules`.
+3. Stage only this ticket's files, by explicit path: `git add tests/<TICKET> tasks/<TICKET>/spec.md`. The folder is the selector: a file in `tests/<TICKET>/` whose tags or `// spec:` header name another ticket is a finding to fix first, not something to commit. If `git add` reports `tasks/<TICKET>/spec.md` as ignored, the workspace's `.gitignore` lacks the spec exception: say so, add it with `node ${CLAUDE_PLUGIN_ROOT}/scripts/init/aisdlc-qa-init.js <workspace> --migrate-layout` (it appends the exception) or use `git add -f tasks/<TICKET>/spec.md` this once. Never stage anything else from `tasks/`. If `fixtures/`, `playwright.config.ts` or `config/` changed for this ticket, list them and ask whether to include them. Never stage the rest of `tasks/`, `logs/`, `.auth/`, `claude.env`, `.mcp.json` or `node_modules`.
 4. Show the staged files and the proposed summary, and ask with AskUserQuestion to confirm. On confirmation commit with exactly one single-line message: `git commit -m "<TICKET>: <summary>"` (summary describes the tests added, at most 120 characters). The hook rejects any other format, a body, the wrong branch, or results that are not signed off.
 5. `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js transition <TICKET> COMMITTED`. Append audit `tests-committed` (branch, commit sha, files).
 6. Tell the QA to push and open a pull request into `main` so the tests join the regression suite: `git push -u origin <TICKET>` (the QA's action; never force-push). Afterwards `/aisdlc-qa:commit <TICKET>` again marks the task COMPLETED.
 
 ## Outputs
-A commit on branch `<TICKET>` with `specs/<TICKET>.md` and the ticket's tests; state COMMITTED (or COMPLETED).
+A commit on branch `<TICKET>` with `tests/<TICKET>/` and `tasks/<TICKET>/spec.md`; state COMMITTED (or COMPLETED).
 
 ## Failure behavior
 Not signed off, wrong branch, or unrelated changes mixed in: stop and report. A dirty or conflicted working tree that cannot be separated: `transition <TICKET> CONFLICTED --reason "<why>"` and let the QA resolve it by hand. Never force-push, never rewrite history.

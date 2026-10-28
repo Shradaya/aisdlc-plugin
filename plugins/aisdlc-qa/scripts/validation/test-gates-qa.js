@@ -6,7 +6,7 @@ const { spawnSync, execSync } = require("child_process");
 const SRC = path.resolve(__dirname, "..", "..");
 const REPO = path.resolve(SRC, "..", "..");
 const W = fs.mkdtempSync(path.join(os.tmpdir(), "aisdlc-qa-test-"));
-for (const d of ["hooks", "scripts/state", "scripts/lib", "scripts/qa", "config", "tasks", "logs", "tests/login", "specs"]) fs.mkdirSync(path.join(W, d), { recursive: true });
+for (const d of ["hooks", "scripts/state", "scripts/lib", "scripts/qa", "config", "tasks", "logs", "tests", "specs"]) fs.mkdirSync(path.join(W, d), { recursive: true });
 for (const f of ["hooks/pre-tool-policy.js", "scripts/state/aisdlc-state.js", "scripts/lib/repo-paths.js", "scripts/lib/root.js", "scripts/lib/yaml.js", "scripts/qa/env.js"])
   fs.copyFileSync(path.join(SRC, f), path.join(W, f));
 for (const f of ["task-types.yaml", "qa-policy.yaml"]) fs.copyFileSync(path.join(SRC, "config", f), path.join(W, "config", f));
@@ -36,40 +36,75 @@ const t = (name, got, want) => { const ok = got === want; if (!ok) fail++; conso
 const write = (f, content = "") => hook({ tool_name: "Write", tool_input: { file_path: f, content }, cwd: W });
 const bash = (c, cwd = W) => hook({ tool_name: "Bash", tool_input: { command: c }, cwd });
 const T = "QA-1";
-const testFile = path.join(W, "tests/login/valid-sign-in.spec.ts");
-const tagged = `// spec: specs/${T}.md\ntest('x', { tag: ['@${T}', '@${T}-S1'] }, async () => {});`;
+const testFile = path.join(W, `tests/${T}/s1-valid-sign-in.spec.ts`);
+const helperFile = path.join(W, `tests/${T}/helpers.ts`);
+const specFile = path.join(W, `tasks/${T}/spec.md`);
+const tagged = `// spec: tasks/${T}/spec.md
+test('x', { tag: ['@${T}', '@${T}-S1'] }, async () => {});`;
 const put = (rel, text) => fs.writeFileSync(path.join(W, rel), text);
+const edit = (f, s) => hook({ tool_name: "Edit", tool_input: { file_path: f, old_string: "a", new_string: s }, cwd: W });
 
-// --- scenario gate ---------------------------------------------------------------------------------------------
+// --- scenario gate and the per-ticket layout ---------------------------------------------------------------------
 t("no task: test write blocked", write(testFile, tagged), 2);
 state("init", T, "qa");
 for (const s of ["TICKET_READY", "ENVIRONMENT_READY", "SCENARIOS_DRAFTED"]) state("transition", T, s);
 t("test write before scenario approval blocked", write(testFile, tagged), 2);
 t("untagged test write before approval blocked", write(testFile, "test('x', async () => {})"), 2);
-t("specs/<T>.md before approval blocked", write(path.join(W, `specs/${T}.md`)), 2);
-t("planner saving a plan before approval blocked",
+t("helpers.ts before approval blocked", write(helperFile, "export const x = 1;"), 2);
+t("tasks/<T>/spec.md before approval blocked", write(specFile, "x"), 2);
+t("planner saving a plan into specs/ blocked",
   hook({ tool_name: "mcp__playwright-test__planner_save_plan", tool_input: { name: "Plan", fileName: "specs/login.plan.md" }, cwd: W }), 2);
 t("scenarios.md (task artifact) write allowed", write(path.join(W, `tasks/${T}/scenarios.md`)), 0);
+t("jira.md (task artifact) write allowed", write(path.join(W, `tasks/${T}/jira.md`)), 0);
 t("seed/setup files are not gated", write(path.join(W, "tests/seed.spec.ts")), 0);
 t("direct task.yaml edit blocked", write(path.join(W, `tasks/${T}/task.yaml`)), 2);
-put(`tasks/${T}/scenarios.md`, "# QA-1\n### S1 - Valid sign-in\n### S2 - Wrong password\n");
+t("git check-ignore on task.yaml allowed (read-only)", bash(`git check-ignore -v tasks/${T}/task.yaml 2>&1`), 0);
+t("Get-Content task.yaml allowed (read-only)", bash(`Get-Content tasks/${T}/task.yaml | Select-Object -First 5`), 0);
+t("ls with a redirect of stderr allowed", bash(`ls tasks/${T}/task.yaml 2>$null`), 0);
+t("redirect into task.yaml blocked", bash(`echo {} > tasks/${T}/task.yaml`), 2);
+t("sed -i on task.yaml blocked", bash(`sed -i s/a/b/ tasks/${T}/task.yaml`), 2);
+t("Set-Content task.yaml blocked", bash(`Set-Content tasks/${T}/task.yaml x`), 2);
+t("rm task.yaml blocked", bash(`rm tasks/${T}/task.yaml`), 2);
+const SCEN = "# QA-1\n### S1 - Valid sign-in\n### S2 - Wrong password\n";
+put(`tasks/${T}/scenarios.md`, SCEN);
 state("transition", T, "AWAITING_SCENARIO_APPROVAL");
 t("SCENARIOS_APPROVED without approval refused", state("transition", T, "SCENARIOS_APPROVED").status, 2);
 t("skip to TESTS_GENERATED refused", state("transition", T, "TESTS_GENERATED").status, 2);
 t("unknown gate refused", state("approve", T, "design").status, 2);
 t("approve scenarios", state("approve", T, "scenarios").status, 0);
 t("SCENARIOS_APPROVED after approval", state("transition", T, "SCENARIOS_APPROVED").status, 0);
-t("tagged test write allowed after approval", write(testFile, tagged), 0);
-t("specs/<T>.md allowed after approval", write(path.join(W, `specs/${T}.md`)), 0);
-t("generator MCP write allowed after approval",
-  hook({ tool_name: "mcp__playwright-test__generator_write_test", tool_input: { fileName: "tests/login/wrong-password.spec.ts", code: tagged }, cwd: W }), 0);
+t("test in tests/<T>/ allowed after approval", write(testFile, tagged), 0);
+t("helpers.ts (no tags) allowed under the same gate", write(helperFile, "export const x = 1;"), 0);
+t("spec.md equal to the approved scenarios allowed", write(specFile, SCEN), 0);
+t("spec.md equal up to line endings allowed", write(specFile, SCEN.replace(/\n/g, "\r\n")), 0);
+t("spec.md with other content blocked", write(specFile, SCEN + "extra\n"), 2);
+t("editing spec.md in place blocked", edit(specFile, "x"), 2);
+t("cp scenarios.md over spec.md allowed", bash(`cp tasks/${T}/scenarios.md tasks/${T}/spec.md`), 0);
+t("Copy-Item scenarios.md over spec.md allowed", bash(`Copy-Item tasks/${T}/scenarios.md tasks/${T}/spec.md`), 0);
+t("other shell write to spec.md blocked", bash(`echo x > tasks/${T}/spec.md`), 2);
+t("a test naming another ticket in tests/<T>/ blocked", write(testFile, "test('x', { tag: ['@QA-77', '@QA-77-S1'] }, async () => {})"), 2);
+t("an edit adding another ticket's tag blocked", edit(testFile, "{ tag: ['@QA-77-S2'] }"), 2);
+t("tests/ folder of a ticket without a task blocked", write(path.join(W, "tests/QA-77/s1-x.spec.ts"), "test('x', { tag: ['@QA-77'] }, async () => {})"), 2);
+t("old-style tests/<feature-area>/ write blocked", write(path.join(W, "tests/login/x.spec.ts"), tagged), 2);
+t("loose file directly under tests/ blocked", write(path.join(W, "tests/x.spec.ts"), tagged), 2);
+t("specs/<T>.md write blocked (old layout)", write(path.join(W, `specs/${T}.md`), SCEN), 2);
+t("generator MCP write into tests/<T>/ allowed",
+  hook({ tool_name: "mcp__playwright-test__generator_write_test", tool_input: { fileName: `tests/${T}/s2-wrong-password.spec.ts`, code: tagged }, cwd: W }), 0);
+t("generator MCP write into an old feature-area folder blocked",
+  hook({ tool_name: "mcp__playwright-test__generator_write_test", tool_input: { fileName: "tests/login/wrong-password.spec.ts", code: tagged }, cwd: W }), 2);
+t("shell cp into tests/<T>/ allowed", bash(`cp tmp.ts tests/${T}/helpers.ts`), 0);
+t("shell mv into an old feature-area folder blocked", bash("mv tmp.ts tests/login/helpers.ts"), 2);
+t("reading an old-layout test allowed", bash("cat tests/login/old.spec.ts"), 0);
 put(`tasks/${T}/scenarios.md`, "# QA-1\n### S1 - Valid sign-in (edited)\n### S2 - Wrong password\n");
 t("test write blocked after scenarios changed", write(testFile, tagged), 2);
+t("helpers.ts blocked after scenarios changed", write(helperFile, "export const x = 2;"), 2);
+t("spec refresh blocked until reapproval", bash(`cp tasks/${T}/scenarios.md tasks/${T}/spec.md`), 2);
 t("generator MCP write blocked after scenarios changed",
-  hook({ tool_name: "mcp__playwright-test__generator_write_test", tool_input: { fileName: "tests/login/x.spec.ts", code: tagged }, cwd: W }), 2);
-t("shell write into tests/ blocked after scenarios changed", bash(`echo x > tests/login/y.spec.ts`), 2);
+  hook({ tool_name: "mcp__playwright-test__generator_write_test", tool_input: { fileName: `tests/${T}/s3-x.spec.ts`, code: tagged }, cwd: W }), 2);
+t("shell write into tests/<T>/ blocked after scenarios changed", bash(`echo x > tests/${T}/y.spec.ts`), 2);
 t("TESTS_GENERATED refused after scenarios changed", state("transition", T, "TESTS_GENERATED").status, 2);
 state("approve", T, "scenarios");
+t("spec refresh allowed after reapproval", bash(`cp tasks/${T}/scenarios.md tasks/${T}/spec.md`), 0);
 t("test write allowed after reapproval", write(testFile, tagged), 0);
 t("TESTS_GENERATED after reapproval", state("transition", T, "TESTS_GENERATED").status, 0);
 t("TESTS_EXECUTED", state("transition", T, "TESTS_EXECUTED").status, 0);
@@ -200,12 +235,12 @@ t("Read tool on other files allowed", hook({ tool_name: "Read", tool_input: { fi
 t("Write to .env blocked", write(path.join(W, ".env"), "X=1"), 2);
 t("pw.js test against production blocked by the hook", bash("$env:QA_ENV='prod'; node pw.js test checks/a.spec.ts"), 2);
 
-// --- ad-hoc checks: checks/ writable without a ticket; tests/ and specs/ still gated ---------------------------------
+// --- ad-hoc checks: checks/ writable without a ticket; tests/<T>/ and tasks/<T>/spec.md still gated ---------------------------------
 state("init", "QA-9", "qa");
 t("checks/ write allowed without an approved task", write(path.join(W, "checks/login.spec.ts"), "test('login', async () => {})"), 0);
 t("shell write into checks/ allowed", bash("echo x > checks/login.spec.ts"), 0);
-t("tests/ write for an unapproved ticket still blocked", write(path.join(W, "tests/login/x.spec.ts"), "test('x', { tag: ['@QA-9'] }, async () => {})"), 2);
-t("specs/ write for an unapproved ticket still blocked", write(path.join(W, "specs/QA-9.md")), 2);
+t("tests/<T>/ write for an unapproved ticket still blocked", write(path.join(W, "tests/QA-9/s1-x.spec.ts"), "test('x', { tag: ['@QA-9'] }, async () => {})"), 2);
+t("tasks/<T>/spec.md write for an unapproved ticket still blocked", write(path.join(W, "tasks/QA-9/spec.md"), "x"), 2);
 t("jira-attach without credentials exits 2", node(S("jira/jira-attach.js"), ["status", T]).status, 2);
 const dry = node(S("jira/jira-attach.js"), ["comment", T, path.join(W, `tasks/${T}/results.md`), "--dry-run"]);
 t("jira-attach --dry-run needs no credentials", dry.status, 0);
@@ -271,6 +306,45 @@ const qaMcp = JSON.parse(fs.readFileSync(path.join(QA, ".mcp.json"), "utf8"));
 t("init --from-dev copies the atlassian server with its certificate mount", /installed_cert\.pem/.test(JSON.stringify(qaMcp.mcpServers.atlassian)), true);
 t("init --from-dev sets jira.base_url from the dev server's JIRA_URL", JSON.parse(fs.readFileSync(path.join(QA, "config/integrations.yaml"), "utf8").replace(/^\s*#.*$/gm, "")).jira.base_url, "https://example.atlassian.net");
 t("init --from-dev never copies claude.env content", /SECRET_MARKER|do-not-copy/.test(fromDev.stdout + fs.readFileSync(path.join(QA, ".mcp.json"), "utf8") + fs.readFileSync(path.join(QA, "config/integrations.yaml"), "utf8")), false);
+
+t("a fresh workspace has no specs/ folder", fs.existsSync(path.join(QA, "specs")), false);
+t("a fresh workspace has only auth.setup.ts and seed.spec.ts in tests/", fs.readdirSync(path.join(QA, "tests")).sort().join(","), "auth.setup.ts,seed.spec.ts");
+t("a fresh .gitignore keeps tasks/<T>/spec.md committable", /!tasks\/\*\/spec\.md/.test(fs.readFileSync(path.join(QA, ".gitignore"), "utf8")), true);
+
+// --- --migrate-layout: specs/<T>.md and tests/<feature-area>/ -> tasks/<T>/spec.md and tests/<T>/ -----------------------
+const O = fs.mkdtempSync(path.join(os.tmpdir(), "aisdlc-qa-old-"));
+const putO = (rel, text) => { fs.mkdirSync(path.dirname(path.join(O, rel)), { recursive: true }); fs.writeFileSync(path.join(O, rel), text); };
+putO("specs/QA-5.md", "### S1 - a\n");
+putO("specs/notes.txt", "x");
+putO("tests/auth.setup.ts", "setup");
+putO("tests/seed.spec.ts", "seed");
+putO("tests/area/s1-a.spec.ts", "// spec: specs/QA-5.md\nimport { go } from './helpers';\ntest('a', { tag: ['@QA-5', '@QA-5-S1'] }, async () => {});\n");
+putO("tests/area/s2-b.spec.ts", "// spec: specs/QA-5.md\nimport { go } from './helpers';\ntest('b', { tag: ['@QA-5-S2'] }, async () => {});\n");
+putO("tests/area/helpers.ts", "export const go = 1;\n");
+putO("tests/area/shared.ts", "export const both = 1;\n");
+putO("tests/area/c.spec.ts", "import { both } from './shared';\ntest('c', { tag: ['@QA-6'] }, async () => {});\n");
+putO("tests/area/d.spec.ts", "import { both } from './shared';\ntest('d', { tag: ['@QA-7'] }, async () => {});\n");
+putO("tests/area/multi.spec.ts", "test('m', { tag: ['@QA-5', '@QA-6'] }, async () => {});\n");
+putO("tests/area/none.spec.ts", "test('n', async () => {});\n");
+putO(".gitignore", "tasks/*\n!tasks/.gitkeep\n");
+const mig = (...a) => JSON.parse(spawnSync("node", [INIT, O, "--migrate-layout", ...a], { encoding: "utf8" }).stdout);
+const dryMig = mig("--dry-run");
+const movesOf = (r) => r.moves.map((m) => `${m.from}>${m.to}`).sort().join("|");
+// shared.ts is imported by QA-6's c and QA-7's d: it stays, so c and d stay too (their import would break).
+t("--migrate-layout --dry-run lists the moves", movesOf(dryMig),
+  ["specs/QA-5.md>tasks/QA-5/spec.md", "tests/area/helpers.ts>tests/QA-5/helpers.ts", "tests/area/s1-a.spec.ts>tests/QA-5/s1-a.spec.ts", "tests/area/s2-b.spec.ts>tests/QA-5/s2-b.spec.ts"].sort().join("|"));
+t("--migrate-layout lists what it leaves", dryMig.left.map((l) => l.path).sort().join(","),
+  "specs/notes.txt,tests/area/c.spec.ts,tests/area/d.spec.ts,tests/area/multi.spec.ts,tests/area/none.spec.ts,tests/area/shared.ts");
+t("--migrate-layout --dry-run changes nothing", fs.existsSync(path.join(O, "specs/QA-5.md")) && !fs.existsSync(path.join(O, "tests/QA-5")), true);
+mig();
+t("--migrate-layout moves the spec", fs.readFileSync(path.join(O, "tasks/QA-5/spec.md"), "utf8"), "### S1 - a\n");
+t("--migrate-layout rewrites the spec header", fs.readFileSync(path.join(O, "tests/QA-5/s1-a.spec.ts"), "utf8").startsWith("// spec: tasks/QA-5/spec.md\n"), true);
+t("--migrate-layout moves the ticket's helper with its tests", fs.existsSync(path.join(O, "tests/QA-5/helpers.ts")) && !fs.existsSync(path.join(O, "tests/area/helpers.ts")), true);
+t("--migrate-layout keeps a helper shared by two tickets in place", fs.existsSync(path.join(O, "tests/area/shared.ts")), true);
+t("--migrate-layout never moves setup or seed", fs.existsSync(path.join(O, "tests/auth.setup.ts")) && fs.existsSync(path.join(O, "tests/seed.spec.ts")), true);
+t("--migrate-layout appends the .gitignore exception", fs.readFileSync(path.join(O, ".gitignore"), "utf8").startsWith("tasks/*\n!tasks/.gitkeep\n") && /!tasks\/\*\/spec\.md/.test(fs.readFileSync(path.join(O, ".gitignore"), "utf8")), true);
+putO("specs/QA-5.md", "### S1 - changed\n");
+t("--migrate-layout never overwrites an existing spec.md", mig().left.some((l) => l.path === "specs/QA-5.md" && /already exists/.test(l.reason)) && fs.readFileSync(path.join(O, "tasks/QA-5/spec.md"), "utf8") === "### S1 - a\n", true);
 
 console.log(fail ? `\n${fail} FAILED` : "\nall passed");
 process.exit(fail ? 1 : 0);

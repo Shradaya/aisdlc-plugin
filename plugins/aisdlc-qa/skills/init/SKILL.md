@@ -1,6 +1,6 @@
 ---
 name: init
-description: Set up an aisdlc QA workspace in a folder - the workspace itself (config/, tasks/, logs/, CLAUDE.md) and the Playwright test repository in the same folder (package.json, playwright.config.ts, tests/, specs/, fixtures/) - then, with the QA's consent, install Playwright and generate Playwright's planner/generator/healer agents. Use only when the QA engineer runs /aisdlc-qa:init.
+description: Set up an aisdlc QA workspace in a folder - the workspace itself (config/, tasks/, logs/, CLAUDE.md) and the Playwright test repository in the same folder (package.json, playwright.config.ts, tests/, fixtures/; one tests/<TICKET>/ folder and one committed tasks/<TICKET>/spec.md per ticket) - then, with the QA's consent, install Playwright and generate Playwright's planner/generator/healer agents. Use only when the QA engineer runs /aisdlc-qa:init.
 argument-hint: [target-folder] [--only workspace|agents] [--from-dev [dev-workspace]] [--dry-run] [--force]
 disable-model-invocation: true
 ---
@@ -26,8 +26,9 @@ Explicit `/aisdlc-qa:init [target-folder] [--only workspace|agents] [--dry-run] 
    - `node ${CLAUDE_PLUGIN_ROOT}/scripts/qa/pw.js install chromium`
    - Playwright agents: `node ${CLAUDE_PLUGIN_ROOT}/scripts/init/aisdlc-qa-init.js <target> --mcp-backup`, then `node ${CLAUDE_PLUGIN_ROOT}/scripts/qa/pw.js init-agents --loop=claude`, then `node ${CLAUDE_PLUGIN_ROOT}/scripts/init/aisdlc-qa-init.js <target> --mcp-merge` (init-agents rewrites `.mcp.json`; the merge puts any servers that were there back next to `playwright-test`). Check that `.claude/agents/playwright-test-{planner,generator,healer}.md` exist.
    - Playwright is always run through `pw.js` (or `run-tests.js` / `run-check.js`), which drop `NO_COLOR` so Windows PowerShell 5.1 does not turn a colour warning into a failure. Judge each step by its exit code, not by stderr.
-5. First login: if the environment uses a login form, run `node ${CLAUDE_PLUGIN_ROOT}/scripts/qa/pw.js test --project setup --reporter line` once the credentials are set. When it passes without a `success_url`, it prints the path the app landed on: offer to set it (`add-env.js <name> --success-url "**/<path>" --force`).
-6. Report the result and the next steps:
+5. Older workspace (it has `specs/<TICKET>.md` or tests in `tests/<feature-area>/`): offer to move it to the per-ticket layout with `node ${CLAUDE_PLUGIN_ROOT}/scripts/init/aisdlc-qa-init.js <workspace> --migrate-layout [--dry-run] [--force]`. Show the `--dry-run` result first: it moves each `specs/<T>.md` to `tasks/<T>/spec.md` (never overwriting one without `--force`), and each test that names exactly one ticket to `tests/<T>/` (rewriting its `// spec:` header). A helper moves only with all its importers. It lists everything it leaves (several tickets, no ticket, nested folders, shared helpers), never moves `auth.setup.ts` or `seed.spec.ts`, never touches the git index, and appends the `tasks/*/spec.md` `.gitignore` exception. The QA reviews and commits the move.
+6. First login: if the environment uses a login form, run `node ${CLAUDE_PLUGIN_ROOT}/scripts/qa/pw.js test --project setup --reporter line` once the credentials are set. When it passes without a `success_url`, it prints the path the app landed on: offer to set it (`add-env.js <name> --success-url "**/<path>" --force`).
+7. Report the result and the next steps:
    - Credentials: `QA_USERNAME` / `QA_PASSWORD` as environment variables, or in `.env` in the workspace (gitignored; Claude has no access, the hook and `.claude/settings.json` deny it); never `claude.env` or any other file. `JIRA_EMAIL` / `JIRA_API_TOKEN` as environment variables only (the Jira MCP server reads them from the environment). `node ${CLAUDE_PLUGIN_ROOT}/scripts/qa/cred-check.js` shows set/missing.
    - Jira (unless step 2 reused the dev settings): set `jira.base_url` in `config/integrations.yaml`; add the `atlassian` server from `.mcp.json.example` to `.mcp.json` (next to `playwright-test`, do not replace the file), pointing its CA mount at your corporate certificate (Cloudflare WARP: `C:/ProgramData/Cloudflare/installed_cert.pem`; Zscaler: your exported root CA); turn on `jira.write.add_comment` / `add_attachment` when the token has the write scopes.
    - Restart Claude Code in this folder so the hooks, the MCP servers and the Playwright agents load; approve the project MCP servers when asked.
@@ -35,7 +36,7 @@ Explicit `/aisdlc-qa:init [target-folder] [--only workspace|agents] [--dry-run] 
 
 ## What it creates
 - Workspace: `config/{workspace,repositories,environments,integrations}.yaml`, `tasks/`, `logs/`, `CLAUDE.md`, `claude.env.example`, `.mcp.json.example`, `.gitignore`.
-- Test repository: `package.json` (pinned `@playwright/test`), `playwright.config.ts`, `fixtures/{env,qa}.ts`, `tests/{auth.setup,seed.spec}.ts`, `specs/`.
+- Test repository: `package.json` (pinned `@playwright/test`), `playwright.config.ts`, `fixtures/{env,qa}.ts`, `tests/{auth.setup,seed.spec}.ts`. Each ticket later adds `tests/<TICKET>/` (its tests and optional `helpers.ts`) and `tasks/<TICKET>/spec.md` (its approved scenarios, the only committed file of `tasks/<TICKET>/`, via the `.gitignore` exception).
 - After install: `node_modules/`, `.claude/agents/playwright-test-*.md`, `.mcp.json` with `playwright-test`.
 
 ## Behavior
