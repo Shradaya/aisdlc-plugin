@@ -4,6 +4,8 @@ const fs = require("fs");
 const path = require("path");
 const ROOT = require("../scripts/lib/root").resolveRoot();
 if (!ROOT) process.exit(0); // installed user-wide: do nothing outside an aisdlc workspace
+const KIND = require("../scripts/lib/root").workspaceKind(ROOT);
+if (KIND && KIND !== "design") process.exit(0); // another aisdlc plugin's workspace (config/workspace.yaml "kind")
 const out = [];
 const td = path.join(ROOT, "tasks");
 const active = [];

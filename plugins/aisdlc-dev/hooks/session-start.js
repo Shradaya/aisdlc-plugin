@@ -4,6 +4,8 @@ const fs = require("fs");
 const path = require("path");
 const ROOT = require("../scripts/lib/root").resolveRoot();
 if (!ROOT) process.exit(0); // installed user-wide: do nothing outside an aisdlc workspace
+const KIND = require("../scripts/lib/root").workspaceKind(ROOT);
+if (KIND && KIND !== "dev") process.exit(0); // another aisdlc plugin's workspace (config/workspace.yaml "kind")
 const out = [];
 const { resolveRepoPath } = require("../scripts/lib/repo-paths");
 const parse = (f) => JSON.parse(fs.readFileSync(f, "utf8").replace(/^\s*#.*$/gm, ""));

@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./.auth/**)",
+      "Edit(./.env)",
+      "Edit(./.auth/**)",
+      "Edit(./tasks/*/task.yaml)",
+      "Bash(printenv*)",
+      "Bash(env)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)"
+    ]
+  },
+  "enabledPlugins": {
+    "aisdlc-qa@aisdlc-marketplace": true
+  }
+}

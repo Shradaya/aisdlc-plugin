@@ -1,0 +1,7 @@
+# QA workspace marker (JSON-compatible YAML; full-line '#' comments only).
+# A QA workspace does not register code repositories the way the dev workspace does; this file's presence is what
+# makes the folder an aisdlc workspace (resolved by the plugin's scripts/lib/root.js). The QA folder itself is the
+# Playwright test repository: tests are committed on branch <TICKET> and merged into the regression suite.
+{
+  "repositories": {}
+}

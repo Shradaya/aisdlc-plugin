@@ -6,9 +6,11 @@
 //   node aisdlc-state.js init <ticket> <type> [repo,repo]
 //   node aisdlc-state.js get <ticket>
 //   node aisdlc-state.js transition <ticket> <STATE> [--reason "..."]
-//   node aisdlc-state.js approve <ticket> specification|plan|design   (records approver + artifact hash)
-//   node aisdlc-state.js reject  <ticket> specification|plan|design <reason>
+//   node aisdlc-state.js approve <ticket> <gate>   (records approver + artifact hash)
+//   node aisdlc-state.js reject  <ticket> <gate> <reason>
 //   node aisdlc-state.js set <ticket> <dotted.path> <json-value>
+// Gates: specification|plan (feature family) and design (design lifecycle) are built in. A lifecycle in
+// task-types.yaml may instead declare its own gates (see "Config-driven gates" below).
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
@@ -27,6 +29,20 @@ const TICKET_RE = /^[A-Z][A-Z0-9]*-\d+$/;
 // Which gate corresponds to each task family, and which artifact file its approval hashes.
 // Feature-family tasks gate on specification.md; design tasks gate on design.md.
 const GATE_ARTIFACT = { specification: "specification.md", design: "design.md" };
+const BUILTIN_GATES = ["specification", "plan", "design"];
+
+// Config-driven gates. A lifecycle may declare, in task-types.yaml:
+//   "gates": { "<gate>": { "artifact": "<file in tasks/<ticket>/>", "on_approve": "...", "on_reject": "..." } }
+//   "requires_approval": { "<STATE>": "<gate>" | ["<gate>", ...] }   entering STATE needs the gate(s) approved, and
+//                                                                   a hash-pinned artifact unchanged since approval
+//   "requires_no_open": { "<STATE>": "<task key>" }                  entering STATE is refused while any entry of that
+//                                                                   task object/array has status "open"
+// Lifecycles without "gates" keep the built-in behaviour (specification/plan/design) unchanged.
+const lifecycleGates = (task) => TYPES[lifecycleFor(task.task.type)].gates || null;
+const gateArtifact = (task, gate) => {
+  const gates = lifecycleGates(task);
+  return gates ? gates[gate] && gates[gate].artifact : GATE_ARTIFACT[gate];
+};
 
 const taskDir = (t) => path.join(ROOT, "tasks", t);
 const taskFile = (t) => path.join(taskDir(t), "task.yaml");
@@ -105,11 +121,29 @@ function audit(ticket, event, extra = {}) {
   );
 }
 
-// Hash of the artifact a gate approves (specification.md or design.md). Null if absent.
-function artifactHash(ticket, gate) {
-  const f = path.join(taskDir(ticket), GATE_ARTIFACT[gate]);
-  if (!GATE_ARTIFACT[gate] || !fs.existsSync(f)) return null;
+// Hash of the artifact a gate approves (e.g. specification.md, design.md). Null if absent or the gate has none.
+function artifactHash(ticket, file) {
+  if (!file) return null;
+  const f = path.join(taskDir(ticket), file);
+  if (!fs.existsSync(f)) return null;
   return "sha256:" + crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex");
+}
+
+// Config-driven transition guards (no-op for lifecycles without them).
+function checkConfiguredGuards(ticket, task, lc, to) {
+  const need = (lc.requires_approval || {})[to];
+  for (const gate of need ? [].concat(need) : []) {
+    const a = task.approvals[gate];
+    if (!a || a.status !== "approved") die(`${gate} has not been approved.`);
+    const file = gateArtifact(task, gate);
+    if (file && a.artifact_hash !== artifactHash(ticket, file))
+      die(`${file} changed after ${gate} approval; reapproval required.`);
+  }
+  const key = (lc.requires_no_open || {})[to];
+  if (key) {
+    const open = Object.entries(task[key] || {}).filter(([, v]) => v && v.status === "open").map(([k, v]) => v.id || k);
+    if (open.length) die(`${key} still open: ${open.join(", ")}. Resolve or waive them first.`);
+  }
 }
 
 function gitUser() {
@@ -168,8 +202,12 @@ if (cmd === "init") {
     die(`task ${ticket} already exists; use resume`);
   if (!type) die("task type required");
   const lc = lifecycleFor(type);
-  // Feature-family tasks gate on specification + plan; design tasks gate on design.
-  const approvals = lc === "design"
+  // Lifecycles that declare gates get one pending approval per gate; otherwise feature-family tasks gate on
+  // specification + plan and design tasks gate on design.
+  const gates = TYPES[lc].gates;
+  const approvals = gates
+    ? Object.fromEntries(Object.keys(gates).map((g) => [g, { status: "pending", version: 0 }]))
+    : lc === "design"
     ? { design: { status: "pending", version: 0 } }
     : { specification: { status: "pending", version: 0 }, plan: { status: "pending" } };
   withLock(ticket, () => {
@@ -228,6 +266,7 @@ if (cmd === "init") {
       task.approvals.design.status !== "approved"
     )
       die("Design has not been approved.");
+    checkConfiguredGuards(ticket, task, lc, to);
     if (
       to === "COMPLETED" &&
       lc === TYPES.feature &&
@@ -265,17 +304,20 @@ if (cmd === "init") {
   printNext(ticket);
 } else if (cmd === "approve" || cmd === "reject") {
   const [gate, ...reasonParts] = rest;
-  if (!["specification", "plan", "design"].includes(gate))
-    die("gate must be specification, plan or design");
+  let gates = null;
   withLock(ticket, () => {
     const task = load(ticket);
+    gates = lifecycleGates(task);
+    const allowed = gates ? Object.keys(gates) : BUILTIN_GATES;
+    if (!allowed.includes(gate)) die(`gate must be one of: ${allowed.join(", ")}`);
     if (!task.approvals[gate]) die(`this task has no ${gate} gate`);
     const a = task.approvals[gate];
     if (cmd === "approve") {
-      // Hash-pinned gates (specification, design) record the artifact hash so later edits force reapproval.
-      if (GATE_ARTIFACT[gate]) {
-        const h = artifactHash(ticket, gate);
-        if (!h) die(`no ${GATE_ARTIFACT[gate]} to approve`);
+      // Hash-pinned gates (those with an artifact) record its hash so later edits force reapproval.
+      const file = gateArtifact(task, gate);
+      if (file) {
+        const h = artifactHash(ticket, file);
+        if (!h) die(`no ${file} to approve`);
         a.version = (a.version || 0) + (a.artifact_hash === h ? 0 : 1);
         a.artifact_hash = h;
         // Keep the legacy field name for the specification gate so existing hooks/tests keep matching.
@@ -298,7 +340,9 @@ if (cmd === "init") {
     save(ticket, task);
   });
   console.log(`${ticket}: ${gate} ${cmd}d`);
-  if (cmd === "approve")
+  const custom = gates && gates[gate] && gates[gate][cmd === "approve" ? "on_approve" : "on_reject"];
+  if (custom) console.log(custom.split("{T}").join(ticket));
+  else if (cmd === "approve")
     console.log(
       gate === "specification"
         ? `Next (Claude): move the task to SPEC_APPROVED, then draft the implementation plan.`

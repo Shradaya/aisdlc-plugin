@@ -4,6 +4,8 @@ const fs = require("fs");
 const path = require("path");
 const ROOT = require("../scripts/lib/root").resolveRoot();
 if (!ROOT) process.exit(0);
+const KIND = require("../scripts/lib/root").workspaceKind(ROOT);
+if (KIND && KIND !== "design") process.exit(0); // another aisdlc plugin's workspace (config/workspace.yaml "kind")
 let ev; try { ev = JSON.parse(fs.readFileSync(0, "utf8")); } catch { process.exit(0); }
 const SECRET = /(AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:token|secret|password|passwd|api[_-]?key)\s*[=:]\s*\S+|xox[bp]-\S+|ghp_\w+)/gi;
 const input = ev.tool_input || {};

@@ -1,4 +1,4 @@
-// Workspace root resolution, shared by hooks and scripts across both plugins (aisdlc-dev, aisdlc-design).
+// Workspace root resolution, shared by hooks and scripts across the aisdlc plugins (aisdlc-dev, aisdlc-design, aisdlc-qa).
 //
 // This file is the canonical copy under packages/aisdlc-core/. Each plugin vendors its own copy inside its
 // own subtree (plugins/<plugin>/scripts/lib/root.js) because a plugin installed from a hosted marketplace is
@@ -49,4 +49,16 @@ function configPath(root, rel, pRoot = pluginRoot()) {
   return fs.existsSync(workspaceFile) ? workspaceFile : path.join(pRoot, "config", rel);
 }
 
-module.exports = { resolveRoot, isWorkspace, configPath, NOT_WORKSPACE, pluginRoot, get PLUGIN_ROOT() { return pluginRoot(); } };
+// Which plugin a workspace belongs to: config/workspace.yaml -> workspace.kind ("dev" | "design" | "qa"), or null
+// when the file or key is absent (workspaces created before the marker existed). Hooks use it so that, when several
+// aisdlc plugins are installed user-wide, each enforces its rules only in its own kind of workspace.
+function workspaceKind(root) {
+  try {
+    const text = fs.readFileSync(path.join(root, "config", "workspace.yaml"), "utf8").replace(/^\s*#.*$/gm, "");
+    return (JSON.parse(text).workspace || {}).kind || null;
+  } catch {
+    return null;
+  }
+}
+
+module.exports = { resolveRoot, isWorkspace, configPath, workspaceKind, NOT_WORKSPACE, pluginRoot, get PLUGIN_ROOT() { return pluginRoot(); } };

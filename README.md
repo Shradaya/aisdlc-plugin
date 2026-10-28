@@ -1,96 +1,147 @@
 # aisdlc plugins
 
-Two Claude Code plugins for the AI-SDLC lifecycle, published from one marketplace (`aisdlc-marketplace`):
+Claude Code plugins for an AI-assisted software delivery lifecycle (AI-SDLC), one per role, published from one marketplace (`aisdlc-marketplace`):
 
-- **aisdlc-dev** — the developer side: `/aisdlc-dev:<skill>` commands, subagents, workflows, and hooks that enforce the lifecycle gates (ticket required, approved specification before implementation, commit format, no secrets in audit records), from ticket through specification, implementation, review, commit, PR and release hand-off.
-- **aisdlc-design** — the designer side: `/aisdlc-design:<skill>` commands and hooks for authoring UI/UX prototypes under a design ticket, previewing them in a local web app, and committing them to a design repository for developers to consume.
+| Plugin | For | What it does | Docs |
+|---|---|---|---|
+| **aisdlc-design** | UI/UX designers | Author a prototype under a design ticket, preview it, approve it, and commit it to a design repository | [plugins/aisdlc-design](plugins/aisdlc-design/README.md) |
+| **aisdlc-dev** | Developers | Jira ticket → specification (approved) → implementation → review → commit → PR/CI → release → product knowledge | [plugins/aisdlc-dev](plugins/aisdlc-dev/README.md) |
+| **aisdlc-qa** | QA engineers | Jira ticket → test scenarios (approved) → Playwright tests run in a browser the QA watches → defects on the ticket, wait for the fix → signed-off evidence on Jira → regression suite; plus quick checks without a ticket, with the proof kept locally | [plugins/aisdlc-qa](plugins/aisdlc-qa/README.md) |
 
-A designer installs only `aisdlc-design` and never sees the developer commands; a developer installs only `aisdlc-dev`. The two share a core (state engine, workspace/path resolution, config loaders) kept once in `packages/aisdlc-core/` and vendored into each plugin.
+Each role installs only its own plugin and sees only its own `/aisdlc-<role>:<skill>` commands.
 
-## Layout
+All three plugins work the same way:
+- Every piece of work hangs off a ticket.
+- A task moves through a state machine whose state changes only through the state CLI.
+- Human decisions are explicit approval gates, pinned to the hash of what was approved. Editing the approved file means approving it again.
+- Hooks block what the gates don't allow: early edits, wrong commit formats, force-push, printing secrets, testing against production.
+- Credentials are environment variables only, never files.
 
-| Path | Purpose |
-|---|---|
-| `.claude-plugin/marketplace.json` | Marketplace manifest listing both plugins |
-| `packages/aisdlc-core/` | Canonical shared core (vendored into each plugin by `scripts/sync-core.js`) |
-| `scripts/sync-core.js` | Vendor the shared core into each plugin; `--check` for CI |
-| `plugins/aisdlc-dev/` | Developer plugin: `skills/`, `agents/`, `hooks/`, `workflows/`, `scripts/`, `config/`, `templates/` |
-| `plugins/aisdlc-design/` | Designer plugin: `skills/`, `agents/`, `hooks/`, `workflows/`, `scripts/`, `config/`, `templates/` (workspace + `preview/` app) |
+## How the roles connect
 
-Each plugin carries only the JS it needs; the vendored core under `plugins/<plugin>/scripts/{lib,state}/` is a copy of `packages/aisdlc-core/` (a hosted-marketplace install copies only the plugin's own subtree, so the core cannot be referenced across directories).
+```
+Designer (aisdlc-design)          Developer (aisdlc-dev)                  QA (aisdlc-qa)
+design ticket ─► prototype ─►     feature ticket ─► spec pins the     ─►  same ticket ─► scenarios approved
+approved, committed to the        design ─► implement ─► PR to             ─► tests run ─► defect comment on
+design repository                 lf-develop / lf-qa / lf-uat              Jira ◄──────── developer fixes,
+                                                                           re-verified ─► sign-off ─► evidence
+                                                                           on Jira, tests into regression suite
+```
 
-## Requirements
-
-- Claude Code, and Node.js (hooks and CLIs run with `node`). The design preview app needs Node 20+.
-- Developer: an aisdlc **dev** workspace — a folder with `config/repositories.yaml`, `tasks/`, `repositories/`, `system/`. Credentials as environment variables only (never in files): `JIRA_EMAIL`, `JIRA_API_TOKEN`, `BITBUCKET_EMAIL`, `BITBUCKET_API_TOKEN`.
-- Designer: an aisdlc **design** workspace — a folder with `config/repositories.yaml`, `designs/`, `design-system/`, `tasks/`, `preview/`. Optionally a Claude Design design system identifier in `claude.env` (`AISDLC_DESIGN_SYSTEM`, identifier only).
+1. **Design → development.**
+   - The designer runs `/aisdlc-design:design <DESIGN-TICKET>` and `/aisdlc-design:commit`, then pushes the design repository.
+   - The developer registers that repository with `/aisdlc-dev:add-repo <name> <path> --kind design`.
+   - During `/aisdlc-dev:feature`, the `design-link` step pins a hashed snapshot of the design into the specification.
+2. **Development → QA.**
+   - Once the change is deployed to a QA environment, the QA engineer runs `/aisdlc-qa:test <TICKET>`.
+   - App defects go back to the developer as comments on the Jira ticket, and the QA task waits for the fix.
+   - When the developer says the fix is deployed, the QA runs `/aisdlc-qa:run <TICKET>` to re-verify.
 
 ## Install
 
-Add the marketplace once, then install the plugin for your role (choose user scope when asked):
+Add the marketplace once per machine:
 
 ```
 /plugin marketplace add ~/.claude/plugin
-/plugin install aisdlc-dev@aisdlc-marketplace       # developers
-/plugin install aisdlc-design@aisdlc-marketplace    # designers
 ```
 
-Restart Claude Code in your workspace so the hooks load.
+Then install your role's plugin, either for all your projects or for one workspace only:
 
-- Developer: start Claude Code in the dev workspace. `/aisdlc-dev:init` scaffolds one if needed; `/aisdlc-dev:status` lists repositories and active tasks.
-- Designer: start Claude Code in the design workspace. `/aisdlc-design:init` scaffolds one (including the `preview/` app).
+```
+/plugin install aisdlc-<role>@aisdlc-marketplace                           # user scope: every project
+claude plugin install aisdlc-<role>@aisdlc-marketplace --scope project     # this workspace, shared through .claude/settings.json
+claude plugin install aisdlc-<role>@aisdlc-marketplace --scope local       # this workspace, only you
+```
 
-Do not also start Claude Code with `--plugin-dir` for this folder; the plugin would load twice.
+`<role>` is `dev`, `design` or `qa`. Run the `--scope project` and `--scope local` forms from inside the workspace folder. Afterwards, restart Claude Code in the workspace so the hooks load. Then run `/aisdlc-<role>:init` to scaffold a workspace; each plugin's README describes its setup.
 
-## The design → development handoff
+Don't also start Claude Code with `--plugin-dir` pointing at this folder, or the plugin loads twice.
 
-1. Designer: `/aisdlc-design:design <DESIGN-TICKET>` authors a prototype under `designs/<DESIGN-TICKET>/` (HTML/CSS, or Claude Design then export), previews it by ticket number (`cd preview && npm install && npm run dev`), approves it, and `/aisdlc-design:commit <DESIGN-TICKET>` commits and pushes it to the design repository.
-2. Developer: `/aisdlc-dev:add-repo <name> <path> --kind design` registers that design repository (read-only source).
-3. Developer: during `/aisdlc-dev:feature <TICKET>` on a UI repository, the `design-link` step reads `designs/<DESIGN-TICKET>/` from the design repo, records a versioned hashed snapshot under `system/designs/<DESIGN-TICKET>/`, and pins it in the feature specification. Approving the specification covers the pinned design version.
+**Workspaces.**
+- Each plugin works in its own folder. A folder is a workspace when it contains `config/repositories.yaml`; the hooks and CLIs find it from the folder, any subfolder, or `AISDLC_ROOT`.
+- A workspace can declare its kind in `config/workspace.yaml` (`"kind": "dev" | "design" | "qa"`). A plugin's hooks stay out of a workspace of another kind, so having several plugins installed on one machine is safe.
+- QA workspaces declare their kind. Workspaces without a kind behave as before.
 
-## Update
+## Requirements
 
-After pulling or editing plugin files, refresh Claude Code's installed copies and restart:
+- Claude Code and Node.js: the hooks and CLIs run with `node`. The design preview app and the QA workspace need Node 20+.
+- Credentials, as environment variables only:
+
+| Variable | Used by | For |
+|---|---|---|
+| `JIRA_EMAIL`, `JIRA_API_TOKEN` | dev, qa | Read tickets. QA also posts defect and results comments and uploads evidence, when switched on. |
+| `BITBUCKET_EMAIL`, `BITBUCKET_API_TOKEN` | dev | Pull requests |
+| `QA_USERNAME`, `QA_PASSWORD` | qa | Test account for signing in to the QA environment. May instead go in the QA workspace's `.env`, which is gitignored and which Claude can't read. |
+
+Set them in PowerShell before starting Claude Code (`$env:JIRA_API_TOKEN = "..."`), or as user environment variables. Claude only checks whether they are set, and a hook blocks printing them. Jira writes are off by default in each workspace's `config/integrations.yaml`.
+
+## Repository layout
+
+| Path | Purpose |
+|---|---|
+| `.claude-plugin/marketplace.json` | Marketplace manifest listing the three plugins |
+| `plugins/aisdlc-dev/` | Developer plugin |
+| `plugins/aisdlc-design/` | Designer plugin, including the `preview/` app template |
+| `plugins/aisdlc-qa/` | QA plugin, including the Playwright workspace template, test runner and Jira helper |
+| `packages/aisdlc-core/` | Shared core: state engine, workspace and path resolution, config loaders. The source of truth, vendored into each plugin. |
+| `scripts/sync-core.js` | Copies the shared core into each plugin; `--check` for CI |
+| `kiro/` | Port of the dev and design lifecycles as Kiro skills and hooks ([kiro/README.md](kiro/README.md)). QA is not ported yet. |
+
+Each plugin has the same internal layout:
+- `.claude-plugin/plugin.json`: manifest.
+- `skills/<name>/SKILL.md`: commands and stages.
+- `agents/`: subagents.
+- `hooks/`: `hooks.json` plus the session-start, pre-tool-policy and audit scripts.
+- `workflows/`: lifecycle contracts.
+- `config/`: the lifecycle (`task-types.yaml`) and policies. A same-named file in a workspace's `config/` overrides it.
+- `scripts/`: CLIs. `scripts/{lib,state}/` is the vendored core.
+- `templates/`: what `init` scaffolds.
+
+A hosted-marketplace install copies only a plugin's own folder, which is why the core is vendored rather than shared.
+
+**Config-driven gates.** The state engine has built-in gates: `specification` and `plan` for dev, `design` for design. A lifecycle can also declare its own in `task-types.yaml`. QA uses this for its `scenarios` and `signoff` gates.
+- `gates`: each gate's artifact, which is hash-pinned on approval.
+- `requires_approval`: which states need which gates, with an unchanged artifact.
+- `requires_no_open`: refuse a state while, for example, a defect is still open.
+
+## Maintenance
+
+After pulling or editing plugin files, refresh the installed copies, then restart Claude Code:
 
 ```
 /plugin marketplace update aisdlc-marketplace
 ```
 
-If you edited `packages/aisdlc-core/`, run `node scripts/sync-core.js` first to re-vendor the core into both plugins (CI should run `node scripts/sync-core.js --check`).
+- Edit the shared core only in `packages/aisdlc-core/`, then run `node scripts/sync-core.js` to copy it into every plugin.
+- In a QA workspace, after upgrading Playwright, run `/aisdlc-qa:init --only agents` to regenerate Playwright's agents.
 
-## Checks
+Checks (no network or model needed):
 
 ```bash
 node plugins/aisdlc-dev/scripts/validation/test-gates.js
 node plugins/aisdlc-dev/scripts/validation/test-repo-paths.js
-node plugins/aisdlc-dev/scripts/validation/cred-check.js      # run from a dev workspace
+node plugins/aisdlc-dev/scripts/validation/cred-check.js        # run from a dev workspace
 node plugins/aisdlc-design/scripts/validation/test-gates-design.js
+node plugins/aisdlc-qa/scripts/validation/test-gates-qa.js
 node scripts/sync-core.js --check
 claude plugin validate .
 ```
 
-### Bitbucket PR helper
+The integration helpers share a contract:
+- Credentials come from the environment only.
+- They print one JSON line.
+- Exit codes are `0` ok, `1` error, `2` credentials missing.
+- They shut down cleanly on Windows.
 
-`plugins/aisdlc-dev/scripts/git-hosting/bitbucket-pr.js` is the Bitbucket Cloud PR helper used by the `create-pr`, `pull-request` and `pr-review` skills. It reads `BITBUCKET_EMAIL` / `BITBUCKET_API_TOKEN` from the environment only (values are never printed), writes exactly one JSON line to stdout, and exits `0` on success, `1` on error, `2` when a credential is missing. Commands:
-
-```
-node .../bitbucket-pr.js status  <repo-path> <pr-id>
-node .../bitbucket-pr.js comment <repo-path> <pr-id> <file|-> <line> <text-file>
-node .../bitbucket-pr.js create  <repo-path> <source> <dest> <title> <description-file> [--draft]
-```
-
-Smoke test (no network, no credentials needed): with both credential variables unset it prints the missing-credentials JSON and exits `2`.
-
-```bash
-node plugins/aisdlc-dev/scripts/git-hosting/bitbucket-pr.js status x 1   # exit 2 when creds unset
-```
-
-Note: the helper tears down Node's global fetch connection before returning so the process exits promptly with the correct code on Windows; it deliberately avoids a hard `process.exit()` on the network paths, which trips a libuv assertion while the HTTP socket is closing.
+The two helpers are the Bitbucket PR helper `plugins/aisdlc-dev/scripts/git-hosting/bitbucket-pr.js` and the Jira helper `plugins/aisdlc-qa/scripts/jira/jira-attach.js`. Each is documented in its plugin's README.
 
 ## Uninstall
 
 ```
 /plugin uninstall aisdlc-dev@aisdlc-marketplace
 /plugin uninstall aisdlc-design@aisdlc-marketplace
+/plugin uninstall aisdlc-qa@aisdlc-marketplace
 /plugin marketplace remove aisdlc-marketplace
 ```
+
+Add `--scope project` or `--scope local` to uninstall a copy installed in that scope.

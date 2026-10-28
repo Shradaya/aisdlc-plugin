@@ -8,6 +8,8 @@ const { execSync } = require("child_process");
 
 const ROOT = require("../scripts/lib/root").resolveRoot();
 if (!ROOT) process.exit(0); // installed user-wide: do nothing outside an aisdlc workspace
+const KIND = require("../scripts/lib/root").workspaceKind(ROOT);
+if (KIND && KIND !== "dev") process.exit(0); // another aisdlc plugin's workspace (config/workspace.yaml "kind")
 const readJson = (f, d) => {
   try { return JSON.parse(fs.readFileSync(f, "utf8").replace(/^\s*#.*$/gm, "")); } catch { return d; }
 };

@@ -1,0 +1,25 @@
+node_modules/
+.env
+.env.*
+claude.env
+.mcp.json
+.mcp.json.aisdlc-backup
+
+# Saved login sessions (written by the Playwright setup project; never committed)
+.auth/
+
+# Local proof: ad-hoc check runs (test-results/<check>/run-<time>/) and Playwright's own output
+# (test-results/.playwright/, emptied by Playwright on every run)
+test-results/
+playwright-report/
+blob-report/
+
+# Ad-hoc checks (/aisdlc-qa:check); commit one only on request (git add -f), or promote it with /aisdlc-qa:test
+checks/
+
+# Runtime task state and evidence (keep the folder, not its contents); Jira holds the long-term evidence
+tasks/*
+!tasks/.gitkeep
+
+# Runtime audit logs (keep the folder via .gitkeep)
+logs/*.jsonl

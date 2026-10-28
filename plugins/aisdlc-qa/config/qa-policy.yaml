@@ -1,0 +1,44 @@
+# QA testing policy (plugin default; a same-named file in the workspace config/ overrides it).
+# JSON-compatible YAML; '#' comments only on their own lines.
+# blocked_host_patterns are case-insensitive regular expressions matched against the target host. They are a
+# safety net only: list your real production hosts in the workspace config/environments.yaml "blocked_hosts".
+{
+  "environments": {
+    "never_production": true,
+    "blocked_host_patterns": ["(^|[.-])prod([.-]|$)", "(^|[.-])production([.-]|$)", "(^|[.-])live([.-]|$)"],
+    "data": "synthetic-only"
+  },
+  "scenarios": {
+    "artifact": "tasks/{ticket}/scenarios.md",
+    "expected_results_source": "ticket acceptance criteria only; exploration may make steps concrete but never sets an expected result",
+    "id_format": "S<n>",
+    "types": ["happy-path", "negative", "edge", "regression"],
+    "priorities": ["P1", "P2", "P3"]
+  },
+  "tests": {
+    "framework": "@playwright/test",
+    "location": "tests/<feature-area>/<scenario-slug>.spec.ts",
+    "plan_copy": "specs/{ticket}.md",
+    "fixture": "fixtures/qa.ts (test, expect, qaStep)",
+    "tags": ["@{ticket}", "@{ticket}-S<n>", "@{ticket}-AC<n>"],
+    "annotation": "{ type: 'issue', description: '<jira base url>/browse/{ticket}' }",
+    "locators": ["getByRole", "getByLabel", "getByText", "getByTestId"],
+    "forbidden": ["page.waitForTimeout", "waitForLoadState('networkidle')", "CSS/XPath chains tied to layout", "real patient data", "credentials in code"],
+    "healer_may_not": ["loosen or delete an assertion", "change an expected value", "skip a test silently"]
+  },
+  "evidence": {
+    "root": "tasks/{ticket}/evidence",
+    "run_folder": "run-<n>",
+    "ticket_runs": { "trace": "on", "video": "off (on with --video / QA_VIDEO=1)", "screenshot": "on", "step_screenshots": true, "new_tab_screenshots": true },
+    "regression_runs": { "trace": "retain-on-failure", "video": "off", "screenshot": "only-on-failure" },
+    "check_runs": "test-results/<check>/run-<yyyymmdd-hhmmss>/ (screenshots/, report/, trace.zip, result.json); Playwright's own outputDir is test-results/.playwright/",
+    "jira_upload": ["<ticket>-run<n>-report.zip", "<ticket>-run<n>-screenshots.zip", "<ticket>-run<n>-<scenario>-final.png", "<ticket>-run<n>-<scenario>-failed.png"],
+    "jira_upload_on_request": ["trace", "video (only if the run recorded it)"]
+  },
+  "watch": { "slow_mo_ms": 500, "workers": 1 },
+  "defects": {
+    "severities": ["critical", "major", "minor"],
+    "statuses": ["open", "fixed", "waived"],
+    "waiver_requires_reason": true
+  }
+}

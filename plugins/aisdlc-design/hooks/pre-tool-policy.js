@@ -13,6 +13,8 @@ const { resolveRoot, configPath } = require("../scripts/lib/root");
 const { readYaml } = require("../scripts/lib/yaml");
 const ROOT = resolveRoot();
 if (!ROOT) process.exit(0);
+const KIND = require("../scripts/lib/root").workspaceKind(ROOT);
+if (KIND && KIND !== "design") process.exit(0); // another aisdlc plugin's workspace (config/workspace.yaml "kind")
 
 const TYPES = readYaml(configPath(ROOT, "task-types.yaml"), {});
 const norm = (p) => path.resolve(p).replace(/\\/g, "/").toLowerCase();

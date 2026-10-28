@@ -1,0 +1,37 @@
+# External integrations for the QA workspace. JSON-compatible YAML; '#' comments only on their own lines.
+# Tickets are read through the Jira MCP adapter (see .mcp.json.example), or asked for interactively when it is
+# unavailable. Defect comments, results comments and evidence uploads go through scripts/jira/jira-attach.js, and only
+# when the matching "write" switch is true. Credentials are read from environment variables ONLY; this file stores
+# their names, never values. Jira Cloud needs your site URL in "base_url" (not a secret).
+# auth_scheme: "basic" (Jira Cloud: email + API token) or "bearer" (Jira Data Center personal access token).
+# status_transitions: optional, explicit only. {"defect_found": "<transition name>"} moves the ticket (through the Jira
+# MCP adapter) when a defect is reported; {"verified": "<transition name>"} after sign-off. Empty = never transition.
+{
+  "jira": {
+    "adapter": "mcp",
+    "base_url": "",
+    "auth_scheme": "basic",
+    "required_for_ticket_fetch": false,
+    "read": ["issue", "fields", "description", "acceptance_criteria", "labels", "priority", "linked_issues", "comments"],
+    "write": {
+      "add_comment": false,
+      "add_attachment": false,
+      "mention_assignee": false,
+      "status_transitions": {}
+    },
+    "script": "${CLAUDE_PLUGIN_ROOT}/scripts/jira/jira-attach.js",
+    "fallback": "interactive-questions",
+    "credentials": {
+      "email_env": "JIRA_EMAIL",
+      "api_token_env": "JIRA_API_TOKEN"
+    },
+    "token_scopes": {
+      "read:issue:jira": "Fetch the ticket and its basic fields",
+      "read:issue-details:jira": "Description, labels, priority, linked issues",
+      "read:comment:jira": "Read developer replies while a defect waits for a fix",
+      "read:field:jira": "Find the custom field holding acceptance criteria",
+      "write:comment:jira": "Post defect and results comments (only when add_comment is true)",
+      "write:attachment:jira": "Upload screenshots and reports (only when add_attachment is true)"
+    }
+  }
+}

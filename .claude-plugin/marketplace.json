@@ -1,7 +1,7 @@
 {
   "name": "aisdlc-marketplace",
   "owner": { "name": "Evoke Medical Care" },
-  "description": "AI-SDLC lifecycle plugins: aisdlc-dev for developers and aisdlc-design for UI/UX designers.",
+  "description": "AI-SDLC lifecycle plugins: aisdlc-dev for developers, aisdlc-design for UI/UX designers and aisdlc-qa for QA engineers.",
   "plugins": [
     {
       "name": "aisdlc-dev",
@@ -12,6 +12,11 @@
       "name": "aisdlc-design",
       "source": "./plugins/aisdlc-design",
       "description": "AI-SDLC design-authoring plugin (designer side)."
+    },
+    {
+      "name": "aisdlc-qa",
+      "source": "./plugins/aisdlc-qa",
+      "description": "AI-SDLC QA plugin (QA side): Jira ticket to approved scenarios, visible Playwright runs, defects on the ticket, signed-off evidence."
     }
   ]
 }

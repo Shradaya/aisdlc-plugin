@@ -11,12 +11,14 @@ const path = require("path");
 const REPO = path.resolve(__dirname, "..");
 const CORE = path.join(REPO, "packages", "aisdlc-core");
 
-// Which files each plugin needs. aisdlc-design does not need the full feature config, but needs the same
-// lib + state engine; both plugins get the same core files (the engine is config-driven, not type-specific).
+// Which files each plugin needs. aisdlc-design and aisdlc-qa do not need the full feature config, but need the same
+// lib + state engine; every plugin gets the same core files (lifecycles and their gates come from each plugin's
+// config/task-types.yaml).
 const CORE_FILES = ["lib/root.js", "lib/repo-paths.js", "lib/yaml.js", "lib/design-config.js", "state/aisdlc-state.js"];
 const CORE_CONSUMERS = [
   path.join(REPO, "plugins", "aisdlc-dev", "scripts"),
   path.join(REPO, "plugins", "aisdlc-design", "scripts"),
+  path.join(REPO, "plugins", "aisdlc-qa", "scripts"),
 ];
 
 const check = process.argv.includes("--check");
