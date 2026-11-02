@@ -1,21 +1,28 @@
 # Task types and state machines (spec §18, §19). Consumed by the plugin's scripts/state/aisdlc-state.js and hooks.
 # JSON-compatible YAML so scripts can parse it without dependencies.
+#
+# Shortened lifecycles (2026 revision): intermediate states were merged to keep the list readable.
+#   feature: UNDERSTOOD absorbs impact analysis + repository identification; SPEC_APPROVED absorbs draft/await;
+#     PLAN_APPROVED absorbs plan draft/await; IMPLEMENTING absorbs validation + review (sub-steps, not states);
+#     COMMITTED absorbs committing; PR_CREATED absorbs CI validation; MERGED absorbs merge-ready (merge to the
+#     UAT branch lands here); RELEASED absorbs release-pending and is reached by the UAT merge (UAT = released);
+#     KNOWLEDGE_CONSOLIDATED absorbs its pending pair; COMPLETED absorbs temporary-artifact cleanup.
 {
   "feature": {
-    "states": ["CREATED","TICKET_READY","UNDERSTOOD","IMPACT_ANALYZED","REPOSITORIES_IDENTIFIED","REPOSITORIES_PREPARED","SPEC_DRAFTED","AWAITING_SPEC_APPROVAL","SPEC_APPROVED","PLAN_DRAFTED","AWAITING_PLAN_APPROVAL","IMPLEMENTING","VALIDATING","REVIEWING","COMMITTING","COMMITTED","PR_CREATED","CI_VALIDATING","MERGE_READY","MERGED","RELEASE_PENDING","RELEASED","KNOWLEDGE_CONSOLIDATION_PENDING","KNOWLEDGE_CONSOLIDATED","TEMPORARY_ARTIFACTS_CLEANED","COMPLETED"],
-    "skip": { "PLAN_DRAFTED": ["IMPLEMENTING"], "COMMITTED": ["IMPLEMENTING"], "PR_CREATED": ["IMPLEMENTING"] },
+    "states": ["CREATED","TICKET_READY","UNDERSTOOD","REPOSITORIES_PREPARED","SPEC_APPROVED","PLAN_APPROVED","IMPLEMENTING","COMMITTED","PR_CREATED","MERGED","RELEASED","KNOWLEDGE_CONSOLIDATED","COMPLETED"],
+    "skip": { "SPEC_APPROVED": ["IMPLEMENTING"], "PLAN_APPROVED": ["IMPLEMENTING"], "COMMITTED": ["IMPLEMENTING"], "PR_CREATED": ["IMPLEMENTING"] },
     "source_edit_min_state": "SPEC_APPROVED",
     "source_edit_max_state": "COMMITTED"
   },
   "bug": {
-    "states": ["CREATED","TICKET_READY","UNDER_INVESTIGATION","ROOT_CAUSE_CONFIRMED","REPOSITORIES_IDENTIFIED","REPOSITORIES_PREPARED","IMPLEMENTING","VALIDATING","REVIEWING","COMMITTING","COMMITTED","PR_CREATED","CI_VALIDATING","COMPLETED"],
+    "states": ["CREATED","TICKET_READY","UNDER_INVESTIGATION","ROOT_CAUSE_CONFIRMED","REPOSITORIES_PREPARED","IMPLEMENTING","COMMITTED","PR_CREATED","COMPLETED"],
     "skip": { "COMMITTED": ["IMPLEMENTING"], "PR_CREATED": ["IMPLEMENTING"] },
     "source_edit_min_state": "REPOSITORIES_PREPARED",
     "source_edit_max_state": "COMMITTED"
   },
   "investigation": {
     "states": ["CREATED","TICKET_READY","UNDER_INVESTIGATION","COMPLETED"],
-    "skip": { "COMMITTED": ["IMPLEMENTING"], "PR_CREATED": ["IMPLEMENTING"] },
+    "skip": {},
     "source_edit_min_state": null,
     "source_edit_max_state": null
   },
@@ -25,39 +32,26 @@
     "default": {
       "CREATED": ["claude", "Retrieve the ticket (Jira, or interactive questions if Jira is unavailable)."],
       "TICKET_READY": ["claude", "Summarize the requirement, acceptance criteria, constraints and unknowns; resolve unknowns that affect design."],
-      "UNDERSTOOD": ["claude", "Run impact analysis across the registered repositories."],
-      "IMPACT_ANALYZED": ["you", "Review tasks/{T}/impact-analysis.md and confirm the affected repositories."],
-      "REPOSITORIES_IDENTIFIED": ["claude", "Prepare each affected repository: stash, update main, create branch {T}."],
-      "REPOSITORIES_PREPARED": ["claude", "Draft the specification into tasks/{T}/specification.md."],
-      "SPEC_DRAFTED": ["you", "Read tasks/{T}/specification.md; check scope, acceptance criteria and open questions."],
-      "AWAITING_SPEC_APPROVAL": ["you", "Approve with /aisdlc-dev:approve {T} specification, ask for changes, or /aisdlc-dev:reject {T} specification <reason>. Source edits stay blocked until approved."],
-      "SPEC_APPROVED": ["claude", "Draft the implementation plan."],
-      "PLAN_DRAFTED": ["you", "Review the plan. Cross-repo, database, API or security changes need /aisdlc-dev:approve {T} plan before implementation."],
-      "AWAITING_PLAN_APPROVAL": ["you", "Approve with /aisdlc-dev:approve {T} plan, or request changes."],
-      "IMPLEMENTING": ["claude", "Implement in small steps and run tests as you go. You: review progress and answer questions."],
-      "VALIDATING": ["claude", "Run the test matrix and record evidence in validation.md. You: decide on any failures or waivers."],
-      "REVIEWING": ["claude", "Run independent code review against spec, plan and diff. You: read the findings."],
-      "COMMITTING": ["you", "Confirm the commit with /aisdlc-dev:commit {T} (message: {T}: <summary>)."],
-      "COMMITTED": ["you", "Create the pull request(s) with /aisdlc-dev:pr {T}."],
-      "PR_CREATED": ["you", "Wait for CI. Claude can read check status; merging stays with you."],
-      "CI_VALIDATING": ["you", "When all required checks pass, review and merge the PR(s). Merge is human-controlled."],
-      "MERGE_READY": ["you", "Merge the PR(s)."],
-      "MERGED": ["you", "Release to production through your normal process, then run /aisdlc-dev:post-release {T}."],
-      "RELEASE_PENDING": ["you", "Verify the production release, then run /aisdlc-dev:post-release {T} (you will be asked for the deployment record if no integration exists)."],
-      "RELEASED": ["you", "Run /aisdlc-dev:post-release {T} to update product documentation."],
-      "KNOWLEDGE_CONSOLIDATION_PENDING": ["claude", "Consolidate released behavior into system/product/. You: answer any reconciliation questions."],
-      "KNOWLEDGE_CONSOLIDATED": ["claude", "Delete the temporary task artifacts and make the cleanup commit."],
-      "TEMPORARY_ARTIFACTS_CLEANED": ["you", "Run /aisdlc-dev:finish {T} to complete the task."],
+      "UNDERSTOOD": ["claude", "Run impact analysis, then confirm the affected repositories with you. You: confirm tasks/{T}/impact-analysis.md."],
+      "REPOSITORIES_PREPARED": ["claude", "Draft the specification into tasks/{T}/specification.md, then request your approval."],
+      "SPEC_APPROVED": ["claude", "Draft the implementation plan. (Approve the spec with /aisdlc-dev:approve {T} specification; source edits stay blocked until approved.)"],
+      "PLAN_APPROVED": ["claude", "Implement in small steps, running tests and review as you go (validation and review are sub-steps of implementation)."],
+      "IMPLEMENTING": ["claude", "Implement, validate (test matrix -> validation.md) and run independent review. You: review progress; confirm the commit when ready."],
+      "COMMITTED": ["you", "Create the pull request(s) with /aisdlc-dev:pr {T} (target the UAT branch for release)."],
+      "PR_CREATED": ["you", "Wait for CI, then review and merge the PR(s) to the UAT branch. Merge is human-controlled."],
+      "MERGED": ["you", "Merged to UAT counts as released. Run /aisdlc-dev:post-release {T}."],
+      "RELEASED": ["claude", "Consolidate released behavior into system/product/. You: answer any reconciliation questions."],
+      "KNOWLEDGE_CONSOLIDATED": ["claude", "Delete the temporary task artifacts, make the cleanup commit, then /aisdlc-dev:finish {T}."],
       "COMPLETED": ["none", "Nothing further; the task is complete."]
     },
     "bug": {
       "TICKET_READY": ["claude", "Reproduce or understand the symptom and trace the execution path."],
       "UNDER_INVESTIGATION": ["claude", "Form and validate root-cause hypotheses; write tasks/{T}/root-cause.md (including Expected vs Actual)."],
-      "ROOT_CAUSE_CONFIRMED": ["you", "Confirm the root cause, then Claude identifies the affected repositories."],
-      "REPOSITORIES_PREPARED": ["claude", "Implement the minimal fix and add a regression test."],
-      "IMPLEMENTING": ["claude", "Implement the fix and regression test; run tests. You: review."],
+      "ROOT_CAUSE_CONFIRMED": ["you", "Confirm the root cause, then Claude identifies and prepares the affected repositories."],
+      "REPOSITORIES_PREPARED": ["claude", "Implement the minimal fix and add a regression test; validate and review as sub-steps."],
+      "IMPLEMENTING": ["claude", "Implement the fix and regression test; run tests and review. You: review, then confirm the commit."],
       "COMMITTED": ["you", "Create the pull request(s) with /aisdlc-dev:pr {T}."],
-      "CI_VALIDATING": ["you", "When CI passes, merge the PR(s); the bug task then completes."]
+      "PR_CREATED": ["you", "When CI passes, merge the PR(s); then /aisdlc-dev:finish {T} to complete the bug task."]
     },
     "investigation": {
       "UNDER_INVESTIGATION": ["claude", "Gather evidence and test hypotheses; write tasks/{T}/findings.md. Read-only: no source changes."]

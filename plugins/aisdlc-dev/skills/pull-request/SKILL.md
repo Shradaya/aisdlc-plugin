@@ -31,10 +31,10 @@ Task state; `jira.md`, `specification.md` (feature), `impact-analysis.md`, `vali
 5. `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js transition <TICKET> PR_CREATED`.
 
 ### CI and merge tracking
-6. `... transition <TICKET> CI_VALIDATING`; append `ci-started`. Read the PR state with `bitbucket-pr.js status <path> <pr-id>` and CI via the CI integration; record `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js set <TICKET> ci '{"provider":"<p>","status":"running","checks":{"unit":"passed"}}'`.
+6. CI tracking is part of the PR_CREATED state (no separate CI_VALIDATING state). Append `ci-started`. Read the PR state with `bitbucket-pr.js status <path> <pr-id>` and CI via the CI integration; record `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js set <TICKET> ci '{"provider":"<p>","status":"running","checks":{"unit":"passed"}}'`. The PR targets the UAT branch (`config/integrations.yaml` `git_hosting.pr_target_branches`, e.g. `lf-uat`).
 7. If any check fails: set `ci` with the failing checks, `transition <TICKET> CI_FAILED --reason "<checks>"`; you may diagnose. Any code change in response follows normal implementation, validation and commit rules.
-8. All required checks passed: set `ci.status` to `passed`, append `ci-completed`, `transition <TICKET> MERGE_READY` (bug lifecycle has no MERGE_READY: it proceeds to COMPLETED via `/aisdlc-dev:finish`).
-9. Merge is human-controlled. Do not merge. When the developer reports/the integration shows the PR merged, verify, append `merged`, and `transition <TICKET> MERGED`.
+8. All required checks passed: set `ci.status` to `passed`, append `ci-completed`. (There is no MERGE_READY state anymore; the task stays at PR_CREATED until merged.)
+9. Merge is human-controlled. Do not merge. When the developer reports / the integration shows the PR merged into the UAT branch, verify, append `merged`, and `transition <TICKET> MERGED`. For a feature, a merge to the UAT branch counts as released: follow with `transition <TICKET> RELEASED` and the post-release stage. For a bug, the task proceeds to COMPLETED via `/aisdlc-dev:finish`.
 
 ## Outputs
 Pushed branches, PR(s), `ci` and `pull_requests` in task state, optional `pr-description.md`.

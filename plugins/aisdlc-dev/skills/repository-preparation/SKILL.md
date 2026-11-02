@@ -28,11 +28,11 @@ For each repository (use `git -C <path>` everywhere), append audit `repo-prepara
 4. Inspect state: `git -C <path> status --porcelain=v1 -b`; record current branch and clean/dirty.
 5. If dirty: `git -C <path> stash push --include-untracked -m "aisdlc: <TICKET> pre-task stash"`; locate its reference in `git stash list` and record it. Ignored files are not stashed. Never pop the stash.
 6. If the branch `<TICKET>` already exists locally (`git rev-parse --verify --quiet refs/heads/<TICKET>`) or remotely (`git ls-remote --exit-code --heads origin <TICKET>`): do not overwrite, reset, delete or recreate it. A task record exists in this flow, so resume only after verifying repository and branch identity against `repository-preparation.yaml` if present; otherwise stop and request explicit human action.
-7. `git -C <path> checkout main`.
-8. `git -C <path> fetch origin --prune`.
-9. `git -C <path> pull --ff-only origin main`. If fast-forward is impossible: stop for this repository, never merge or rebase `main`; set the task `CONFLICTED` (`... transition <TICKET> CONFLICTED --reason "main diverged in <repo>"`).
-10. `git -C <path> checkout -b <TICKET>`; the branch name has no prefix, suffix, user name, date or slug.
-11. Verify the branch tip equals updated `main` (`git -C <path> rev-parse HEAD main`).
+7. `git -C <path> fetch origin --prune` (get the latest `origin/main` before branching).
+8. `git -C <path> checkout main`.
+9. `git -C <path> pull --ff-only origin main` so local `main` equals the latest `origin/main`. If fast-forward is impossible: stop for this repository, never merge or rebase `main`; set the task `CONFLICTED` (`... transition <TICKET> CONFLICTED --reason "main diverged in <repo>"`).
+10. Create the feature branch from the latest main: `git -C <path> checkout -b <TICKET> origin/main` (explicitly based on the freshly fetched `origin/main`, not whatever was checked out). The branch name has no prefix, suffix, user name, date or slug.
+11. Verify the branch tip equals the latest `origin/main` (`git -C <path> rev-parse HEAD origin/main` — the two SHAs must match).
 12. Record per-repository results in `tasks/<TICKET>/repository-preparation.yaml` (JSON-compatible; shape of spec §22.2: `before.branch/status`, `stash.created/reference/message`, `branch.base/created/commit`). Append audit `repo-prepared` with repo and branch.
 After all repositories succeed: `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js set <TICKET> workflow.repository_preparation '"completed"'` then `... transition <TICKET> REPOSITORIES_PREPARED`.
 
