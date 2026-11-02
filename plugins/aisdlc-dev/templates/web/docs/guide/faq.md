@@ -74,4 +74,4 @@ The sync step scans every file it copies for secrets (AWS access keys, private k
 
 ### What does the site read from the workspace?
 
-Only `config/repositories.yaml`, `repositories/<repo>/*.md` plus `repository.yaml` and `metadata.json`, everything under `system/`, and the task **id, type and status** from `tasks/*/task.yaml`. It never reads other task artifacts, `logs/`, or credentials.
+Only `config/repositories.yaml`, `repositories/<repo>/*.md` plus `repository.yaml` and `metadata.json`, and everything under `system/`. It never reads `tasks/`, `logs/`, or credentials. Task status has its own live page: `/aisdlc-dev:status-page`.

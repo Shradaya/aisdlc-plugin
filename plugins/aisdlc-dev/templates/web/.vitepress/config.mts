@@ -70,7 +70,7 @@ export default defineConfig({
   // Copied repository documents may contain relative links that only make sense in their original
   // location. Generated pages are exempt from dead-link checking; the hand-written guide is not.
   ignoreDeadLinks: [
-    (_link: string, source: string) => /^(repos|system)\//.test(source) || source === 'status.md',
+    (_link: string, source: string) => /^(repos|system)\//.test(source),
   ],
   themeConfig: {
     nav: generated.nav.length

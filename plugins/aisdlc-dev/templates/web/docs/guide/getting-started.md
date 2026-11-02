@@ -125,7 +125,7 @@ Add repositories that other repositories depend on first. When a repository is a
 :::
 
 ::: warning The base branch must be main
-A repository whose default branch is not `main` is marked non-compliant and cannot enter an implementation workflow until explicitly remediated. It shows up under **Blocking issues** on the [Status](/status) page.
+A repository whose default branch is not `main` is marked non-compliant and cannot enter an implementation workflow until explicitly remediated. It shows up under **Blocking issues** in `/aisdlc-dev:status` and on the live status page (`/aisdlc-dev:status-page`).
 :::
 
 The registry entry for each repository records `path`, `role`, `base_branch`, `domains`, `depends_on` and `provides`.
@@ -148,7 +148,7 @@ Remove a repository from the registry with `/aisdlc-dev:remove-repo <repo-name>`
 /aisdlc-dev:status
 ```
 
-shows registered repositories, knowledge freshness, active tasks and their states, disconnected integrations, pending approvals, unresolved conflicts and non-compliant repositories. The [Status](/status) page on this site mirrors the parts that are visible without a live session.
+shows registered repositories, knowledge freshness, active tasks and their states, disconnected integrations, pending approvals, unresolved conflicts and non-compliant repositories. For a live view in your browser, `/aisdlc-dev:status-page` starts a local page that refreshes itself: every task's place in its lifecycle (past, current and upcoming states), approvals, next step, history and all of its documents.
 
 ## 5. Start work
 

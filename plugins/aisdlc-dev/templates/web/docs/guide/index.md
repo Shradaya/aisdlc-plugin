@@ -25,9 +25,10 @@ Everything after that is driven by the task state. If you are interrupted, `/ais
 | **Guide** (these pages) | Hand-written how-to material. |
 | **Repositories** | Generated at build time from `repositories/<repo>/` for every repository in `config/repositories.yaml`. |
 | **System** | Generated from `system/`: architecture, domains, decisions and product knowledge. |
-| **Status** | A snapshot like `/aisdlc-dev:status`. |
 
-The site is **read-only**. It never changes the workspace, and it only ever reads task ids, types and statuses from `tasks/`, never any other task artifact, and never logs or credentials. To change anything, use the aisdlc commands in Claude Code.
+Where each ticket stands is not on this site: `/aisdlc-dev:status-page` opens a separate live status page (every task's past, current and upcoming states, approvals, history and documents).
+
+The site is **read-only**. It never changes the workspace, and it never reads `tasks/`, logs or credentials. To change anything, use the aisdlc commands in Claude Code.
 
 ## Reading order
 

@@ -41,7 +41,7 @@ Run the `--scope project` and `--scope local` forms from inside the workspace fo
 
    Set `jira.base_url` in `config/integrations.yaml`. For Jira MCP access, copy `.mcp.json.example` to `.mcp.json`. Token scopes are listed in `config/integrations.yaml` and in `web/docs/guide/getting-started.md`. Jira writes are off by default.
 4. Register each repository with `/aisdlc-dev:add-repo <name> <path>`. Add `--kind design` for a design repository published by `aisdlc-design`.
-5. Run `/aisdlc-dev:status` to see repositories, active tasks, integrations, and which credentials are `set` or `missing` (names only, never values).
+5. Run `/aisdlc-dev:status` to see repositories, active tasks, integrations, and which credentials are `set` or `missing` (names only, never values). For the same in your browser, refreshing itself as work moves on, run `/aisdlc-dev:status-page`.
 
 ## Commands
 
@@ -59,6 +59,7 @@ Run the `--scope project` and `--scope local` forms from inside the workspace fo
 | `/aisdlc-dev:finish <TICKET>` | Final completion gate |
 | `/aisdlc-dev:resume <TICKET>` | Continue an interrupted task from its first incomplete safe state |
 | `/aisdlc-dev:status` | Read-only workspace overview |
+| `/aisdlc-dev:status-page` | Live status page in the browser: each ticket's past, current and upcoming states, approvals, next step, history and all its documents |
 | `/aisdlc-dev:add-repo` · `refresh-repo` · `remove-repo` | Onboard, refresh or unregister a repository |
 | `/aisdlc-dev:repository-preparation <TICKET>` | Stash local changes, fast-forward `main`, create branch `<TICKET>` in each affected repository |
 | `/aisdlc-dev:init` | Scaffold a dev workspace |
@@ -109,12 +110,14 @@ What is enforced, and where:
   ```
 - **`scripts/graph/aisdlc-graph.js`** queries the repository relationship graph: `impact`, `neighbors`, `validate`.
 - **`scripts/state/aisdlc-state.js`** is the task state engine, vendored from `packages/aisdlc-core/`.
+- **`scripts/status/status-server.js`** serves the live status page (`status-page.html`) on `http://localhost:4317/`. It has no dependencies, is read-only, binds `127.0.0.1` only, and serves documents only from inside `tasks/<TICKET>/` (never `.env` or key files). `--json` prints the overview once without a server.
 
 ## Checks
 
 ```
 node scripts/validation/test-gates.js
 node scripts/validation/test-repo-paths.js
+node scripts/validation/test-status-page.js
 node scripts/validation/cred-check.js      # run from a dev workspace
 ```
 

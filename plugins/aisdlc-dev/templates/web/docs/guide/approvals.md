@@ -77,4 +77,4 @@ For small changes the plan gate is skipped and the task goes from `PLAN_DRAFTED`
 
 ## Seeing what is waiting
 
-`/aisdlc-dev:status` lists pending approvals. The [Status](/status) page lists any active task whose state is an approval-waiting state.
+`/aisdlc-dev:status` lists pending approvals. `/aisdlc-dev:status-page` opens a live page in your browser that counts them, shows each gate's approver, time and version, and warns when an approved document changed after approval.

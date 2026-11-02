@@ -6,7 +6,6 @@ A **read-only** documentation site for aisdlc, built with [VitePress](https://vi
 - **Repository documentation browser**: generated at build time from the workspace above `web/` by `scripts/sync.mjs`:
   - `docs/repos/<repo>/` from `repositories/<repo>/*.md`, `repository.yaml` and `metadata.json` for every repository in `config/repositories.yaml`, each page with a provenance badge (analyzed commit, status, confidence, analyzed at) and a freshness note.
   - `docs/system/` from `system/**` (architecture, domains, decisions, integrations, data flows) and `system/product/**`, with `feature-catalog.yaml` rendered as a table.
-  - `docs/status.md`, a mirror of `/aisdlc-dev:status`: repositories and freshness, active tasks (id, type, status only), pending approvals, blocking issues.
   - `.vitepress/generated-nav.json`: the nav and sidebars, built from what exists.
 
 With zero registered repositories the site still builds, and the Repositories page explains `/aisdlc-dev:add-repo`.
@@ -22,7 +21,7 @@ npm install
 npm run dev       # sync, then VitePress dev server (http://localhost:5173)
 npm run build     # sync, then static build into .vitepress/dist
 npm run preview   # serve the built site
-npm run sync      # only regenerate docs/repos, docs/system, docs/status.md and the nav
+npm run sync      # only regenerate docs/repos, docs/system and the nav
 ```
 
 The sync runs on every `dev` and `build`. While `dev` is running, re-run `npm run sync` to pick up new repositories or knowledge changes; the dev server hot-reloads the generated pages.
@@ -31,8 +30,8 @@ The sync runs on every `dev` and `build`. While `dev` is running, re-run `npm ru
 
 `scripts/sync.mjs` is deliberately narrow.
 
-- It reads only `config/repositories.yaml`, `repositories/<repo>/` (`*.md`, `repository.yaml`, `metadata.json`), `system/**`, and from `tasks/*/task.yaml` **only** the `id`, `type` and `status` fields. Every read goes through one guarded function with an allow-list.
-- It never reads `logs/`, `credentials/`, `secrets/`, `.git/`, `.env*` or private key files, and never any other task artifact.
+- It reads only `config/repositories.yaml`, `repositories/<repo>/` (`*.md`, `repository.yaml`, `metadata.json`), and `system/**`. It never reads `tasks/`. Every read goes through one guarded function with an allow-list.
+- It never reads `logs/`, `credentials/`, `secrets/`, `.git/`, `.env*` or private key files. Task status is on the separate live status page (`/aisdlc-dev:status-page`).
 - Before writing anything it runs a **secret scan** over everything it read and everything it generated: AWS access key ids and secret keys, private key headers, JWTs, GitHub and Slack tokens, Google API keys, bearer tokens, credentials embedded in URLs, and `password` / `token` / `api_key` / `secret` assignments. A match **fails the build** (exit code 1), nothing is generated, and the matched value is never printed, only file, line and rule.
   - Clearly placeholder values (`<token>`, `${TOKEN}`, `REDACTED`, `xxxx`, `changeme`, ...) are ignored. Unquoted `key: word` prose needs a digit or symbol to count. If you hit a false positive, reword the source.
 - Copied Markdown is sanitized so `{{ }}` and stray `<tags>` cannot break the Vue compiler.
@@ -46,7 +45,7 @@ web/
   docs/
     index.md                  home
     guide/*.md                hand-written guide
-    repos/ system/ status.md  GENERATED (git-ignored)
+    repos/ system/            GENERATED (git-ignored)
   .vitepress/
     config.mts                site config; merges generated-nav.json
     generated-nav.json        GENERATED (git-ignored)

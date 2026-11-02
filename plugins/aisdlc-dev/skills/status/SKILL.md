@@ -26,7 +26,7 @@ Run from the aisdlc workspace.
 6. Print in the format of spec §50 (Repositories, Active tasks, Integrations, Blocking issues).
 
 ## Outputs
-Console report only. No files change.
+Console report only. No files change. End with one line: for a live view in the browser (each ticket's lifecycle, approvals, history and documents), run `/aisdlc-dev:status-page`.
 
 ## Failure behavior
 An unreadable file is reported as a warning line; continue with the rest.

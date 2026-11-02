@@ -8,16 +8,16 @@
  *   - repositories/<repo>/repository.yaml      (provenance / identity)
  *   - repositories/<repo>/metadata.json        (provenance / analysis metadata)
  *   - system/**                                (architecture, domains, decisions, product, ...)
- *   - tasks/<ticket>/task.yaml                 (ONLY task id, type and status are extracted)
  *
- * It never reads logs/, credentials/, secrets/, .git/ or any other tasks/ artifact. Every file
+ * It never reads tasks/, logs/, credentials/, secrets/ or .git/ (task status lives on the separate live
+ * status page, /aisdlc-dev:status-page). Every file
  * access goes through readAllowed(), which enforces that allow-list.
  *
  * Before anything is written, ALL source text that was read and ALL generated pages are scanned for
  * secrets (AWS keys, private key headers, password/token/api_key assignments, ...). A match fails
  * the build with exit code 1 and nothing is generated. Matched values are never printed.
  *
- * Output (all git-ignored): docs/repos/**, docs/system/**, docs/status.md, .vitepress/generated-nav.json
+ * Output (all git-ignored): docs/repos/**, docs/system/**, .vitepress/generated-nav.json
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -118,7 +118,6 @@ const ALLOWED_READ = [
   /^config\/repositories\.yaml$/,
   /^repositories\/[^/]+\/[^/]+\.(md|yaml|yml|json)$/i,
   /^system\/.+\.(md|yaml|yml|json)$/i,
-  /^tasks\/[^/]+\/task\.yaml$/,
 ]
 
 /** The single choke point for reading source content. Scans what it reads. */
@@ -126,7 +125,6 @@ function readAllowed(abs) {
   const r = assertSafe(abs)
   if (!ALLOWED_READ.some((re) => re.test(r))) throw new Error(`Path is not on the read allow-list: ${r}`)
   const text = fs.readFileSync(abs, 'utf8').replace(/^\uFEFF/, '')
-  // task.yaml is parsed only to extract id/type/status; the secret scan still covers it.
   scan(`source ${r}`, text)
   return text
 }
@@ -638,82 +636,12 @@ function buildSystem(registry) {
   return { sidebar, count: entries.length }
 }
 
-// ---- tasks (id/type/status ONLY) ------------------------------------------------------------
-
-const ACTIVE_EXCLUDED = new Set(['COMPLETED', 'CANCELLED'])
-const SAFE_FIELD_RE = /^[A-Za-z0-9_.:-]{1,64}$/
-const field = (v) => (typeof v === 'string' || typeof v === 'number') && SAFE_FIELD_RE.test(String(v)) ? String(v) : '(invalid)'
-
-function readTasks() {
-  const base = path.join(ROOT, 'tasks')
-  const tasks = []
-  for (const e of listDir(base)) {
-    if (!e.isDirectory() || e.name.startsWith('.') || !/^[A-Za-z0-9._-]+$/.test(e.name)) continue
-    const file = path.join(base, e.name, 'task.yaml')
-    if (!fs.existsSync(file)) continue
-    let doc
-    try { doc = parseYaml(readAllowed(file)) } catch {
-      tasks.push({ id: e.name, type: '(unreadable)', status: '(unreadable)' })
-      continue
-    }
-    // Deliberately extract nothing but these three fields.
-    const t = doc && typeof doc === 'object' ? (doc.task && typeof doc.task === 'object' ? doc.task : doc) : {}
-    tasks.push({ id: field(t.id ?? e.name), type: field(t.type), status: field(t.status) })
-  }
-  return tasks.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }))
-}
-
-function buildStatus(summaries, tasks) {
-  const active = tasks.filter((t) => !ACTIVE_EXCLUDED.has(t.status))
-  const lines = ['# Status', '']
-  lines.push('A read-only snapshot mirroring `/aisdlc-dev:status`, generated at build time (' + new Date().toISOString() + '). For live data, integrations and conflicts, run `/aisdlc-dev:status` in Claude Code.', '')
-
-  lines.push(`## Repositories: ${summaries.length}`, '')
-  if (!summaries.length) {
-    lines.push('::: info No repositories registered', 'Register one with `/aisdlc-dev:add-repo <repo-name> <repo-path>`. See [Getting started](/guide/getting-started).', ':::', '')
-  } else {
-    lines.push('| Repository | Freshness | Analyzed commit | Analyzed at | Status | Confidence | Base branch |', '|---|---|---|---|---|---|---|')
-    for (const s of summaries) {
-      lines.push(`| [${escCell(s.repo.name)}](/repos/${s.slug}/) | ${escCell(s.fresh.label)}${s.fresh.ageDays != null ? ` (${s.fresh.ageDays}d)` : ''} | ${escCell(s.prov.analyzed_commit ?? '-')} | ${escCell(s.prov.analyzed_at ?? '-')} | ${escCell(s.prov.status ?? '-')} | ${escCell(s.prov.confidence ?? '-')} | ${escCell(s.repo.base_branch ?? '-')}${s.fresh.nonCompliant ? ' (non-compliant)' : ''} |`)
-    }
-    lines.push('')
-  }
-
-  lines.push(`## Active tasks: ${active.length}`, '')
-  if (!active.length) lines.push('No active tasks.', '')
-  else {
-    lines.push('| Task | Type | Status |', '|---|---|---|')
-    for (const t of active) lines.push(`| ${escCell(t.id)} | ${escCell(t.type)} | ${escCell(t.status)} |`)
-    lines.push('', '<small>Only the task id, type and status are shown here. Task artifacts are never published by this site.</small>', '')
-  }
-
-  const pending = active.filter((t) => /^AWAITING_.*APPROVAL$|^WAITING_FOR_APPROVAL$|^SPEC_REVIEW_REQUIRED$/.test(t.status))
-  lines.push(`## Pending approvals: ${pending.length}`, '')
-  if (!pending.length) lines.push('None.', '')
-  else { for (const t of pending) lines.push(`- ${escCell(t.id)}: ${escCell(t.status)}. Use \`/aisdlc-dev:approve ${escCell(t.id)} <gate>\` or \`/aisdlc-dev:reject\`.`); lines.push('') }
-
-  const issues = []
-  for (const s of summaries) {
-    if (s.fresh.nonCompliant) issues.push(`Repository ${s.repo.name} is non-compliant (base_branch is "${s.repo.base_branch}", must be "main").`)
-    if (!s.hasPackage) issues.push(`Repository ${s.repo.name} has no knowledge package.`)
-    else if (['needs-refresh', 'aged'].includes(s.fresh.label)) issues.push(`${s.repo.name} knowledge ${s.fresh.label === 'aged' ? 'may be stale' : 'needs refresh'}.`)
-  }
-  for (const t of active) {
-    if (['BLOCKED', 'CONFLICTED', 'FAILED', 'CI_FAILED', 'JIRA_CHANGED', 'WAITING_FOR_INPUT'].includes(t.status)) issues.push(`Task ${t.id} is ${t.status}.`)
-  }
-  lines.push(`## Blocking issues: ${issues.length}`, '')
-  if (!issues.length) lines.push('None detected from the data this site can see.', '')
-  else { for (const i of issues) lines.push(`- ${escCell(i)}`); lines.push('') }
-
-  lines.push('## Integrations', '', 'Jira, Git hosting and CI connection state is a live property of your Claude Code session and is not visible to this static site. Run `/aisdlc-dev:status` to see it, and read [When Jira is unavailable](/guide/jira-unavailable) if Jira is disconnected.', '')
-  addPage('status.md', lines.join('\n'))
-}
-
 // ---------------------------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------------------------
 
 function removeGenerated() {
+  // status.md was generated by older versions; status now lives on the live status page (/aisdlc-dev:status-page)
   for (const p of ['repos', 'system', 'status.md']) fs.rmSync(path.join(DOCS, p), { recursive: true, force: true })
   fs.rmSync(NAV_FILE, { force: true })
 }
@@ -722,20 +650,17 @@ function main() {
   const registry = parseRegistry()
   const { summaries, sidebarItems } = buildRepos(registry)
   const system = buildSystem(registry)
-  const tasks = readTasks()
-  buildStatus(summaries, tasks)
 
   const nav = [
     { text: 'Guide', link: '/guide/', activeMatch: '^/guide/' },
     { text: 'Repositories', link: '/repos/', activeMatch: '^/repos/' },
     { text: 'System', link: '/system/', activeMatch: '^/system/' },
-    { text: 'Status', link: '/status' },
   ]
   const sidebar = {
-    '/repos/': [{ text: 'Repositories', items: [{ text: 'All repositories', link: '/repos/' }, { text: 'Status', link: '/status' }] }, ...sidebarItems],
+    '/repos/': [{ text: 'Repositories', items: [{ text: 'All repositories', link: '/repos/' }] }, ...sidebarItems],
     '/system/': system.sidebar,
   }
-  const navJson = JSON.stringify({ nav, sidebar, counts: { repositories: registry.length, systemPages: system.count, activeTasks: tasks.filter((t) => !ACTIVE_EXCLUDED.has(t.status)).length } }, null, 2)
+  const navJson = JSON.stringify({ nav, sidebar, counts: { repositories: registry.length, systemPages: system.count } }, null, 2)
 
   // Secret scan over every generated page and the nav config (source text was scanned on read).
   for (const [p, content] of pages) scan(`page docs/${p}`, content)
@@ -765,7 +690,7 @@ function main() {
   fs.writeFileSync(NAV_FILE, navJson + '\n', 'utf8')
 
   for (const w of warnings) console.warn(`warning: ${w}`)
-  console.log(`sync: ${registry.length} repositor${registry.length === 1 ? 'y' : 'ies'}, ${system.count} system file(s), ${tasks.length} task(s); ${pages.size} pages written; secret scan clean.`)
+  console.log(`sync: ${registry.length} repositor${registry.length === 1 ? 'y' : 'ies'}, ${system.count} system file(s);${pages.size} pages written; secret scan clean.`)
 }
 
 try {

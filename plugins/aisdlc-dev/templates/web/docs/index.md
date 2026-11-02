@@ -24,7 +24,4 @@ features:
   - title: System and product knowledge
     details: Cross-repository architecture, domains, decisions and the durable product knowledge base, including the feature catalog.
     link: /system/
-  - title: Status
-    details: A read-only mirror of /aisdlc-dev:status. Registered repositories, knowledge freshness and active tasks (id, type and status only).
-    link: /status
 ---
