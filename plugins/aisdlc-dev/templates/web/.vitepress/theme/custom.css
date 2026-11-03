@@ -37,3 +37,16 @@
 .graph-page .VPDoc .content-container { max-width: none !important; }
 .graph-page .VPDoc:not(.has-sidebar) .content { padding: 0; }
 .graph-page .VPDoc .content { padding-right: 24px; }
+
+/* Use the full screen width on every page (VitePress caps the layout at 1440px and the doc column at ~690px). */
+:root { --vp-layout-max-width: 100%; }
+.VPNavBar .container,
+.VPNavBar.has-sidebar .content,
+.VPLocalNav .container,
+.VPHero .container,
+.VPFeatures .container,
+.VPHome .vp-doc .container,
+.VPDoc .container,
+.VPDoc .content,
+.VPDoc .content-container { max-width: none !important; }
+.VPDoc.has-aside .content-container { max-width: none !important; }
