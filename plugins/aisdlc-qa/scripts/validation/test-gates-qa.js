@@ -319,6 +319,29 @@ t("init --from-dev copies the acceptance-criteria field", qaJira.acceptance_crit
 t("init --from-dev reports the corporate CA for NODE_EXTRA_CA_CERTS", fromDevOut.ca_certificate && fromDevOut.ca_certificate.path, "C:/ProgramData/Cloudflare/installed_cert.pem");
 t("init --from-dev never copies claude.env content", /SECRET_MARKER|do-not-copy/.test(fromDev.stdout + fs.readFileSync(path.join(QA, "config/integrations.yaml"), "utf8")), false);
 
+// --- --migrate-jira: an older QA workspace on the Jira MCP adapter ---------------------------------------------------
+const M = fs.mkdtempSync(path.join(os.tmpdir(), "aisdlc-qa-mig-"));
+const putM = (rel, text) => { fs.mkdirSync(path.dirname(path.join(M, rel)), { recursive: true }); fs.writeFileSync(path.join(M, rel), text); };
+putM("config/repositories.yaml", "{}");
+putM("config/workspace.yaml", JSON.stringify({ workspace: { kind: "qa" } }));
+putM("config/integrations.yaml", "# Tickets are read through the Jira MCP adapter (see .mcp.json.example).\n" +
+  JSON.stringify({ jira: { adapter: "mcp", base_url: "https://example.atlassian.net", auth_scheme: "bearer", write: { add_comment: true, status_transitions: { defect_found: "Failed QA" } }, token_scopes: { "read:issue:jira": "x" } } }, null, 2) + "\n");
+putM(".mcp.json", JSON.stringify({ mcpServers: { "playwright-test": { command: "npx", args: ["playwright", "run-test-mcp-server"] }, atlassian: { command: "docker", args: ["ghcr.io/sooperset/mcp-atlassian:latest"] } } }));
+putM(".gitignore", ".mcp.json\n");
+const migEnv = { encoding: "utf8", env: { ...env, AISDLC_ROOT: M } };
+t("QA session-start reports the pending Jira migration", /--migrate-jira/.test(spawnSync("node", [path.join(SRC, "hooks/session-start.js")], migEnv).stdout), true);
+t("QA --migrate-jira exits 0", spawnSync("node", [INIT, M, "--migrate-jira"], migEnv).status, 0);
+const mj = JSON.parse(fs.readFileSync(path.join(M, "config/integrations.yaml"), "utf8").replace(/^\s*#.*$/gm, "")).jira;
+t("QA migrate: adapter rest-api", mj.adapter, "rest-api");
+t("QA migrate: auth_scheme and transitions kept", mj.auth_scheme === "bearer" && mj.write.status_transitions.defect_found === "Failed QA" && mj.write.add_comment === true, true);
+t("QA migrate: acceptance_criteria_field and write:issue:jira scope added", mj.acceptance_criteria_field === "" && "write:issue:jira" in mj.token_scopes, true);
+t("QA migrate: header no longer points at the MCP adapter", /Jira MCP adapter/.test(fs.readFileSync(path.join(M, "config/integrations.yaml"), "utf8")), false);
+spawnSync("node", [INIT, M, "--migrate-jira", "--remove-mcp"], migEnv);
+t("QA migrate --remove-mcp keeps playwright-test only", Object.keys(JSON.parse(fs.readFileSync(path.join(M, ".mcp.json"), "utf8")).mcpServers).join(","), "playwright-test");
+t("QA migrate --remove-mcp backs up .mcp.json", fs.existsSync(path.join(M, ".mcp.json.aisdlc-jira-backup")), true);
+t("QA session-start quiet after migration", /--migrate-jira/.test(spawnSync("node", [path.join(SRC, "hooks/session-start.js")], migEnv).stdout), false);
+fs.rmSync(M, { recursive: true, force: true });
+
 t("a fresh workspace has no specs/ folder", fs.existsSync(path.join(QA, "specs")), false);
 t("a fresh workspace has only auth.setup.ts and seed.spec.ts in tests/", fs.readdirSync(path.join(QA, "tests")).sort().join(","), "auth.setup.ts,seed.spec.ts");
 t("a fresh .gitignore keeps tasks/<T>/spec.md committable", /!tasks\/\*\/spec\.md/.test(fs.readFileSync(path.join(QA, ".gitignore"), "utf8")), true);

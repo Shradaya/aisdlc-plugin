@@ -14,7 +14,7 @@ const CORE = path.join(REPO, "packages", "aisdlc-core");
 // Which files each plugin needs. aisdlc-design and aisdlc-qa do not need the full feature config, but need the same
 // lib + state engine; every plugin gets the same core files (lifecycles and their gates come from each plugin's
 // config/task-types.yaml).
-const CORE_FILES = ["lib/root.js", "lib/repo-paths.js", "lib/yaml.js", "lib/design-config.js", "lib/jira.js", "state/aisdlc-state.js"];
+const CORE_FILES = ["lib/root.js", "lib/repo-paths.js", "lib/yaml.js", "lib/design-config.js", "lib/jira.js", "lib/jira-migrate.js", "state/aisdlc-state.js"];
 const CORE_CONSUMERS = [
   path.join(REPO, "plugins", "aisdlc-dev", "scripts"),
   path.join(REPO, "plugins", "aisdlc-design", "scripts"),

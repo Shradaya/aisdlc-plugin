@@ -2,6 +2,9 @@
 // Scaffold an aisdlc workspace into a folder: shared Claude Code config (.claude/), the docs site (web/) and
 // the workspace itself (config/, repositories/, system/, tasks/, logs/, CLAUDE.md, claude.env.example, .gitignore).
 // Usage: node aisdlc-init.js [target-dir] [--only claude|web|workspace] [--dry-run] [--force]
+//        node aisdlc-init.js [target-dir] --migrate-jira [--remove-mcp] [--dry-run]
+//          existing workspace: switch Jira from the MCP adapter to the REST helper and add the new Jira settings
+//          (missing keys only); --remove-mcp also removes the Jira MCP server from .mcp.json (backed up first).
 // Templates ship in <plugin>/templates. Existing files are never overwritten unless --force,
 // except .claude/settings.json, which is merged additively (nothing the developer set is removed).
 // .gitignore is merged line by line (missing lines appended). Works anywhere: the target does not need to be an aisdlc workspace yet.
@@ -24,6 +27,20 @@ const target = path.resolve(positional[0] || process.cwd());
 const dryRun = flag("--dry-run");
 const force = flag("--force");
 
+// Existing workspace: move Jira from the MCP adapter to the REST helper (see scripts/lib/jira-migrate.js).
+if (flag("--migrate-jira")) {
+  if (!fs.existsSync(target)) { console.error(`Target folder does not exist: ${target}`); process.exit(2); }
+  const { migrateJira } = require("../lib/jira-migrate");
+  const report = migrateJira(target, {
+    templatePath: path.join(TEMPLATES, "workspace", "config", "integrations.yaml"),
+    removeMcp: flag("--remove-mcp"), dryRun,
+  });
+  report.next = report.pending
+    ? "Check the REST connection: node <plugin>/scripts/jira/jira-fetch.js check; when it passes, re-run with --remove-mcp."
+    : "Check the REST connection: node <plugin>/scripts/jira/jira-fetch.js check";
+  console.log(JSON.stringify(report, null, 2));
+  process.exit(0);
+}
 if (only && !PARTS[only]) {
   console.error(`--only must be one of: ${Object.keys(PARTS).join(", ")}`);
   process.exit(2);
@@ -104,6 +121,10 @@ console.log(`${dryRun ? "[dry run] " : ""}aisdlc init -> ${target}`);
 for (const [k, v] of Object.entries(report)) if (v.length) console.log(`${k} (${v.length}):\n  ${v.join("\n  ")}`);
 if (!dryRun && report.created.some((f) => f.startsWith("web"))) {
   console.log("\nNext: cd web && npm install && npm run dev  (needs Node 20+)");
+}
+{
+  const why = require("../lib/jira-migrate").jiraMigrationNeeded(target);
+  if (why) console.log(`\nJira: ${why}. Migrate with: node ${__filename} ${target} --migrate-jira --dry-run`);
 }
 console.log("\nNext: copy claude.env.example to claude.env and set AISDLC_REPOS_ROOT; then /aisdlc-dev:add-repo <name> <path> for each repository.");
 console.log("Work across repositories: start Claude Code in this folder, or set AISDLC_ROOT to it.");

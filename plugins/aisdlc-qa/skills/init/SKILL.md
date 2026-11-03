@@ -1,7 +1,7 @@
 ---
 name: init
 description: Set up an aisdlc QA workspace in a folder - the workspace itself (config/, tasks/, logs/, CLAUDE.md) and the Playwright test repository in the same folder (package.json, playwright.config.ts, tests/, fixtures/; one tests/<TICKET>/ folder and one committed tasks/<TICKET>/spec.md per ticket) - then, with the QA's consent, install Playwright and generate Playwright's planner/generator/healer agents. Use only when the QA engineer runs /aisdlc-qa:init.
-argument-hint: [target-folder] [--only workspace|agents] [--from-dev [dev-workspace]] [--dry-run] [--force]
+argument-hint: [target-folder] [--only workspace|agents] [--from-dev [dev-workspace]] [--migrate-jira [--remove-mcp]] [--dry-run] [--force]
 disable-model-invocation: true
 ---
 
@@ -15,6 +15,10 @@ Explicit `/aisdlc-qa:init [target-folder] [--only workspace|agents] [--dry-run] 
 
 ## Procedure
 1. Unless `--only agents`: preview with `node ${CLAUDE_PLUGIN_ROOT}/scripts/init/aisdlc-qa-init.js $ARGUMENTS --dry-run`. Show what would be created, merged and skipped. If `--force` would overwrite files, confirm with AskUserQuestion first. Then run the same command without `--dry-run`.
+   - Existing workspace still on the Jira MCP adapter (the script prints a `Jira:` line, or the session-start hook reported it):
+     - Preview `node ${CLAUDE_PLUGIN_ROOT}/scripts/init/aisdlc-qa-init.js <target> --migrate-jira --dry-run`. Show the `changes`, `warnings` and `ca_certificate`, confirm, then run it without `--dry-run`. It switches the adapter to `rest-api` and adds only missing Jira settings (`auth_scheme`, `acceptance_criteria_field`, the `write:issue:jira` scope note). It never changes values already set and never touches credentials.
+     - Check with `node ${CLAUDE_PLUGIN_ROOT}/scripts/jira/jira-attach.js check`. On a certificate error, set `NODE_EXTRA_CA_CERTS` to the reported `ca_certificate` path.
+     - Only after the check passes, offer `... --migrate-jira --remove-mcp` (preview first). It removes only the Jira server from `.mcp.json`, after backing up the file to `.mcp.json.aisdlc-jira-backup`. `playwright-test` and any other server stay. Restart Claude Code afterwards.
 2. Environments: add the first environment the way `${CLAUDE_PLUGIN_ROOT}/skills/add-env/SKILL.md` does (name, base URL, login method, synthetic data confirmed; `node ${CLAUDE_PLUGIN_ROOT}/scripts/qa/add-env.js <name> --base-url <url> --login <mode> ... --default --force`, since the template already has a placeholder `qa` entry).
    - Login form: ask for the **visible label text** of the username and password fields and the **text on the sign-in button** (for example `Email Address`, `Password`, `Sign In`). If the QA answers with IDs or selectors instead (`id=email`, `type=submit`), accept them as `--username-selector "#email"` / `--password-selector` / `--submit-selector "button[type=submit]"`; never store generated class names (MUI `css-…`, `Mui…-root`), which change between builds.
    - Production hosts: ask for them and add each with `--block-host`. `add-env.js` refuses an entry that would also block a configured environment; when production is the bare domain and QA a subdomain (`emc-portal.com` / `qa.emc-portal.com`), explain that a plain entry covers subdomains and use the exact form `--block-host "=emc-portal.com"`. Never write a config that refuses the default environment.
