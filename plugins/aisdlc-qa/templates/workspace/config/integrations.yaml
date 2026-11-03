@@ -1,16 +1,21 @@
 # External integrations for the QA workspace. JSON-compatible YAML; '#' comments only on their own lines.
-# Tickets are read through the Jira MCP adapter (see .mcp.json.example), or asked for interactively when it is
-# unavailable. Defect comments, results comments and evidence uploads go through scripts/jira/jira-attach.js, and only
-# when the matching "write" switch is true. Credentials are read from environment variables ONLY; this file stores
-# their names, never values. Jira Cloud needs your site URL in "base_url" (not a secret).
+# All Jira traffic goes over the Jira REST API through scripts/jira/jira-attach.js (no MCP server to set up): reading
+# tickets ("issue", "status"), and - only when the matching "write" switch is true - defect comments, results comments,
+# evidence uploads and status transitions. Tickets are asked for interactively when Jira is unavailable.
+# Credentials are read from environment variables ONLY; this file stores their names, never values.
+# Jira needs your site URL in "base_url" (not a secret).
 # auth_scheme: "basic" (Jira Cloud: email + API token) or "bearer" (Jira Data Center personal access token).
-# status_transitions: optional, explicit only. {"defect_found": "<transition name>"} moves the ticket (through the Jira
-# MCP adapter) when a defect is reported; {"verified": "<transition name>"} after sign-off. Empty = never transition.
+# acceptance_criteria_field: optional custom field id (e.g. "customfield_10050"); empty = find it by name, then fall
+# back to an "Acceptance Criteria" section of the description.
+# status_transitions: optional, explicit only. {"defect_found": "<transition name>"} moves the ticket when a defect is
+# reported; {"verified": "<transition name>"} after sign-off. Names must match the Jira transition exactly (case aside).
+# Empty = never transition. Transitions need the write:issue:jira scope.
 {
   "jira": {
-    "adapter": "mcp",
+    "adapter": "rest-api",
     "base_url": "",
     "auth_scheme": "basic",
+    "acceptance_criteria_field": "",
     "required_for_ticket_fetch": false,
     "read": ["issue", "fields", "description", "acceptance_criteria", "labels", "priority", "linked_issues", "comments"],
     "write": {
@@ -31,7 +36,8 @@
       "read:comment:jira": "Read developer replies while a defect waits for a fix",
       "read:field:jira": "Find the custom field holding acceptance criteria",
       "write:comment:jira": "Post defect and results comments (only when add_comment is true)",
-      "write:attachment:jira": "Upload screenshots and reports (only when add_attachment is true)"
+      "write:attachment:jira": "Upload screenshots and reports (only when add_attachment is true)",
+      "write:issue:jira": "Move the ticket through a configured status transition (only when status_transitions is set)"
     }
   }
 }

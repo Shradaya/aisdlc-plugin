@@ -46,7 +46,7 @@ Run the CLI from inside the workspace, or set `AISDLC_ROOT` to the workspace fol
 
 The full stage procedures live in the plugin's own SKILL files under `%AI_SDLC_PLUGIN_HOME%\plugins\aisdlc-dev\skills\<stage>\SKILL.md`. When an entry skill reaches a stage, read that file and follow it. Key stages:
 
-- **jira-ticket** — retrieve the ticket (MCP if available, else ask the developer; never guess). Writes `jira.md`, snapshots the hash.
+- **jira-ticket** — retrieve the ticket (Jira REST helper `scripts/jira/jira-fetch.js` if configured, else ask the developer; never guess). Writes `jira.md`, snapshots the hash.
 - **impact-analysis** — identify domains and candidate repositories; write `impact-analysis.md`; confirm affected repositories with the developer.
 - **repository-preparation** — stash, update `main`, create branch `<ticket>` per affected repository.
 - **feature-specification** — the mandatory specification (29-section template) and the human approval checkpoint; hard gate before implementation.

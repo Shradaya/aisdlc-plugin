@@ -68,7 +68,7 @@ function playwrightEnv(extra = {}) {
 
 // Where a credential is set, without ever returning its value: "environment", ".env" or null.
 // QA_* may come from the workspace .env (gitignored, Claude has no access); JIRA_* only from the environment, because
-// the Jira MCP server and jira-attach.js read them from there. claude.env never counts.
+// jira-attach.js reads them from there. claude.env never counts.
 function credentialStatus(root, name) {
   if (process.env[name]) return "environment";
   if (/^JIRA_/.test(name)) return null;

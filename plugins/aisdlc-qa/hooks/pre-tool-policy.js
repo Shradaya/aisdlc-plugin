@@ -179,10 +179,10 @@ if (tool === "Bash" || tool === "PowerShell") {
 
   // Jira: only through jira-attach.js, and only at the right point in the lifecycle.
   if (/\b(curl|wget|invoke-restmethod|invoke-webrequest|irm|iwr)\b[^|;&\n]*(atlassian\.net|\/rest\/api\/)/i.test(cmd))
-    block("Call Jira through scripts/jira/jira-attach.js (or the Jira MCP adapter for reads), not ad-hoc HTTP.");
-  const jira = cmd.match(/jira-attach\.js["']?\s+(\w+)\s+["']?([A-Za-z][A-Za-z0-9]*-\d+)/);
+    block("Call Jira through scripts/jira/jira-attach.js, not ad-hoc HTTP.");
+  const jira = cmd.match(/jira-attach\.js["']?\s+(\w+)\s+["']?([A-Za-z][A-Za-z0-9]*-\d+)["']?(?:\s+["']?(\w+))?/);
   if (jira && !/--dry-run\b/.test(cmd)) {
-    const [, sub, id] = jira;
+    const [, sub, id, arg] = jira;
     const t = taskOf(id.toUpperCase());
     const s = t && t.task.status;
     if (sub === "defect" && !["TESTS_EXECUTED", "AWAITING_DEV_FIX"].includes(s))
@@ -191,6 +191,12 @@ if (tool === "Bash" || tool === "PowerShell") {
       block(`A defect follow-up is posted only while ${id} is between TESTS_EXECUTED and AWAITING_RESULTS_SIGNOFF (now ${s || "no active task"}).`);
     if ((sub === "attach" || sub === "comment") && !(t && gateOk(t, "signoff")))
       block(`Evidence is attached to ${id} only after QA sign-off (approved, and tasks/${id}/results.md unchanged since).`);
+    if (sub === "transition" && arg === "defect_found" && !["TESTS_EXECUTED", "AWAITING_DEV_FIX"].includes(s))
+      block(`The defect_found transition is made only after a test run, while ${id} is in TESTS_EXECUTED or AWAITING_DEV_FIX (now ${s || "no active task"}).`);
+    if (sub === "transition" && arg === "verified" && !(t && gateOk(t, "signoff")))
+      block(`The verified transition is made on ${id} only after QA sign-off (approved, and tasks/${id}/results.md unchanged since).`);
+    if (sub === "transition" && !["defect_found", "verified"].includes(arg))
+      block("transition takes defect_found or verified (the keys of jira.write.status_transitions).");
   }
 
   // Playwright never runs against production.

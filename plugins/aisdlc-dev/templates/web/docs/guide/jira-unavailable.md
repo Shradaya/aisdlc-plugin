@@ -1,10 +1,10 @@
 # When Jira is unavailable
 
-Normally Jira is reached through an MCP/connector adapter. When you run `/aisdlc-dev:feature FEAT-1234` aisdlc first retrieves the ticket, stores a snapshot in `tasks/FEAT-1234/jira.md` and records the snapshot hash in `task.yaml`.
+Normally aisdlc reads the ticket over the Jira REST API with its own helper script, using `jira.base_url` and your `JIRA_EMAIL` / `JIRA_API_TOKEN` environment variables. No MCP server or connector is needed. When you run `/aisdlc-dev:feature FEAT-1234` aisdlc first retrieves the ticket, stores a snapshot in `tasks/FEAT-1234/jira.md` and records the snapshot hash in `task.yaml`.
 
 ## What counts as unavailable
 
-The integration is disconnected, credentials are missing, or the issue cannot be retrieved. Jira credentials come from the environment variables `JIRA_EMAIL` and `JIRA_API_TOKEN` (see [Credentials for Jira and Bitbucket](/guide/getting-started#credentials-for-jira-and-bitbucket)); if either is missing, aisdlc tells you which one to set and uses the questions below in the meantime.
+`jira.base_url` is not set, credentials are missing or rejected, Jira cannot be reached (network, or a corporate TLS proxy whose certificate Node does not trust: set `NODE_EXTRA_CA_CERTS`), or the issue cannot be retrieved. Jira credentials come from the environment variables `JIRA_EMAIL` and `JIRA_API_TOKEN` (see [Credentials for Jira and Bitbucket](/guide/getting-started#credentials-for-jira-and-bitbucket)); if either is missing, aisdlc tells you which one to set and uses the questions below in the meantime.
 
 ## What aisdlc does instead
 
@@ -56,4 +56,4 @@ If Jira becomes available later and the ticket changed materially after the spec
 
 ## What about writing back to Jira?
 
-Writes (add comment, add a link or PR reference, update a configured workflow status) are performed only through the connector, and only for transitions that have been explicitly configured. No generic transition mapping is assumed. Secrets are never copied into Jira comments.
+Writes (add comment, add a link or PR reference, update a configured workflow status) are disabled by default, performed only when enabled in `config/integrations.yaml`, and only for transitions that have been explicitly configured. No generic transition mapping is assumed. Secrets are never copied into Jira comments.

@@ -7,9 +7,11 @@
 //   node aisdlc-qa-init.js [target-dir] --mcp-backup   before `npx playwright init-agents`, which overwrites .mcp.json
 //   node aisdlc-qa-init.js [target-dir] --mcp-merge    after it: merge the saved servers back next to playwright-test
 //   node aisdlc-qa-init.js [target-dir] --from-dev [dev-workspace] [--dry-run]
-//        reuse Jira settings from an aisdlc-dev workspace (found next to or above the target when no path is given):
-//        its "atlassian" server from .mcp.json (merged next to the others, never replacing the file) and the Jira site
-//        URL (its jira.base_url, else JIRA_URL in that server entry) when ours is empty. Never reads claude.env or .env.
+//        reuse Jira connection settings from an aisdlc-dev workspace (found next to or above the target when no path is
+//        given): jira.base_url (else JIRA_URL from an older dev workspace's atlassian MCP server entry), auth_scheme,
+//        acceptance_criteria_field and credential variable names, each only when ours is unset or default. Reports
+//        the corporate CA such an MCP entry mounted, to set as NODE_EXTRA_CA_CERTS. Never copies an MCP server; never
+//        reads claude.env or .env.
 //   node aisdlc-qa-init.js [target-dir] --migrate-layout [--dry-run] [--force]
 //        move an existing workspace to one folder per ticket: specs/<T>.md -> tasks/<T>/spec.md, and test files under
 //        tests/<feature-area>/ that name exactly one ticket -> tests/<T>/ (header rewritten to tasks/<T>/spec.md; a
@@ -168,29 +170,42 @@ if (flag("--from-dev")) {
   }
   const dev = candidates[0];
   const report = { ok: true, dry_run: dryRun, dev_workspace: dev, changes: [] };
+  // Jira is reached over REST (scripts/jira/jira-attach.js), so only connection settings are copied, never an MCP server.
+  let devJira = {};
+  try { devJira = readJson(path.join(dev, "config", "integrations.yaml")).jira || {}; } catch {}
+  // Older dev workspaces kept the site URL (and a corporate CA mount) in their atlassian MCP server entry.
   const devMcp = path.join(dev, ".mcp.json");
-  const server = fs.existsSync(devMcp) ? (readJson(devMcp).mcpServers || {}).atlassian : null;
-  if (server) {
-    const mcp = path.join(target, ".mcp.json");
-    const ours = fs.existsSync(mcp) ? readJson(mcp) : { mcpServers: {} };
-    if ((ours.mcpServers || {}).atlassian) report.changes.push(".mcp.json already has an atlassian server; left as is");
-    else {
-      ours.mcpServers = { ...(ours.mcpServers || {}), atlassian: server };
-      if (!dryRun) fs.writeFileSync(mcp, JSON.stringify(ours, null, 2) + "\n");
-      report.changes.push(".mcp.json += atlassian (copied from the dev workspace, including its certificate mount)");
-    }
-  } else report.changes.push("the dev workspace has no atlassian server in .mcp.json");
+  let server = null;
+  try { server = fs.existsSync(devMcp) ? (readJson(devMcp).mcpServers || {}).atlassian || null : null; } catch {}
   const integ = path.join(target, "config", "integrations.yaml");
   if (fs.existsSync(integ)) {
     const cfg = readJson(integ);
-    let devUrl = "";
-    try { devUrl = (readJson(path.join(dev, "config", "integrations.yaml")).jira || {}).base_url || ""; } catch {}
-    devUrl = devUrl || (server && server.env && /^https?:\/\//.test(server.env.JIRA_URL || "") ? server.env.JIRA_URL : "");
-    if (cfg.jira && !cfg.jira.base_url && devUrl) {
-      cfg.jira.base_url = devUrl.replace(/\/+$/, "");
-      if (!dryRun) writeYaml(integ, cfg);
-      report.changes.push(`jira.base_url = ${cfg.jira.base_url}`);
+    const jira = cfg.jira || (cfg.jira = {});
+    let changed = false;
+    const devUrl = devJira.base_url || (server && server.env && /^https?:\/\//.test(server.env.JIRA_URL || "") ? server.env.JIRA_URL : "");
+    if (!jira.base_url && devUrl) { jira.base_url = devUrl.replace(/\/+$/, ""); changed = true; report.changes.push(`jira.base_url = ${jira.base_url}`); }
+    if (devJira.auth_scheme && devJira.auth_scheme !== (jira.auth_scheme || "basic") && (jira.auth_scheme || "basic") === "basic") {
+      jira.auth_scheme = devJira.auth_scheme; changed = true; report.changes.push(`jira.auth_scheme = ${jira.auth_scheme}`);
     }
+    if (devJira.acceptance_criteria_field && !jira.acceptance_criteria_field) {
+      jira.acceptance_criteria_field = devJira.acceptance_criteria_field; changed = true;
+      report.changes.push(`jira.acceptance_criteria_field = ${jira.acceptance_criteria_field}`);
+    }
+    // Variable NAMES only (never values), and only when ours are still the defaults.
+    const dc = devJira.credentials || {}, oc = jira.credentials || {};
+    if ((dc.email_env || dc.api_token_env) && (oc.email_env || "JIRA_EMAIL") === "JIRA_EMAIL" && (oc.api_token_env || "JIRA_API_TOKEN") === "JIRA_API_TOKEN" &&
+        ((dc.email_env || "JIRA_EMAIL") !== "JIRA_EMAIL" || (dc.api_token_env || "JIRA_API_TOKEN") !== "JIRA_API_TOKEN")) {
+      jira.credentials = { ...oc, ...(dc.email_env ? { email_env: dc.email_env } : {}), ...(dc.api_token_env ? { api_token_env: dc.api_token_env } : {}) };
+      changed = true; report.changes.push(`jira.credentials = ${jira.credentials.email_env} / ${jira.credentials.api_token_env} (names only)`);
+    }
+    if (changed && !dryRun) writeYaml(integ, cfg);
+  }
+  if (!report.changes.length) report.changes.push("nothing to copy (jira settings already set, or none in the dev workspace)");
+  // A corporate CA the dev MCP server mounted: Node needs it as NODE_EXTRA_CA_CERTS instead (an environment variable).
+  const mount = server && (server.args || []).map(String).find((a) => /:\/certs\/[^:]+\.pem(:ro)?$/.test(a));
+  if (mount) {
+    const cert = mount.replace(/:\/certs\/[^:]+\.pem(:ro)?$/, "");
+    report.ca_certificate = { path: cert, set: process.env.NODE_EXTRA_CA_CERTS ? "set" : "missing", hint: `set NODE_EXTRA_CA_CERTS=${cert} before starting the session` };
   }
   // Credentials are never copied or read from files; only whether they are set in this environment.
   report.credentials = Object.fromEntries(["JIRA_EMAIL", "JIRA_API_TOKEN"].map((n) => [n, process.env[n] ? "set" : "missing"]));

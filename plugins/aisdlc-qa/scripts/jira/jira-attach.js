@@ -1,27 +1,37 @@
 #!/usr/bin/env node
-// Jira helper for the QA plugin (REST API v2, Jira wiki markup). Credentials come from environment variables only
-// (names in config/integrations.yaml, jira.credentials); values are never printed. The site URL comes from
-// jira.base_url in config/integrations.yaml, or JIRA_URL.
+// Jira helper for the QA plugin, over the Jira REST API v2 (wiki markup; client: scripts/lib/jira.js, vendored core).
+// No MCP server needed. Credentials come from environment variables only (names in config/integrations.yaml,
+// jira.credentials); values are never printed. The site URL comes from jira.base_url in config/integrations.yaml,
+// or JIRA_URL.
 //
+//   issue   <T> [--comments]                   read-only: the ticket (summary, type, status, description, acceptance
+//                                              criteria, labels, priority, components, versions, parent, linked
+//                                              issues, attachment names; comments with --comments)
 //   status  <T> [--since <iso-time>]           read-only: status, assignee, and comments posted after --since
+//   check                                      read-only: verify the site URL and credentials
 //   attach  <T> <file...>                      upload evidence files (files already uploaded for <T> are skipped)
 //   comment <T> <wiki-file>                    post a comment
 //   defect  <T> <wiki-file> <file...>          upload failure screenshots, then post the defect comment
 //                                              (the comment can embed them with !<file-name>|thumbnail!)
 //   reply   <T> <comment-id> <wiki-file>       post a follow-up that links to an earlier comment (Jira comments are
 //                                              flat; the follow-up starts with a link to the comment it answers)
+//   transition <T> defect_found|verified       move the ticket through the workflow transition named in
+//                                              jira.write.status_transitions.<key>; refused when that key is not
+//                                              configured or the ticket's status does not offer that transition
 // Options: --dry-run (no network and no credentials needed: prints what would be sent), --mention-assignee
 // (prefix the comment with an @mention of the ticket's assignee; also on when jira.write.mention_assignee is true).
-// Writes are refused unless enabled in config/integrations.yaml (jira.write.add_comment / add_attachment).
-// Each upload and comment is recorded in tasks/<T>/task.yaml (jira.attachments / jira.comments) via the state CLI.
+// Writes are refused unless enabled in config/integrations.yaml (jira.write.add_comment / add_attachment /
+// status_transitions). Each upload, comment and transition is recorded in tasks/<T>/task.yaml (jira.attachments /
+// jira.comments / jira.transitions) via the state CLI.
 //
+// Corporate TLS inspection (Cloudflare WARP, Zscaler): set NODE_EXTRA_CA_CERTS to the corporate root certificate.
 // Output: one JSON line. Exit codes: 0 ok, 1 error or writes disabled, 2 credentials or site URL missing.
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { spawnSync } = require("child_process");
 const { resolveRoot, NOT_WORKSPACE } = require("../lib/root");
-const { readYaml } = require("../lib/yaml");
+const jira = require("../lib/jira");
 
 // Finishing reliably on Windows: see plugins/aisdlc-dev/scripts/git-hosting/bitbucket-pr.js for the full story.
 // out() records the result and unwinds; the finalizer writes one JSON line, sets process.exitCode (no hard exit while
@@ -32,36 +42,27 @@ const out = (o, code = 0) => {
   RESULT = { payload: o, code };
   throw new Done();
 };
-async function closeHttp() {
-  try {
-    const sym = Object.getOwnPropertySymbols(globalThis).find((s) => s.description === "undici.globalDispatcher.1");
-    const dispatcher = sym && globalThis[sym];
-    if (dispatcher && typeof dispatcher.close === "function") await dispatcher.close();
-  } catch {}
-}
 async function finish(payload, code) {
   process.exitCode = code;
   await new Promise((resolve) => process.stdout.write(JSON.stringify(payload) + "\n", resolve));
-  await closeHttp();
+  await jira.closeHttp();
   setTimeout(() => process.exit(code), 3000).unref();
 }
 
 const ROOT = resolveRoot();
 const argv = process.argv.slice(2);
 const dryRun = argv.includes("--dry-run");
+const withComments = argv.includes("--comments");
 const sinceIdx = argv.indexOf("--since");
 const since = sinceIdx >= 0 ? argv[sinceIdx + 1] : null;
 const positional = argv.filter((a, i) => !a.startsWith("--") && !(sinceIdx >= 0 && i === sinceIdx + 1));
 const [cmd, ticket, ...rest] = positional;
 
-const cfg = ((ROOT && readYaml(path.join(ROOT, "config", "integrations.yaml"), {})) || {}).jira || {};
-const write = cfg.write || {};
-const creds = cfg.credentials || {};
-const emailVar = creds.email_env || "JIRA_EMAIL";
-const tokenVar = creds.api_token_env || "JIRA_API_TOKEN";
-const scheme = cfg.auth_scheme || "basic"; // "basic" (Jira Cloud: email + API token) or "bearer" (Data Center PAT)
-const base = String(cfg.base_url || process.env.JIRA_URL || "").replace(/\/+$/, "");
+const J = jira.jiraConfig(ROOT);
+const write = J.write;
+const base = J.base;
 const mention = argv.includes("--mention-assignee") || write.mention_assignee === true;
+const call = (method, urlPath, opts) => jira.request(J, method, urlPath, opts);
 
 const sha = (buf) => crypto.createHash("sha256").update(buf).digest("hex");
 const taskFile = () => path.join(ROOT, "tasks", ticket, "task.yaml");
@@ -71,34 +72,6 @@ function record(dotted, value) {
   spawnSync(process.execPath, [path.join(__dirname, "..", "state", "aisdlc-state.js"), "set", ticket, dotted, JSON.stringify(value)], {
     env: { ...process.env, AISDLC_ROOT: ROOT }, stdio: "ignore",
   });
-}
-
-function auth() {
-  const token = process.env[tokenVar];
-  if (scheme === "bearer") return token ? `Bearer ${token}` : null;
-  const email = process.env[emailVar];
-  return email && token ? "Basic " + Buffer.from(`${email}:${token}`).toString("base64") : null;
-}
-
-async function call(method, urlPath, { json, form } = {}) {
-  const r = await fetch(base + urlPath, {
-    method,
-    keepalive: false,
-    headers: {
-      Authorization: auth(),
-      Accept: "application/json",
-      Connection: "close",
-      ...(json ? { "Content-Type": "application/json" } : {}),
-      ...(form ? { "X-Atlassian-Token": "no-check" } : {}),
-    },
-    body: json ? JSON.stringify(json) : form,
-  });
-  const body = await r.json().catch(() => ({}));
-  if (!r.ok) {
-    const msg = (body.errorMessages || []).concat(Object.values(body.errors || {})).join("; ") || "request failed";
-    out({ ok: false, status: r.status, error: String(msg).slice(0, 300) }, 1);
-  }
-  return body;
 }
 
 function requireWrite(...keys) {
@@ -151,16 +124,21 @@ async function postComment(kind, text) {
   return { comment_id: String(c.id), url };
 }
 
+const TRANSITION_KEYS = ["defect_found", "verified"];
+
 async function main() {
   if (!ROOT) out({ ok: false, error: NOT_WORKSPACE }, 2);
-  const usage = "usage: status|attach|comment|defect|reply <TICKET> ... [--dry-run] [--since <iso>] [--mention-assignee]";
-  if (!cmd || !/^[A-Z][A-Z0-9]*-\d+$/.test(ticket || "")) out({ ok: false, error: usage }, 1);
-  if (!dryRun) {
-    if (!base) out({ ok: false, error: "Jira site URL missing: set jira.base_url in config/integrations.yaml (or JIRA_URL)" }, 2);
-    if (!auth()) out({ ok: false, error: scheme === "bearer" ? `${tokenVar} must be set` : `${emailVar} and ${tokenVar} must both be set` }, 2);
-  }
+  const usage = "usage: issue|status|attach|comment|defect|reply|transition <TICKET> ... | check   [--dry-run] [--comments] [--since <iso>] [--mention-assignee]";
+  if (!cmd || (cmd !== "check" && !/^[A-Z][A-Z0-9]*-\d+$/.test(ticket || ""))) out({ ok: false, error: usage }, 1);
+  if (!dryRun && J.missing()) out({ ok: false, error: J.missing() }, 2);
 
-  if (cmd === "status") {
+  if (cmd === "check") {
+    if (dryRun) out({ ok: true, dry_run: true, would: ["GET /rest/api/2/myself"] });
+    out({ ok: true, connected: true, base_url: base, ...(await jira.checkConnection(J)) });
+  } else if (cmd === "issue") {
+    if (dryRun) out({ ok: true, dry_run: true, would: jira.issueRequests(J, ticket, { comments: withComments }) });
+    out({ ok: true, ...(await jira.fetchIssue(J, ticket, { comments: withComments })) });
+  } else if (cmd === "status") {
     if (dryRun) out({ ok: true, dry_run: true, would: [`GET /rest/api/2/issue/${ticket}?fields=status,assignee,updated`, `GET /rest/api/2/issue/${ticket}/comment`] });
     const issue = await call("GET", `/rest/api/2/issue/${encodeURIComponent(ticket)}?fields=status,assignee,updated`);
     const list = await call("GET", `/rest/api/2/issue/${encodeURIComponent(ticket)}/comment?orderBy=created&maxResults=100`);
@@ -194,6 +172,17 @@ async function main() {
     requireWrite("add_comment");
     const text = `In reply to [this comment|${base}/browse/${ticket}?focusedCommentId=${commentId}]:\n\n${readText(file)}`;
     out({ ok: true, ticket, dry_run: dryRun, in_reply_to: commentId, ...(await postComment("reply", text)) });
+  } else if (cmd === "transition") {
+    const key = rest[0];
+    if (!TRANSITION_KEYS.includes(key)) out({ ok: false, error: `usage: transition <TICKET> ${TRANSITION_KEYS.join("|")}` }, 1);
+    // Only explicitly configured transitions, never a guessed mapping (not even in a dry run).
+    const target = (write.status_transitions || {})[key];
+    if (!target || typeof target !== "string")
+      out({ ok: false, error: `no transition configured: set jira.write.status_transitions.${key} to the exact Jira transition name in config/integrations.yaml` }, 1);
+    if (dryRun) out({ ok: true, ticket, dry_run: true, key, transition: target, would: [`GET /rest/api/2/issue/${ticket}/transitions`, `POST /rest/api/2/issue/${ticket}/transitions`] });
+    const t = await jira.transitionIssue(J, ticket, target);
+    record(`jira.transitions.${key}`, { name: t.name, from: t.from, to: t.to, at: new Date().toISOString() });
+    out({ ok: true, ticket, key, transition: t.name, from: t.from, to: t.to });
   } else out({ ok: false, error: `unknown command ${cmd}. ${usage}` }, 1);
 }
 
@@ -203,7 +192,8 @@ main()
   })
   .catch((e) => {
     if (e instanceof Done) return;
-    RESULT = { payload: { ok: false, error: String(e.message || e).slice(0, 300) }, code: 1 };
+    if (e instanceof jira.JiraError) RESULT = { payload: e.payload, code: e.code };
+    else RESULT = { payload: { ok: false, error: String(e.message || e).slice(0, 300) }, code: 1 };
   })
   .finally(() => {
     finish(RESULT.payload, RESULT.code);

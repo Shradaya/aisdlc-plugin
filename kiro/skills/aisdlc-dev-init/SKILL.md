@@ -20,7 +20,7 @@ Turn a folder into the aisdlc dev workspace that stores the registry, repository
 ## What it creates
 - `claude`: `.claude/settings.json`, `.claude/rules/*.md`.
 - `web`: `web/**`, the VitePress docs site (no `node_modules`).
-- `workspace`: `config/{repositories,integrations,workspace}.yaml` (registry starts empty), `repositories/`, `system/{architecture,product,decisions,designs}/`, `system/repository-relationships.yaml`, `tasks/`, `logs/`, `CLAUDE.md`, `claude.env.example`, `.mcp.json.example`, `.gitignore`.
+- `workspace`: `config/{repositories,integrations,workspace}.yaml` (registry starts empty), `repositories/`, `system/{architecture,product,decisions,designs}/`, `system/repository-relationships.yaml`, `tasks/`, `logs/`, `CLAUDE.md`, `claude.env.example`, `.gitignore`.
 
 ## Behavior
 - Existing files are never overwritten unless `--force`; `.claude/settings.json` is merged additively; `.gitignore` is append-only; `claude.env` and `node_modules` are never created.

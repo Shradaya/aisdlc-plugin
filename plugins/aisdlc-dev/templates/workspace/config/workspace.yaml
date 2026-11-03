@@ -13,7 +13,7 @@
   "integrations": {
     "jira": {
       "required_for_ticket_fetch": false,
-      "adapter": "mcp"
+      "adapter": "rest-api"
     },
     "git_hosting": {
       "provider": "configured-per-environment"

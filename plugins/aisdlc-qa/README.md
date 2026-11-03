@@ -28,7 +28,7 @@ claude plugin install aisdlc-qa@aisdlc-marketplace --scope project         # onl
 claude plugin install aisdlc-qa@aisdlc-marketplace --scope local           # only this workspace, only you
 ```
 
-Run the `--scope project` and `--scope local` forms from inside the workspace folder. Afterwards, restart Claude Code in the workspace so the hooks, MCP servers and Playwright agents load.
+Run the `--scope project` and `--scope local` forms from inside the workspace folder. Afterwards, restart Claude Code in the workspace so the hooks, the Playwright MCP server and the Playwright agents load.
 
 The QA hooks act only in a folder whose `config/workspace.yaml` has `"kind": "qa"`, even when the plugin is installed for all projects. The dev and design hooks stay out of a QA workspace too.
 
@@ -46,7 +46,7 @@ The QA hooks act only in a folder whose `config/workspace.yaml` has `"kind": "qa
 2. **Environments.** `init` adds the first environment. Add more with `/aisdlc-qa:add-env <name> <base-url>`.
    - **Login form:** give the visible label text of the fields and the sign-in button text (for example `Email Address`, `Password`, `Sign In`). They are matched exactly, so a "toggle password visibility" button isn't mistaken for the password field. IDs or selectors (`#email`, `button[type=submit]`) also work and win over labels; generated class names are refused. After the first login, set the suggested `success_url`; without it, a login that only shows an error message can still pass.
    - **Production hosts:** add each with `/aisdlc-qa:add-env --block-host <host>`. A plain host also blocks its subdomains. If production is the bare domain and QA a subdomain (`emc-portal.com` vs `qa.emc-portal.com`), use the exact form `--block-host "=emc-portal.com"`. An entry that would block a configured environment is refused.
-   - **Jira settings from aisdlc-dev:** if you already have an aisdlc-dev workspace, `init` can reuse its `atlassian` MCP server (including the corporate certificate mount) and Jira site URL. It never copies `claude.env` or `.env`.
+   - **Jira settings from aisdlc-dev:** if you already have an aisdlc-dev workspace, `init` can reuse its Jira connection settings (site URL, auth scheme, acceptance-criteria field). If that workspace still has an old `atlassian` MCP entry, `init` reads the site URL from it and tells you which corporate certificate to set as `NODE_EXTRA_CA_CERTS`. It never copies `claude.env` or `.env`.
 3. **Credentials.** Set them the same way as for `aisdlc-dev`, as environment variables:
 
    ```powershell
@@ -56,10 +56,11 @@ The QA hooks act only in a folder whose `config/workspace.yaml` has `"kind": "qa
    $env:JIRA_API_TOKEN = "<Jira API token>"
    ```
 
-   To keep them across sessions, set them as user environment variables. `QA_USERNAME` / `QA_PASSWORD` may instead go in `.env` in the workspace, which is gitignored and which Claude can't read. `JIRA_*` must be environment variables, because the Jira MCP server reads them from there. Never put credentials in `claude.env` or any other file. `node <plugin>/scripts/qa/cred-check.js` shows which are set, never their values.
+   To keep them across sessions, set them as user environment variables. `QA_USERNAME` / `QA_PASSWORD` may instead go in `.env` in the workspace, which is gitignored and which Claude can't read. `JIRA_*` must be environment variables, because the Jira helper reads them from there. Never put credentials in `claude.env` or any other file. `node <plugin>/scripts/qa/cred-check.js` shows which are set, never their values.
 4. **Jira.**
    - Set `jira.base_url` in `config/integrations.yaml`.
-   - Add the `atlassian` server from `.mcp.json.example` to `.mcp.json`, next to `playwright-test`. Don't replace the file. Behind Cloudflare WARP or Zscaler, point its CA mount at the corporate certificate (WARP: `C:/ProgramData/Cloudflare/installed_cert.pem`). `init --from-dev` does all of this for you if you have an aisdlc-dev workspace.
+   - That's all for reading tickets: the plugin talks to the Jira REST API itself, so there is no Jira MCP server to set up. Check the connection with `node <plugin>/scripts/jira/jira-attach.js check`. Behind Cloudflare WARP or Zscaler, set `NODE_EXTRA_CA_CERTS` to the corporate certificate (WARP: `C:/ProgramData/Cloudflare/installed_cert.pem`). `init --from-dev` copies the site URL for you if you have an aisdlc-dev workspace.
+   - To let the plugin move the ticket's status, set `jira.write.status_transitions.defect_found` and/or `verified` to the exact Jira transition names, and add the `write:issue:jira` scope to the token. Off by default.
    - To let the plugin post defect and results comments and upload evidence, set `jira.write.add_comment` and `jira.write.add_attachment` to `true`, and give the token the write scopes listed in that file. Both are off by default.
 5. Run `/aisdlc-qa:status` to check everything.
 
@@ -141,7 +142,7 @@ Each helper prints one JSON line. Exit codes are `0` ok, `1` refused or error, `
 | `scripts/qa/env-check.js` | Resolve an environment and apply the production guard; `--probe` checks it is reachable |
 | `scripts/qa/add-env.js` | Add or change environments (labels or selectors for the login) and blocked hosts (refuses a block that would hit a configured environment) |
 | `scripts/qa/summarize-results.js` · `evidence-pack.js` | Run summary; Jira upload packs (zips and per-scenario screenshots) |
-| `scripts/jira/jira-attach.js` | Jira: `status`, `defect`, `reply`, `attach`, `comment` (REST v2, wiki markup). Uploads are de-duplicated per ticket. `--dry-run` needs no credentials. |
+| `scripts/jira/jira-attach.js` | All Jira traffic, over REST v2 (wiki markup), no MCP server: `issue`, `status`, `check` (reads); `defect`, `reply`, `attach`, `comment`, `transition` (writes, each behind its switch in `config/integrations.yaml`). Uploads are de-duplicated per ticket. `--dry-run` needs no credentials. |
 
 ## Checks
 

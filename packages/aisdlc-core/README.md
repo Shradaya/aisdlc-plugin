@@ -1,6 +1,6 @@
 # aisdlc-core
 
-Canonical shared core for the aisdlc plugins. Holds the workspace/path resolution, the JSON-compatible YAML loader, and the task state engine that both `aisdlc-dev` and `aisdlc-design` depend on.
+Canonical shared core for the aisdlc plugins. Holds the workspace/path resolution, the JSON-compatible YAML loader, the Jira REST client, and the task state engine that `aisdlc-dev`, `aisdlc-design` and `aisdlc-qa` depend on.
 
 ## Why it is vendored, not referenced
 
@@ -21,4 +21,5 @@ from the repo root to copy the core into every plugin. CI (and the gate suites) 
 | `lib/root.js` | Workspace resolution (`resolveRoot`), plugin-root resolution, `configPath` (workspace override of plugin default). |
 | `lib/repo-paths.js` | Resolve each registered repository's real path on this machine from `claude.env`/env vars (paths only, never secrets). |
 | `lib/yaml.js` | Load JSON-compatible YAML (strip full-line `#` comments, then `JSON.parse`). |
+| `lib/jira.js` | Jira REST API client (no MCP server): config and credentials from `config/integrations.yaml` + environment, `fetchIssue` (normalized ticket incl. acceptance criteria), `checkConnection`, `transitionIssue` (exact configured name only), shared error type. |
 | `state/aisdlc-state.js` | The task state engine: `init`/`get`/`transition`/`approve`/`reject`/`set`, O_EXCL lock, hash-pinned gates (`specification`, `design`), append-only audit log. |
