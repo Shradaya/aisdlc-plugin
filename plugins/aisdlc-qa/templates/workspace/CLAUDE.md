@@ -15,7 +15,7 @@ This folder is an aisdlc **QA** workspace, managed by the `aisdlc-qa` plugin. It
 
 ## Lifecycle
 
-`/aisdlc-qa:test <TICKET>` drives: ticket → environment → scenarios → **your scenario approval** (hash-pinned) → tests generated → run (you watch) → failure triage → defect comment on Jira and **wait for the developer's fix** → re-verify → **your results sign-off** (hash-pinned) → `/aisdlc-qa:publish` (evidence to Jira) → `/aisdlc-qa:commit` (tests into the regression suite). `/aisdlc-qa:run <TICKET>` re-runs at any test stage; `/aisdlc-qa:status` shows where every ticket stands; `/aisdlc-qa:add-env <name> <base-url>` adds a test environment (or `--block-host <host>` / `"=<host>"` a production host); `/aisdlc-qa:check "<what>"` runs a quick check without a ticket.
+`/aisdlc-qa:test <TICKET>` drives: ticket → environment → scenarios → **your scenario approval** (hash-pinned) → tests generated → run (you watch) → failure triage → defect comment on Jira and **wait for the developer's fix** → re-verify → **your results sign-off** (hash-pinned) → `/aisdlc-qa:publish` (evidence to Jira) → `/aisdlc-qa:commit` (tests into the regression suite). `/aisdlc-qa:run <TICKET>` re-runs at any test stage; `/aisdlc-qa:status` shows where every ticket stands (`/aisdlc-qa:status-page` in the browser, with every run's screenshots); `/aisdlc-qa:add-env <name> <base-url>` adds a test environment (or `--block-host <host>` / `"=<host>"` a production host); `/aisdlc-qa:check "<what>"` runs a quick check without a ticket.
 
 ## Invariants (never optional)
 

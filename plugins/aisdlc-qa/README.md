@@ -73,6 +73,7 @@ The QA hooks act only in a folder whose `config/workspace.yaml` has `"kind": "qa
 | `/aisdlc-qa:commit <TICKET>` | Commit `tests/<TICKET>/` and `tasks/<TICKET>/spec.md` on branch `<TICKET>`, ready for the regression suite |
 | `/aisdlc-qa:check "<what to check>" [--env <name>] [--video]` | A quick check without a ticket. It explores the app black-box (never its source), writes `checks/<slug>.spec.ts` and runs it while you watch. The proof stays local in `test-results/<slug>/run-<yyyymmdd-hhmmss>/`. No Jira, no gates, never production. Promote it later with `/aisdlc-qa:test <TICKET>`. |
 | `/aisdlc-qa:status [TICKET]` | Read-only overview, including developer replies on tickets that are waiting for a fix |
+| `/aisdlc-qa:status-page` | Live status page in the browser: each ticket's past, current and upcoming states, approvals, defects, every run with its step screenshots and Playwright report, history and documents |
 | `/aisdlc-qa:add-env <name> <url>` · `--block-host <host>` or `=<host>` | Add or change a test environment, or block a production host |
 | `/aisdlc-qa:init [--only workspace\|agents]` | Scaffold the workspace. `--from-dev [path]` reuses the Jira settings of an aisdlc-dev workspace. `--only agents` regenerates Playwright's agents after a Playwright upgrade. |
 
@@ -141,12 +142,14 @@ Each helper prints one JSON line. Exit codes are `0` ok, `1` refused or error, `
 | `scripts/qa/env-check.js` | Resolve an environment and apply the production guard; `--probe` checks it is reachable |
 | `scripts/qa/add-env.js` | Add or change environments (labels or selectors for the login) and blocked hosts (refuses a block that would hit a configured environment) |
 | `scripts/qa/summarize-results.js` · `evidence-pack.js` | Run summary; Jira upload packs (zips and per-scenario screenshots) |
+| `scripts/status/status-server.js` | The live status page (`status-page.html`) on `http://localhost:4318/`: no dependencies, read-only, `127.0.0.1` only, serves files only from inside `tasks/<TICKET>/` (never `.env` or `.auth/`). `--json` prints the overview once. |
 | `scripts/jira/jira-attach.js` | Jira: `status`, `defect`, `reply`, `attach`, `comment` (REST v2, wiki markup). Uploads are de-duplicated per ticket. `--dry-run` needs no credentials. |
 
 ## Checks
 
 ```
 node scripts/validation/test-gates-qa.js
+node scripts/validation/test-status-page-qa.js
 ```
 
 ## Working with the other plugins

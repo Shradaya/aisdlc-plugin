@@ -11,6 +11,8 @@ const { spawn, execFileSync } = require("child_process");
 
 const PLUGIN = path.resolve(__dirname, "..", "..");
 const W = fs.mkdtempSync(path.join(os.tmpdir(), "aisdlc-status-"));
+// Remove the temp workspace even when setup throws: a leftover one is found by other tests' workspace discovery.
+process.on("exit", () => fs.rmSync(W, { recursive: true, force: true }));
 const env = { ...process.env, AISDLC_ROOT: W, CLAUDE_PLUGIN_ROOT: PLUGIN, JIRA_API_TOKEN: "x" };
 delete env.JIRA_EMAIL;
 const state = (...a) => execFileSync("node", [path.join(PLUGIN, "scripts/state/aisdlc-state.js"), ...a], { env, stdio: "pipe" });

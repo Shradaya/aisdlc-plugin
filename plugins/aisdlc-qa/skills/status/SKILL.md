@@ -23,7 +23,7 @@ Explicit `/aisdlc-qa:status [<TICKET>]`. With a ticket, report only that one in 
 4. Workspace: `node ${CLAUDE_PLUGIN_ROOT}/scripts/qa/env-check.js` (no probe) for the default environment and the setup flags (Playwright installed, Playwright agents present). Credentials by name only: `node ${CLAUDE_PLUGIN_ROOT}/scripts/qa/cred-check.js` (`set (environment)`, `set (.env)` or `missing` for `QA_USERNAME`, `QA_PASSWORD`, `JIRA_EMAIL`, `JIRA_API_TOKEN`; never values). Jira write switches from `config/integrations.yaml`.
 
 ## Outputs
-A report in the conversation only.
+A report in the conversation only. End with one line: for a live view in the browser (each ticket's lifecycle, defects, runs with their screenshots, and documents), run `/aisdlc-qa:status-page`.
 
 ## Failure behavior
 A corrupt or unreadable task file: list it as a warning and continue with the rest. Jira unreachable: say so; the rest of the report still stands.
