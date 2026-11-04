@@ -15,6 +15,7 @@ const readJson = (f, d) => {
 };
 const TYPES = readJson(require("../scripts/lib/root").configPath(ROOT, "task-types.yaml"), {});
 const REPOS = readJson(path.join(ROOT, "config", "repositories.yaml"), { repositories: {} }).repositories || {};
+const POLICIES = readJson(require("../scripts/lib/root").configPath(ROOT, "policies.yaml"), {});
 
 const { resolveRepoPath } = require("../scripts/lib/repo-paths");
 const norm = (p) => path.resolve(p).replace(/\\/g, "/").toLowerCase();
@@ -84,6 +85,18 @@ function sourceWriteReason(repo) {
   return reason && (envBranchMergeAllowed(repo) || syncBranchMergeAllowed(repo)) ? null : reason;
 }
 
+// A task that spans two or more repositories (or has trace_required set because a shared contract changes) must have a
+// completed cross-repository trace before source is edited (policies.yaml require_trace_for_cross_repo, honoured only
+// when exactly true so a workspace policies.yaml written before the key existed is unaffected).
+function traceReason(t) {
+  const family = (t.task.lifecycle || t.task.type) === "bug" ? "bug" : "feature";
+  if ((POLICIES[family] || {}).require_trace_for_cross_repo !== true) return null;
+  const n = (t.repositories || []).length;
+  if (n < 2 && t.trace_required !== true) return null;
+  const done = t.workflow && t.workflow.trace === "completed" && fs.existsSync(path.join(ROOT, "tasks", t.task.id, "trace.md"));
+  return done ? null : `Task ${t.task.id} ${n >= 2 ? `spans ${n} repositories` : "changes a shared contract"} and has no completed cross-repository trace; run the cross-repo-trace skill (it writes tasks/${t.task.id}/trace.md) before editing source.`;
+}
+
 function taskSourceWriteReason(repo) {
   const tasks = activeTasks().filter((t) => (t.repositories || []).includes(repo));
   if (!tasks.length) return `No active aisdlc task lists repository '${repo}'.`;
@@ -102,6 +115,8 @@ function taskSourceWriteReason(repo) {
       if (a.status !== "approved") continue;
       if (a.spec_hash !== specHash(t.task.id)) { reason = `Specification for ${t.task.id} changed after approval; reapproval required.`; continue; }
     }
+    const traceBlock = traceReason(t);
+    if (traceBlock) { reason = traceBlock; continue; }
     return null;
   }
   return reason;
@@ -153,7 +168,7 @@ function registryOnEditChange(tool, input, target) {
 }
 const ON_EDIT_ASK = (what) => `${what}. on_edit commands run automatically after every edit, outside Claude's permission prompts: confirm they are the ones you want.`;
 
-const PROTECTED_ARTIFACTS = ["jira.md","requirements.md","impact-analysis.md","knowledge-manifest.yaml","specification.md","implementation-plan.md","validation.md","code-review.md","documentation.md","repository-preparation.yaml","knowledge-consolidation.yaml","release.yaml"];
+const PROTECTED_ARTIFACTS = ["jira.md","requirements.md","impact-analysis.md","knowledge-manifest.yaml","specification.md","implementation-plan.md","validation.md","code-review.md","documentation.md","trace.md","repository-preparation.yaml","knowledge-consolidation.yaml","release.yaml"];
 
 function deletionAllowed(ticket) {
   const t = readJson(path.join(ROOT, "tasks", ticket, "task.yaml"), null);
