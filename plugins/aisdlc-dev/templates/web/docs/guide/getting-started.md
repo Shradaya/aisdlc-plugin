@@ -63,8 +63,11 @@ Jira (classic/granular scopes):
 | `read:comment:jira` | Comments, only when the workflow asks for them. |
 | `read:field:jira` | Find the custom field holding acceptance criteria. |
 | `read:project:jira` | Resolve the project a ticket belongs to. |
-| `read:jira-user` | Optional: assignee and reporter names. |
+| `read:jira-user` | The connection check (`jira-fetch.js check`); also assignee and reporter names. |
 
+::: tip Classic token or token with scopes?
+A classic Atlassian API token (no scopes) works against your site URL. A token created **with scopes** is only accepted by the Atlassian API gateway (`api.atlassian.com/ex/jira/<cloudId>`) and gets `401` on the site URL. aisdlc handles both: by default (`jira.api_route: "auto"`) it tries the site URL first and switches to the gateway when Jira refuses the token, looking up your site's cloud id itself. `jira-fetch.js check` prints which route it used (`route`). To skip the extra requests, set `jira.api_route` to `"gateway"` and `jira.cloud_id` (Jira > Settings > Products, or `https://<site>.atlassian.net/_edge/tenant_info`). Jira Data Center (`auth_scheme: "bearer"`) always uses the site URL.
+:::
 These are read-only. aisdlc's Jira writes (adding a comment, adding a PR link, status transitions) are disabled by default in `config/integrations.yaml`; enable them there only if you want them, and add the matching `write:*:jira` scopes to the token at that point.
 
 Bitbucket:

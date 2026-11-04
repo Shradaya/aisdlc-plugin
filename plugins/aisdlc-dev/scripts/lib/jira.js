@@ -6,10 +6,20 @@
 // Settings come from the workspace's config/integrations.yaml "jira" block:
 //   base_url (or JIRA_URL), auth_scheme "basic" (Jira Cloud: email + API token) | "bearer" (Data Center PAT),
 //   credentials.email_env / credentials.api_token_env (variable NAMES; default JIRA_EMAIL / JIRA_API_TOKEN),
-//   acceptance_criteria_field (optional custom field id; empty = find it by name, then the description section).
+//   acceptance_criteria_field (optional custom field id; empty = find it by name, then the description section),
+//   api_route "auto" (default) | "site" | "gateway", cloud_id (optional), gateway_url (default https://api.atlassian.com).
 // Credential values are read from the environment only and never returned, logged or included in errors.
 // Errors are thrown as JiraError { payload: { ok:false, status?, error, hint? }, code } for the caller to print.
 // Corporate TLS inspection (Cloudflare WARP, Zscaler): set NODE_EXTRA_CA_CERTS to the corporate root certificate.
+//
+// Where requests go ("route"). A classic Jira Cloud API token works against the site URL (https://<site>.atlassian.net).
+// A *scoped* token (granular scopes such as read:issue:jira) does not: on the site URL Jira treats it as anonymous and
+// answers 401 (or 404 for an issue, which looks like a missing ticket). Scoped tokens go through the Atlassian API
+// gateway, https://api.atlassian.com/ex/jira/<cloudId>, where <cloudId> comes from <site>/_edge/tenant_info (public).
+// With api_route "auto" the route is decided once per process, with GET /myself on the site URL: success -> site;
+// 401/403 -> gateway; anything else is a real error and is reported as such. "site" and "gateway" skip that probe, and
+// cloud_id skips the tenant_info lookup. Data Center ("bearer") always uses the site URL. Browse links always use the
+// site URL (c.base); c.via tells which route was used ("site" | "gateway").
 const path = require("path");
 const { readYaml } = require("./yaml");
 
@@ -21,6 +31,9 @@ class JiraError extends Error {
   }
 }
 
+const GATEWAY_DEFAULT = "https://api.atlassian.com";
+const ROUTES = ["auto", "site", "gateway"];
+
 function jiraConfig(root) {
   const cfg = ((root && readYaml(path.join(root, "config", "integrations.yaml"), {})) || {}).jira || {};
   const creds = cfg.credentials || {};
@@ -28,6 +41,7 @@ function jiraConfig(root) {
   const tokenVar = creds.api_token_env || "JIRA_API_TOKEN";
   const scheme = cfg.auth_scheme || "basic";
   const base = String(cfg.base_url || process.env.JIRA_URL || "").replace(/\/+$/, "");
+  const routeMode = ROUTES.includes(String(cfg.api_route || "auto").toLowerCase()) ? String(cfg.api_route || "auto").toLowerCase() : "auto";
   const auth = () => {
     const token = process.env[tokenVar];
     if (scheme === "bearer") return token ? `Bearer ${token}` : null;
@@ -40,25 +54,33 @@ function jiraConfig(root) {
     if (!auth()) return scheme === "bearer" ? `${tokenVar} must be set` : `${emailVar} and ${tokenVar} must both be set`;
     return null;
   };
-  return { cfg, write: cfg.write || {}, base, scheme, emailVar, tokenVar, acField: cfg.acceptance_criteria_field || null, auth, missing };
+  return {
+    cfg, write: cfg.write || {}, base, scheme, emailVar, tokenVar, acField: cfg.acceptance_criteria_field || null, auth, missing,
+    routeMode, cloudId: cfg.cloud_id ? String(cfg.cloud_id).trim() : null,
+    gatewayUrl: String(cfg.gateway_url || GATEWAY_DEFAULT).replace(/\/+$/, ""),
+    apiBase: null, via: null, // resolved lazily by resolveRoute()
+  };
 }
 
 function hints(c) {
+  const scoped = c.via === "gateway" ? " For a scoped token, grant the read/write scopes listed in jira.token_scopes (config/integrations.yaml)." : "";
   return {
-    401: `authentication failed: check ${c.emailVar} / ${c.tokenVar} (and jira.auth_scheme)`,
-    403: "the token lacks permission for this request (see jira.token_scopes in config/integrations.yaml)",
+    401: `authentication failed: check ${c.emailVar} / ${c.tokenVar} (and jira.auth_scheme).${scoped}`,
+    403: `the token lacks permission for this request (see jira.token_scopes in config/integrations.yaml).${scoped}`,
     404: "not found, or the token cannot see it",
   };
 }
 
-async function request(c, method, urlPath, { json, form, quiet } = {}) {
+// One HTTP call. Network failures throw a JiraError; HTTP errors are returned ({ ok:false, status, body }) so callers
+// can decide (the route probe treats 401/403 as a signal, request() turns them into errors).
+async function send(c, url, method, { json, form, auth = true } = {}) {
   let r;
   try {
-    r = await fetch(c.base + urlPath, {
+    r = await fetch(url, {
       method,
       keepalive: false,
       headers: {
-        Authorization: c.auth(),
+        ...(auth ? { Authorization: c.auth() } : {}),
         Accept: "application/json",
         Connection: "close",
         ...(json ? { "Content-Type": "application/json" } : {}),
@@ -67,22 +89,72 @@ async function request(c, method, urlPath, { json, form, quiet } = {}) {
       body: json ? JSON.stringify(json) : form,
     });
   } catch (e) {
-    if (quiet) return null;
     const code = String((e.cause && (e.cause.code || e.cause.message)) || e.message);
     const tls = /CERT|SELF_SIGNED|UNABLE_TO_(GET|VERIFY)/i.test(code);
+    let host = url;
+    try { host = new URL(url).origin; } catch {}
     throw new JiraError({
-      error: `cannot reach ${c.base}: ${code.slice(0, 200)}`,
+      error: `cannot reach ${host}: ${code.slice(0, 200)}`,
       ...(tls ? { hint: "TLS inspection proxy? Set NODE_EXTRA_CA_CERTS to the corporate root certificate and restart the session." } : {}),
     });
   }
   const body = r.status === 204 ? {} : await r.json().catch(() => ({}));
-  if (!r.ok) {
-    if (quiet) return null;
-    const h = hints(c)[r.status];
-    const msg = (body.errorMessages || []).concat(Object.values(body.errors || {})).join("; ") || h || "request failed";
-    throw new JiraError({ status: r.status, error: String(msg).slice(0, 300), ...(h ? { hint: h } : {}) });
+  return { ok: r.ok, status: r.status, body };
+}
+
+function httpError(c, status, body) {
+  const h = hints(c)[status];
+  const msg = ((body && body.errorMessages) || []).concat(Object.values((body && body.errors) || {})).join("; ") || h || "request failed";
+  return new JiraError({ status, error: String(msg).slice(0, 300), ...(h ? { hint: h } : {}) });
+}
+
+// The Atlassian API gateway base for this site: <gateway_url>/ex/jira/<cloudId>.
+async function gatewayBase(c) {
+  let id = c.cloudId;
+  if (!id) {
+    const t = await send(c, c.base + "/_edge/tenant_info", "GET", { auth: false });
+    id = t.ok && t.body && t.body.cloudId;
+    if (!id) {
+      throw new JiraError({
+        status: 401,
+        error: `cannot find the Jira cloud id for ${c.base} (needed for scoped API tokens)`,
+        hint: "Set jira.cloud_id in config/integrations.yaml (Jira > Settings > Products, or <site>/_edge/tenant_info), or use a classic API token.",
+      });
+    }
   }
-  return body;
+  return `${c.gatewayUrl}/ex/jira/${encodeURIComponent(id)}`;
+}
+
+// Decide where API requests go (see the header comment). Cached on c; a failure is not cached, so a retry re-probes.
+async function resolveRoute(c) {
+  if (c.apiBase) return c.apiBase;
+  if (c.scheme === "bearer" || c.routeMode === "site") {
+    c.apiBase = c.base; c.via = "site";
+  } else if (c.routeMode === "gateway") {
+    c.apiBase = await gatewayBase(c); c.via = "gateway";
+  } else {
+    const probe = await send(c, c.base + "/rest/api/2/myself", "GET");
+    if (probe.ok) { c.apiBase = c.base; c.via = "site"; }
+    else if (probe.status === 401 || probe.status === 403) { c.apiBase = await gatewayBase(c); c.via = "gateway"; }
+    else throw httpError(c, probe.status, probe.body);
+  }
+  return c.apiBase;
+}
+
+async function request(c, method, urlPath, { json, form, quiet } = {}) {
+  let res;
+  try {
+    const apiBase = await resolveRoute(c);
+    res = await send(c, apiBase + urlPath, method, { json, form });
+  } catch (e) {
+    if (quiet && e instanceof JiraError) return null;
+    throw e;
+  }
+  if (!res.ok) {
+    if (quiet) return null;
+    throw httpError(c, res.status, res.body);
+  }
+  return res.body;
 }
 
 const MAX_TEXT = 20000; // cap any single text field so a huge description cannot flood the context
@@ -138,6 +210,7 @@ const ISSUE_FIELDS = ["summary", "issuetype", "status", "priority", "labels", "c
 // The requests fetchIssue makes, for --dry-run output.
 function issueRequests(c, key, { comments } = {}) {
   return [
+    ...(c.scheme === "basic" && c.routeMode === "auto" ? ["GET /rest/api/2/myself (route probe; a scoped token then goes through the Atlassian API gateway)"] : []),
     ...(c.acField ? [] : ["GET /rest/api/2/field (find the acceptance-criteria field)"]),
     `GET /rest/api/2/issue/${key}?fields=${ISSUE_FIELDS.join(",")},${c.acField || "<acceptance-criteria field>"}`,
     ...(comments ? [`GET /rest/api/2/issue/${key}/comment?orderBy=created&maxResults=100`] : []),
@@ -198,7 +271,7 @@ async function fetchIssue(c, key, { comments } = {}) {
 // Verify the site URL and credentials. Returns { user }.
 async function checkConnection(c) {
   const me = await request(c, "GET", "/rest/api/2/myself");
-  return { user: me.displayName || null };
+  return { user: me.displayName || null, route: c.via };
 }
 
 // Move a ticket through the workflow transition with exactly this name (case-insensitive). Refuses when the ticket's
