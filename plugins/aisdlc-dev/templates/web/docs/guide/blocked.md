@@ -139,6 +139,21 @@ Reason: History rewrite is disabled.
 
 **Do:** these are never allowed by aisdlc. If a branch has diverged, resolve it deliberately yourself outside the workflow, then `/aisdlc-dev:resume`.
 
+## Commands that ask first
+
+A few commands are not forbidden, but touch something real: a database, a queue, a cloud account, an external service. The workspace lists them in `config/workspace.yaml` under `real_systems`, and aisdlc asks you to confirm each one before it runs, showing the reason:
+
+```json
+"real_systems": [
+  { "command": "npm run seed*", "reason": "Seeds write to whatever database the configured secret points at." },
+  { "command": "npm start", "repo": "payments-api", "reason": "Starts against the real queue." }
+]
+```
+
+`command` is a glob matched against the whole command with single spaces between its words (`npm run seed*` matches `npm run seed:prod -- --force`); `repo` limits a rule to commands run inside that repository. Environment-variable prefixes, `sudo`/`env`, a leading `cd`, chained commands, `bash -c "..."` and `$(...)` are looked into. This is a safety net against mistakes, not a sandbox: a script that runs the command for you is not seen.
+
+**Do:** read the reason, and confirm only if you mean it. If the list itself is malformed (a rule without a `reason`, say), aisdlc asks about every command until it is fixed, rather than quietly ignoring it.
+
 ## Protected paths and secrets
 
 ```text
