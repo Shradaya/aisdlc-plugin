@@ -1,5 +1,6 @@
 # Safety rules
 
+- Commands that touch a real database, queue, cloud account or external service are listed in `config/workspace.yaml` `real_systems`; the hook asks the developer to confirm each one, with its reason. A confirmation applies to that one command; never run one on the assumption that an earlier confirmation still holds.
 - Production access is disabled: no production deploys, no production database writes, no destructive infrastructure operations.
 - Never force-push, rewrite shared history, delete `main`, hard-reset protected branches, auto-resolve conflicts on `main`, or discard developer changes.
 - Protected paths: `.git/`, `credentials/`, `secrets/`, production configuration, workspace credentials, private key files.
