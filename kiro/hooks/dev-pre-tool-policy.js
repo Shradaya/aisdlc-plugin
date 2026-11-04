@@ -9,16 +9,17 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { execSync } = require("child_process");
+const { execSync, execFileSync } = require("child_process");
 
 const HOME = process.env.AI_SDLC_PLUGIN_HOME;
 if (!HOME) process.exit(0); // not configured: do not interfere
 const DEV = path.join(HOME, "plugins", "aisdlc-dev");
-let root, repoPaths, yaml;
+let root, repoPaths, yaml, envBr;
 try {
   root = require(path.join(DEV, "scripts", "lib", "root.js"));
   repoPaths = require(path.join(DEV, "scripts", "lib", "repo-paths.js"));
   yaml = require(path.join(DEV, "scripts", "lib", "yaml.js"));
+  envBr = require(path.join(DEV, "scripts", "lib", "env-branches.js"));
 } catch { process.exit(0); } // core not found: do not interfere
 
 const ROOT = root.resolveRoot();
@@ -31,7 +32,10 @@ const norm = (p) => path.resolve(p).replace(/\\/g, "/").toLowerCase();
 const repoRoots = Object.entries(REPOS)
   .map(([name, r]) => ({ name, kind: r.kind, loc: resolveRepoPath(name, r, ROOT) }))
   .filter((r) => r.loc)
-  .map((r) => ({ name: r.name, kind: r.kind, root: norm(r.loc.path) }));
+  .map((r) => ({ name: r.name, kind: r.kind, root: norm(r.loc.path), dir: r.loc.path }));
+// A ticket's environment branches (<TICKET>-<env>), which promote creates to resolve conflicts with a target branch.
+const HOSTING = envBr.gitHostingConfig(ROOT);
+const envBranchesOf = (ticket) => envBr.envBranches(HOSTING, ticket).map((e) => e.branch);
 const repoOf = (p) => repoRoots.find((r) => norm(p) === r.root || norm(p).startsWith(r.root + "/"));
 
 function block(reason) { process.stderr.write("BLOCKED\nReason: " + reason + "\n"); process.exit(2); }
@@ -49,7 +53,31 @@ function specHash(id) {
   return fs.existsSync(f) ? "sha256:" + crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex") : null;
 }
 
+// Conflict resolution on a ticket's environment branch: on <TICKET>-<env>, a merge in progress (MERGE_HEAD), and a task
+// in PR_CREATED (source edits are otherwise blocked from there; still allowed at COMMITTED). Nothing else on that
+// branch, and nothing on the ticket branch itself, gets this.
+function envBranchMergeAllowed(repo) {
+  const r = repoRoots.find((x) => x.name === repo);
+  if (!r) return false;
+  const g = (...args) => execFileSync("git", args, { cwd: r.dir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  let parsed;
+  try {
+    parsed = envBr.parseEnvBranch(HOSTING, g("rev-parse", "--abbrev-ref", "HEAD"));
+    if (!parsed) return false;
+    // The merge in progress must be one promote starts: the target branch into the env branch, or the task branch into it.
+    const head = g("rev-parse", "-q", "--verify", "MERGE_HEAD");
+    const sameCommit = (ref) => { try { return g("rev-parse", "-q", "--verify", `${ref}^{commit}`) === head; } catch { return false; } };
+    if (![`origin/${parsed.target}`, parsed.ticket].some(sameCommit)) return false;
+  } catch { return false; }
+  return activeTasks().some((t) => t.task.id === parsed.ticket && (t.repositories || []).includes(repo) && t.task.status === "PR_CREATED");
+}
+
 function sourceWriteReason(repo) {
+  const reason = taskSourceWriteReason(repo);
+  return reason && envBranchMergeAllowed(repo) ? null : reason;
+}
+
+function taskSourceWriteReason(repo) {
   const tasks = activeTasks().filter((t) => (t.repositories || []).includes(repo));
   if (!tasks.length) return `No active aisdlc task lists repository '${repo}'.`;
   let reason = "Feature specification has not been approved.";
@@ -131,7 +159,9 @@ if (tool === "execute_pwsh") {
     let branch = "";
     const dir = (cmd.match(/-C\s+("[^"]+"|\S+)/) || [])[1]?.replace(/"/g, "") || cwd;
     try { branch = execSync("git rev-parse --abbrev-ref HEAD", { cwd: dir, encoding: "utf8" }).trim(); } catch {}
-    if (branch !== m[1]) block(`Active aisdlc task requires branch ${m[1]} (current: ${branch || "unknown"}).`);
+    // The task branch is exactly the ticket; the one other branch its commits may land on is an environment branch.
+    if (branch !== m[1] && !envBranchesOf(m[1]).includes(branch))
+      block(`Active aisdlc task requires branch ${m[1]}${envBranchesOf(m[1]).length ? ` (or one of its environment branches: ${envBranchesOf(m[1]).join(", ")})` : ""} (current: ${branch || "unknown"}).`);
   }
 
   const isStateTool = /aisdlc-state\.js/.test(cmd);

@@ -4,7 +4,7 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { execSync } = require("child_process");
+const { execSync, execFileSync } = require("child_process");
 
 const ROOT = require("../scripts/lib/root").resolveRoot();
 if (!ROOT) process.exit(0); // installed user-wide: do nothing outside an aisdlc workspace
@@ -21,7 +21,11 @@ const norm = (p) => path.resolve(p).replace(/\\/g, "/").toLowerCase();
 const repoRoots = Object.entries(REPOS)
   .map(([name, r]) => ({ name, loc: resolveRepoPath(name, r, ROOT) }))
   .filter((r) => r.loc)
-  .map((r) => ({ name: r.name, root: norm(r.loc.path) }));
+  .map((r) => ({ name: r.name, root: norm(r.loc.path), dir: r.loc.path }));
+// A ticket's environment branches (<TICKET>-<env>), which /aisdlc-dev:promote creates to resolve conflicts with a target.
+const envBr = require("../scripts/lib/env-branches");
+const HOSTING = envBr.gitHostingConfig(ROOT);
+const envBranchesOf = (ticket) => envBr.envBranches(HOSTING, ticket).map((e) => e.branch);
 const repoOf = (p) => repoRoots.find((r) => norm(p) === r.root || norm(p).startsWith(r.root + "/"));
 
 function block(reason) { process.stderr.write("BLOCKED\nReason: " + reason + "\n"); process.exit(2); }
@@ -39,8 +43,33 @@ function specHash(id) {
   return fs.existsSync(f) ? "sha256:" + crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex") : null;
 }
 
+// Conflict resolution on a ticket's environment branch: the repo is on <TICKET>-<env>, a merge is in progress
+// (MERGE_HEAD), and the task is in PR_CREATED, where source edits are otherwise blocked (they are still allowed at
+// COMMITTED, so nothing is needed there). Nothing else on that branch, and nothing on the ticket branch itself, gets
+// this allowance.
+function envBranchMergeAllowed(repo) {
+  const r = repoRoots.find((x) => x.name === repo);
+  if (!r) return false;
+  const g = (...args) => execFileSync("git", args, { cwd: r.dir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  let parsed;
+  try {
+    parsed = envBr.parseEnvBranch(HOSTING, g("rev-parse", "--abbrev-ref", "HEAD"));
+    if (!parsed) return false;
+    // The merge in progress must be one promote starts: the target branch into the env branch, or the task branch into it.
+    const head = g("rev-parse", "-q", "--verify", "MERGE_HEAD");
+    const sameCommit = (ref) => { try { return g("rev-parse", "-q", "--verify", `${ref}^{commit}`) === head; } catch { return false; } };
+    if (![`origin/${parsed.target}`, parsed.ticket].some(sameCommit)) return false;
+  } catch { return false; }
+  return activeTasks().some((t) => t.task.id === parsed.ticket && (t.repositories || []).includes(repo) && t.task.status === "PR_CREATED");
+}
+
 // May application source in `repo` be modified right now? Returns a block reason or null.
 function sourceWriteReason(repo) {
+  const reason = taskSourceWriteReason(repo);
+  return reason && envBranchMergeAllowed(repo) ? null : reason;
+}
+
+function taskSourceWriteReason(repo) {
   const tasks = activeTasks().filter((t) => (t.repositories || []).includes(repo));
   if (!tasks.length) return `No active aisdlc task lists repository '${repo}'.`;
   let reason = "Feature specification has not been approved.";
@@ -130,7 +159,10 @@ if (tool === "Bash" || tool === "PowerShell") {
     let branch = "";
     const dir = (cmd.match(/-C\s+("[^"]+"|\S+)/) || [])[1]?.replace(/"/g, "") || cwd;
     try { branch = execSync("git rev-parse --abbrev-ref HEAD", { cwd: dir, encoding: "utf8" }).trim(); } catch {}
-    if (branch !== m[1]) block(`Active aisdlc task requires branch ${m[1]} (current: ${branch || "unknown"}).`);
+    // The task branch is exactly the ticket; the one other branch a ticket's commits may land on is its environment
+    // branch (<TICKET>-<env>), which /aisdlc-dev:promote creates to resolve conflicts with a target branch.
+    if (branch !== m[1] && !(envBranchesOf(m[1]).includes(branch)))
+      block(`Active aisdlc task requires branch ${m[1]}${envBranchesOf(m[1]).length ? ` (or one of its environment branches: ${envBranchesOf(m[1]).join(", ")})` : ""} (current: ${branch || "unknown"}).`);
   }
 
   // shell writes into registered repositories (bypass guard for the implementation gate).
