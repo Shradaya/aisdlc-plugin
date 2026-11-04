@@ -29,7 +29,7 @@ BLOCKED
 Reason: Active aisdlc task requires branch FEAT-1234 (current: main).
 ```
 
-**Do:** switch to the branch named exactly like the ticket (`git checkout FEAT-1234`). If the branch does not exist, the task has not reached repository preparation; `/aisdlc-dev:resume FEAT-1234` will do that safely. Do not commit on `main`.
+**Do:** switch to the branch named exactly like the ticket (`git checkout FEAT-1234`). If the branch does not exist, the task has not reached repository preparation; `/aisdlc-dev:resume FEAT-1234` will do that safely. Do not commit on `main`. The one other branch a ticket's commits may land on is its environment branch (for example `FEAT-1234-qa`; the message then lists it), created by `/aisdlc-dev:promote` to resolve a conflict with a target branch. The post-release sync has its own branches, `main-<env>-<date>`, and commits there read `Sync main into <target>: <summary>`.
 
 ### Post-release before production release is verified
 
@@ -138,6 +138,21 @@ Reason: History rewrite is disabled.
 ```
 
 **Do:** these are never allowed by aisdlc. If a branch has diverged, resolve it deliberately yourself outside the workflow, then `/aisdlc-dev:resume`.
+
+## Commands that ask first
+
+A few commands are not forbidden, but touch something real: a database, a queue, a cloud account, an external service. The workspace lists them in `config/workspace.yaml` under `real_systems`, and aisdlc asks you to confirm each one before it runs, showing the reason:
+
+```json
+"real_systems": [
+  { "command": "npm run seed*", "reason": "Seeds write to whatever database the configured secret points at." },
+  { "command": "npm start", "repo": "payments-api", "reason": "Starts against the real queue." }
+]
+```
+
+`command` is a glob matched against the whole command with single spaces between its words (`npm run seed*` matches `npm run seed:prod -- --force`); `repo` limits a rule to commands run inside that repository. Environment-variable prefixes, `sudo`/`env`, a leading `cd`, chained commands, `bash -c "..."` and `$(...)` are looked into. This is a safety net against mistakes, not a sandbox: a script that runs the command for you is not seen.
+
+**Do:** read the reason, and confirm only if you mean it. If the list itself is malformed (a rule without a `reason`, say), aisdlc asks about every command until it is fixed, rather than quietly ignoring it.
 
 ## Protected paths and secrets
 

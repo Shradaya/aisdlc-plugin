@@ -1,4 +1,8 @@
 # Workspace configuration (spec §53). JSON-compatible YAML; '#' comments only on their own lines.
+# "real_systems": commands that touch a real database, queue, cloud account or external service. The hook never
+# blocks these; it asks the developer to confirm first, showing "reason". "command" is a glob matched against the
+# whole simple command with single spaces between words (npm run seed* matches npm run seed:prod -- --force);
+# "repo" (optional) limits the rule to commands run inside that registered repository.
 {
   "workspace": {
     "name": "company-ai-sdlc",
@@ -43,5 +47,8 @@
     "push": "policy-controlled",
     "create_pr": "policy-controlled",
     "production_write": "disabled"
-  }
+  },
+  "real_systems": [
+    { "command": "npm run seed*", "reason": "Seeds write to whatever database the configured secret points at." }
+  ]
 }
