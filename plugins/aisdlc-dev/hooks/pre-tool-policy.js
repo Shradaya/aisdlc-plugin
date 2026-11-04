@@ -123,6 +123,36 @@ function ask(reasons) {
   process.exit(0);
 }
 
+// on_edit rules (config/repositories.yaml) run automatically after every edit, outside Claude's permission prompts,
+// so a change to them must not slip in unnoticed: an edit that changes any repository's on_edit asks first.
+const REGISTRY = norm(path.join(ROOT, "config", "repositories.yaml"));
+const onEditMap = (text) => {
+  try {
+    const repos = JSON.parse(text.replace(/^\s*#.*$/gm, "")).repositories || {};
+    return JSON.stringify(Object.fromEntries(Object.entries(repos).filter(([, r]) => r && r.on_edit !== undefined).map(([n, r]) => [n, r.on_edit])));
+  } catch { return null; }
+};
+function registryOnEditChange(tool, input, target) {
+  if (norm(target) !== REGISTRY) return null;
+  let current = "";
+  try { current = fs.readFileSync(target, "utf8"); } catch {}
+  let proposed;
+  if (tool === "Write") proposed = String(input.content ?? "");
+  else {
+    const edits = tool === "MultiEdit" ? input.edits || [] : [input];
+    proposed = current;
+    for (const e of edits) {
+      const o = String(e.old_string ?? ""), n = String(e.new_string ?? "");
+      if (!o || !proposed.includes(o)) return /on_edit/.test(n) ? "an edit to config/repositories.yaml that mentions on_edit" : null; // cannot apply it: be conservative
+      proposed = e.replace_all ? proposed.split(o).join(n) : proposed.replace(o, () => n);
+    }
+  }
+  const before = onEditMap(current), after = onEditMap(proposed);
+  if (before === null || after === null) return /on_edit/.test(proposed) && proposed !== current ? "an edit to config/repositories.yaml that mentions on_edit (the file could not be compared)" : null;
+  return before === after ? null : "a change to the on_edit commands in config/repositories.yaml";
+}
+const ON_EDIT_ASK = (what) => `${what}. on_edit commands run automatically after every edit, outside Claude's permission prompts: confirm they are the ones you want.`;
+
 const PROTECTED_ARTIFACTS = ["jira.md","requirements.md","impact-analysis.md","knowledge-manifest.yaml","specification.md","implementation-plan.md","validation.md","code-review.md","documentation.md","repository-preparation.yaml","knowledge-consolidation.yaml","release.yaml"];
 
 function deletionAllowed(ticket) {
@@ -144,6 +174,8 @@ if (["Write", "Edit", "NotebookEdit", "MultiEdit"].includes(tool)) {
   if (/(^|\/)(credentials|secrets)\//.test(n) || /\.(pem|key)$/.test(n)) block("Protected path.");
   const repo = repoOf(target);
   if (repo) { const r = sourceWriteReason(repo.name); if (r) block(r); }
+  const onEditChange = registryOnEditChange(tool, input, target);
+  if (onEditChange) ask([ON_EDIT_ASK(onEditChange)]);
   process.exit(0);
 }
 
@@ -224,6 +256,8 @@ if (tool === "Bash" || tool === "PowerShell") {
 
   // Everything above only blocks. Last: commands marked as touching real systems ask first.
   const asks = askReasons(cmd, cwd, tool === "Bash");
+  if (/repositories\.yaml/.test(cmd) && /on_edit/.test(cmd) && /(>|sed\s+-i|\btee\b|set-content|add-content|out-file)/i.test(cmd))
+    asks.push(ON_EDIT_ASK("a shell command that writes on_edit commands to config/repositories.yaml"));
   if (asks.length) ask(asks);
 }
 process.exit(0);
