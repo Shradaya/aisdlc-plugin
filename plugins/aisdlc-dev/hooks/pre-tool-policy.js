@@ -25,6 +25,7 @@ const repoRoots = Object.entries(REPOS)
 // A ticket's environment branches (<TICKET>-<env>), which /aisdlc-dev:promote creates to resolve conflicts with a target.
 const envBr = require("../scripts/lib/env-branches");
 const HOSTING = envBr.gitHostingConfig(ROOT);
+const BASE = envBr.baseBranch(ROOT);
 const envBranchesOf = (ticket) => envBr.envBranches(HOSTING, ticket).map((e) => e.branch);
 const repoOf = (p) => repoRoots.find((r) => norm(p) === r.root || norm(p).startsWith(r.root + "/"));
 
@@ -63,10 +64,24 @@ function envBranchMergeAllowed(repo) {
   return activeTasks().some((t) => t.task.id === parsed.ticket && (t.repositories || []).includes(repo) && t.task.status === "PR_CREATED");
 }
 
+// Post-release sync (/aisdlc-dev:sync-main) is repository maintenance, not ticket work, so there is no task to
+// check. The same narrow rule applies as for environment branches: the repo is on a sync branch
+// (<base>-<env>-<date>) and the merge in progress is exactly the one the skill starts, the target branch.
+function syncBranchMergeAllowed(repo) {
+  const r = repoRoots.find((x) => x.name === repo);
+  if (!r) return false;
+  const g = (...args) => execFileSync("git", args, { cwd: r.dir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  try {
+    const parsed = envBr.parseSyncBranch(HOSTING, BASE, g("rev-parse", "--abbrev-ref", "HEAD"));
+    if (!parsed) return false;
+    return g("rev-parse", "-q", "--verify", `origin/${parsed.target}^{commit}`) === g("rev-parse", "-q", "--verify", "MERGE_HEAD");
+  } catch { return false; }
+}
+
 // May application source in `repo` be modified right now? Returns a block reason or null.
 function sourceWriteReason(repo) {
   const reason = taskSourceWriteReason(repo);
-  return reason && envBranchMergeAllowed(repo) ? null : reason;
+  return reason && (envBranchMergeAllowed(repo) || syncBranchMergeAllowed(repo)) ? null : reason;
 }
 
 function taskSourceWriteReason(repo) {
@@ -150,19 +165,29 @@ if (tool === "Bash" || tool === "PowerShell") {
   // git commit policy (§29.3, §30.4)
   if (/git\s+(-C\s+\S+\s+)?commit\b/.test(cmd)) {
     const msgs = [...cmd.matchAll(/-m\s+(?:"((?:[^"\\]|\\.)*)"|'([^']*)')/g)].map((m) => m[1] ?? m[2]);
-    const tasks = activeTasks();
-    if (!tasks.length) block("No active aisdlc task; commits are not allowed.");
-    if (msgs.length !== 1 || msgs[0].includes("\n")) block("Commit must have exactly one single-line -m message and no body.");
-    const ids = tasks.map((t) => t.task.id);
-    const m = msgs[0].match(/^([A-Z][A-Z0-9]*-\d+): (\S.*)$/);
-    if (!m || !ids.includes(m[1])) block(`Commit message must match '<ticket-number>: <changes summary>' for an active task (${ids.join(", ")}).`);
     let branch = "";
     const dir = (cmd.match(/-C\s+("[^"]+"|\S+)/) || [])[1]?.replace(/"/g, "") || cwd;
     try { branch = execSync("git rev-parse --abbrev-ref HEAD", { cwd: dir, encoding: "utf8" }).trim(); } catch {}
-    // The task branch is exactly the ticket; the one other branch a ticket's commits may land on is its environment
-    // branch (<TICKET>-<env>), which /aisdlc-dev:promote creates to resolve conflicts with a target branch.
-    if (branch !== m[1] && !(envBranchesOf(m[1]).includes(branch)))
-      block(`Active aisdlc task requires branch ${m[1]}${envBranchesOf(m[1]).length ? ` (or one of its environment branches: ${envBranchesOf(m[1]).join(", ")})` : ""} (current: ${branch || "unknown"}).`);
+    // Post-release sync (/aisdlc-dev:sync-main) is not ticket work: its branch names the base and target, not a
+    // ticket, so it follows its own message rule instead of "<ticket>: <summary>".
+    const syncParsed = envBr.parseSyncBranch(HOSTING, BASE, branch);
+    if (syncParsed) {
+      if (msgs.length !== 1 || msgs[0].includes("\n")) block("Commit must have exactly one single-line -m message and no body.");
+      const prefix = `Sync ${BASE} into ${syncParsed.target}: `;
+      if (!msgs[0].startsWith(prefix) || !msgs[0].slice(prefix.length).trim())
+        block(`On ${branch}, the commit message must start with '${prefix}' followed by a summary.`);
+    } else {
+      const tasks = activeTasks();
+      if (!tasks.length) block("No active aisdlc task; commits are not allowed.");
+      if (msgs.length !== 1 || msgs[0].includes("\n")) block("Commit must have exactly one single-line -m message and no body.");
+      const ids = tasks.map((t) => t.task.id);
+      const m = msgs[0].match(/^([A-Z][A-Z0-9]*-\d+): (\S.*)$/);
+      if (!m || !ids.includes(m[1])) block(`Commit message must match '<ticket-number>: <changes summary>' for an active task (${ids.join(", ")}).`);
+      // The task branch is exactly the ticket; the one other branch a ticket's commits may land on is its environment
+      // branch (<TICKET>-<env>), which /aisdlc-dev:promote creates to resolve conflicts with a target branch.
+      if (branch !== m[1] && !(envBranchesOf(m[1]).includes(branch)))
+        block(`Active aisdlc task requires branch ${m[1]}${envBranchesOf(m[1]).length ? ` (or one of its environment branches: ${envBranchesOf(m[1]).join(", ")})` : ""} (current: ${branch || "unknown"}).`);
+    }
   }
 
   // shell writes into registered repositories (bypass guard for the implementation gate).

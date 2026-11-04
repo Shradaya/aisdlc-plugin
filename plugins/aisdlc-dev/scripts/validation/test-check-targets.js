@@ -119,6 +119,21 @@ commit("barrel re-export"); push("barrel-target");
 const barrel = run("feat/EL-1", "barrel-target");
 t("a barrel re-export is skipped, never flagged as missing", barrel.j.targets[0].missing_exports.length === 0);
 
+// --- post-release sync: main only gained the release merge commit (its content equals the target's) -----------------
+g("switch", "-q", "main"); g("switch", "-q", "-c", "uat-rel");
+put("released.txt", "shipped\n"); commit("shipped on uat"); push("uat-rel");
+g("switch", "-q", "main"); g("switch", "-q", "-c", "main-after-release");
+g("merge", "-q", "--no-ff", "-m", "release", "uat-rel"); push("main-after-release");
+const rel = run("origin/main-after-release", "uat-rel").j.targets[0];
+t("release merge only: not 'merged' (the release merge commit is not in the target)", rel.merge === "clean");
+t("release merge only: content identical to the target", rel.tree_equal === true);
+t("release merge only: the target has nothing the source lacks (behind 0)", rel.behind === 0);
+t("release merge only: the source is ahead by the merge commit", rel.ahead === 1);
+// ...but a hotfix on main changes the content: a real sync
+g("switch", "-q", "main-after-release"); put("hotfix.txt", "fixed on main\n"); commit("hotfix on main"); push("main-after-release");
+const hot = run("origin/main-after-release", "uat-rel").j.targets[0];
+t("a hotfix on main: content differs, so it is a real sync", hot.tree_equal === false && hot.behind === 0 && hot.ahead === 2);
+
 // --- table output ---------------------------------------------------------------------------------------------
 const tbl = spawnSync("node", [SCRIPT, REPO, "feat/EL-1", "dev", "qa", "--table"], { encoding: "utf8" }).stdout;
 t("--table renders a Markdown table", tbl.startsWith("| Target | Merge | Notes |") && /missing exports/.test(tbl));

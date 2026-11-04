@@ -17,6 +17,8 @@ tasks/*
 
 # Runtime audit logs (keep the folder via .gitkeep)
 logs/*.jsonl
+# Records of /aisdlc-dev:sync-main runs (PR descriptions and conflict resolutions)
+logs/sync-main/
 
 # OS / editor cruft
 .DS_Store

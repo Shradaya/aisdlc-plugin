@@ -12,6 +12,7 @@ const repo = path.join(W, "..", path.basename(W) + "-backend");
 fs.mkdirSync(repo, { recursive: true });
 execSync("git init -q -b main && git config user.email t@t && git config user.name t && git commit -q --allow-empty -m init", { cwd: repo });
 fs.writeFileSync(path.join(W, "config/repositories.yaml"), JSON.stringify({ repositories: { backend: { path: repo, base_branch: "main" } } }));
+fs.writeFileSync(path.join(W, "config/workspace.yaml"), JSON.stringify({ workspace: { name: "t" }, git: { base_branch: "main" } }));
 fs.writeFileSync(path.join(W, "config/integrations.yaml"), JSON.stringify({ git_hosting: {
   pr_target_branches: ["lf-develop", "lf-qa", "lf-uat"],
   environments: { "lf-develop": "dev", "lf-qa": "qa", "lf-uat": "uat" },
@@ -120,6 +121,46 @@ sh("git checkout -q FEAT-2-qa");
 try { sh("git merge --no-ff --no-commit unrelated"); } catch {}
 t("merging an unrelated ref into the env branch gets no allowance", write(src), 2);
 sh("git merge --abort");
+
+
+// --- post-release sync branches (<base>-<env>-<date>): maintenance, not ticket work, so no task is involved ----------------
+t("sync branch name from the format", envLib.syncBranchName(hosting, "main", "lf-qa", "20261105"), "main-qa-20261105");
+t("parse sync: a sync branch gives its target", JSON.stringify(envLib.parseSyncBranch(hosting, "main", "main-uat-20261105")), JSON.stringify({ target: "lf-uat" }));
+t("parse sync: a short date is not a sync branch", envLib.parseSyncBranch(hosting, "main", "main-qa-2026"), null);
+t("parse sync: trailing text is not a sync branch", envLib.parseSyncBranch(hosting, "main", "main-qa-20261105-old"), null);
+t("parse sync: a ticket env branch is not a sync branch", envLib.parseSyncBranch(hosting, "main", "FEAT-2-qa"), null);
+t("parse sync: a base branch with regex characters is matched literally", envLib.parseSyncBranch(hosting, "rel.1", "relx1-qa-20261105"), null);
+t("base branch comes from workspace.yaml git.base_branch", envLib.baseBranch(W), "main");
+
+// every ticket is finished, so only sync rules apply
+state("transition", "FEAT-2", "CANCELLED");
+sh("git checkout -q main");
+sh("git checkout -q -b main-qa-20261105");
+t("sync branch: a message starting 'Sync main into lf-qa: ' is allowed (no task needed)", bash(`git commit -m "Sync main into lf-qa: resolve conflicts in 2 files"`, repo), 0);
+t("sync branch: the ticket-style message is not accepted there", bash(`git commit -m "FEAT-2: x"`, repo), 2);
+t("sync branch: a message for another target is blocked", bash(`git commit -m "Sync main into lf-uat: x"`, repo), 2);
+t("sync branch: an empty summary is blocked", bash(`git commit -m "Sync main into lf-qa: "`, repo), 2);
+t("sync branch: git's default merge message (--no-edit) is blocked", bash(`git commit --no-edit`, repo), 2);
+t("sync branch: a multi-line message is blocked", bash(`git commit -m "Sync main into lf-qa: a" -m "body"`, repo), 2);
+sh("git checkout -q main");
+t("main: the sync message does not unlock commits on main", bash(`git commit -m "Sync main into lf-qa: x"`, repo), 2);
+t("main: with no active task, an ordinary commit is still blocked", bash(`git commit -m "FEAT-2: x"`, repo), 2);
+
+// source edits: only on a sync branch, while the merge in progress is origin/<target>, with no task at all
+sh("git checkout -q -b main-qa-20261106");
+t("sync branch: an edit with no merge in progress is blocked", write(src), 2);
+try { sh("git merge --no-ff --no-commit origin/lf-qa"); } catch {}
+t("sync branch: an edit while origin/<target> is being merged is allowed", write(src), 0);
+t("sync branch: a shell write while origin/<target> is being merged is allowed", bash(`echo resolved > ${src.split(path.sep).join("/")}`, repo), 0);
+sh("git merge --abort");
+try { sh("git merge --no-ff --no-commit unrelated"); } catch {}
+t("sync branch: merging some other ref gives no allowance", write(src), 2);
+sh("git merge --abort");
+sh("git checkout -q -b main-qa-20261106-extra"); // not a sync branch name
+try { sh("git merge --no-ff --no-commit origin/lf-qa"); } catch {}
+t("a look-alike name gets no allowance even while origin/<target> is being merged", write(src), 2);
+sh("git merge --abort");
+sh("git checkout -q main");
 
 console.log(fail ? `\n${fail} FAILED` : "\nall passed");
 process.exit(fail ? 1 : 0);
