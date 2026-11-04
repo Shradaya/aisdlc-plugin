@@ -125,6 +125,7 @@ node plugins/aisdlc-dev/scripts/validation/cred-check.js        # run from a dev
 node plugins/aisdlc-design/scripts/validation/test-gates-design.js
 node plugins/aisdlc-qa/scripts/validation/test-gates-qa.js
 node plugins/aisdlc-dev/scripts/validation/test-check-targets.js   # merge dry run, real git repos
+node plugins/aisdlc-dev/scripts/validation/test-sensitivity.js      # data sensitivity resolver (checklists, overrides, data files in a diff)
 node plugins/aisdlc-dev/scripts/validation/test-real-systems.js    # commands that ask first (config/workspace.yaml real_systems)
 node scripts/sync-core.js --check
 claude plugin validate .
