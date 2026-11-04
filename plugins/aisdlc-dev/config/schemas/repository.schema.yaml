@@ -16,6 +16,21 @@
     "ui": { "type": "boolean", "description": "True for repositories with a user interface; their features go through /aisdlc-dev:design-link to pin an authored design." },
     "kind": { "type": "string", "enum": ["code", "design"], "description": "Repository kind. 'code' (default) is a managed source repository; 'design' is a read-only source of authored designs (designs/<ticket>/) registered with --kind design." },
     "deployment": { "type": "object", "additionalProperties": true },
+    "on_edit": {
+      "type": "array",
+      "description": "Checks that run automatically after Claude edits a file in this repository (formatter, linter, related test). Only in config/repositories.yaml. See scripts/lib/on-edit.js.",
+      "items": {
+        "type": "object",
+        "required": ["run"],
+        "properties": {
+          "files": { "type": "string", "description": "Comma-separated globs on the file's path in the repository or its bare name; default *." },
+          "run": { "type": "string", "description": "Command run in the repository folder without a shell. {file} {rel} {name} {dir} {test} are filled in." },
+          "fix": { "type": "boolean", "description": "A formatter: its exit code and output are ignored." },
+          "test": { "type": "string", "description": "Path template; the rule runs only when that file exists." },
+          "timeout": { "type": "number", "description": "Seconds the command may take (default 60, at most 170)." }
+        }
+      }
+    },
     "analyzed_commit": { "type": "string", "minLength": 4 },
     "analyzed_at": { "type": "string" },
     "generator": { "type": "string", "description": "e.g. aisdlc@1.0.0" },
