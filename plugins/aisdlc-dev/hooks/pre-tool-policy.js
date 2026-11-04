@@ -4,7 +4,7 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { execSync } = require("child_process");
+const { execSync, execFileSync } = require("child_process");
 
 const ROOT = require("../scripts/lib/root").resolveRoot();
 if (!ROOT) process.exit(0); // installed user-wide: do nothing outside an aisdlc workspace
@@ -50,12 +50,15 @@ function specHash(id) {
 function envBranchMergeAllowed(repo) {
   const r = repoRoots.find((x) => x.name === repo);
   if (!r) return false;
-  const sh = (cmd) => execSync(cmd, { cwd: r.dir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  const g = (...args) => execFileSync("git", args, { cwd: r.dir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
   let parsed;
   try {
-    parsed = envBr.parseEnvBranch(HOSTING, sh("git rev-parse --abbrev-ref HEAD"));
+    parsed = envBr.parseEnvBranch(HOSTING, g("rev-parse", "--abbrev-ref", "HEAD"));
     if (!parsed) return false;
-    sh("git rev-parse -q --verify MERGE_HEAD");
+    // The merge in progress must be one promote starts: the target branch into the env branch, or the task branch into it.
+    const head = g("rev-parse", "-q", "--verify", "MERGE_HEAD");
+    const sameCommit = (ref) => { try { return g("rev-parse", "-q", "--verify", `${ref}^{commit}`) === head; } catch { return false; } };
+    if (![`origin/${parsed.target}`, parsed.ticket].some(sameCommit)) return false;
   } catch { return false; }
   return activeTasks().some((t) => t.task.id === parsed.ticket && (t.repositories || []).includes(repo) && t.task.status === "PR_CREATED");
 }

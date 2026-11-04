@@ -86,6 +86,7 @@ state("transition", "FEAT-2", "PR_CREATED");
 const sh = (c) => execSync(c, { cwd: repo, stdio: "ignore" });
 sh("git checkout -q main");
 sh("git checkout -q -b lf-qa"); fs.writeFileSync(path.join(repo, "conflict.txt"), "qa side\n"); sh("git add -A && git commit -q -m 'qa change'");
+sh("git update-ref refs/remotes/origin/lf-qa lf-qa"); // the repo has no remote; promote merges origin/<target>
 sh("git checkout -q main");
 sh("git checkout -q -b FEAT-2"); fs.writeFileSync(path.join(repo, "conflict.txt"), "feature side\n"); sh("git add -A && git commit -q -m 'FEAT-2: feature change'");
 const ticketBranchEdit = write(src);
@@ -96,23 +97,29 @@ t("env branch: a commit with the ticket's message is allowed", bash(`git commit 
 t("env branch: a commit with another ticket's message is blocked", bash(`git commit -m "FEAT-1: nope"`, repo), 2);
 t("env branch: a commit with no ticket prefix is blocked", bash(`git commit -m "merge stuff"`, repo), 2);
 t("env branch: git's default merge message form (--no-edit, no -m) is blocked", bash(`git commit --no-edit`, repo), 2);
-try { sh("git merge --no-ff --no-commit lf-qa"); } catch {} // conflicts on conflict.txt: leaves MERGE_HEAD
+try { sh("git merge --no-ff --no-commit origin/lf-qa"); } catch {} // conflicts on conflict.txt: leaves MERGE_HEAD
 t("PR_CREATED: an edit on the env branch DURING a merge is allowed (conflict resolution)", write(src), 0);
 t("PR_CREATED: shell write into the repo during the merge is allowed", bash(`echo resolved > ${src.split(path.sep).join("/")}`, repo), 0);
 sh("git merge --abort");
 t("merge aborted: edits blocked again", write(src), 2);
 sh("git checkout -q FEAT-2");
 sh("git checkout -q -b FEAT-2-notanenv");
-try { sh("git merge --no-ff --no-commit lf-qa"); } catch {}
+try { sh("git merge --no-ff --no-commit origin/lf-qa"); } catch {}
 t("a look-alike branch name does not get the allowance, even mid-merge", write(src), 2);
 t("a look-alike branch name cannot take commits", bash(`git commit -m "FEAT-2: x"`, repo), 2);
 sh("git merge --abort");
 sh("git checkout -q FEAT-2");
 sh("git checkout -q -b FEAT-9-qa");
-try { sh("git merge --no-ff --no-commit lf-qa"); } catch {}
+try { sh("git merge --no-ff --no-commit origin/lf-qa"); } catch {}
 t("another ticket's env branch (no task lists this repo for it) gets no allowance", write(src), 2);
 t("another ticket's env branch cannot take FEAT-2 commits", bash(`git commit -m "FEAT-2: x"`, repo), 2);
 sh("git merge --abort"); sh("git checkout -q FEAT-2");
+sh("git checkout -q FEAT-2-qa");
+sh("git branch -q unrelated main"); sh("git checkout -q unrelated"); fs.writeFileSync(path.join(repo, "unrelated.txt"), "x\n"); sh("git add -A && git commit -q -m unrelated");
+sh("git checkout -q FEAT-2-qa");
+try { sh("git merge --no-ff --no-commit unrelated"); } catch {}
+t("merging an unrelated ref into the env branch gets no allowance", write(src), 2);
+sh("git merge --abort");
 
 console.log(fail ? `\n${fail} FAILED` : "\nall passed");
 process.exit(fail ? 1 : 0);
