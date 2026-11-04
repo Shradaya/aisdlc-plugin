@@ -297,9 +297,8 @@ const P = fs.mkdtempSync(path.join(os.tmpdir(), "aisdlc-qa-init-"));
 const QA = path.join(P, "aisdlc-qa"), DEV = path.join(P, "aisdlc-dev");
 for (const d of [QA, path.join(DEV, "config"), path.join(DEV, "repositories"), path.join(DEV, "system")]) fs.mkdirSync(d, { recursive: true });
 fs.writeFileSync(path.join(DEV, "config/repositories.yaml"), "{}");
-fs.writeFileSync(path.join(DEV, "config/integrations.yaml"), JSON.stringify({ jira: { base_url: "", acceptance_criteria_field: "customfield_10050" } }));
+fs.writeFileSync(path.join(DEV, "config/integrations.yaml"), JSON.stringify({ jira: { base_url: "https://example.atlassian.net/", acceptance_criteria_field: "customfield_10050" } }));
 fs.writeFileSync(path.join(DEV, "claude.env"), "SECRET_MARKER=do-not-copy\n");
-fs.writeFileSync(path.join(DEV, ".mcp.json"), JSON.stringify({ mcpServers: { atlassian: { command: "docker", args: ["-v", "C:/ProgramData/Cloudflare/installed_cert.pem:/certs/ca.pem:ro"], env: { JIRA_URL: "https://example.atlassian.net" } } } }));
 fs.mkdirSync(path.join(QA, ".claude"));
 fs.writeFileSync(path.join(QA, ".claude/settings.json"), JSON.stringify({ permissions: { allow: ["Read"] }, model: "x" }));
 const INIT = path.join(SRC, "scripts/init/aisdlc-qa-init.js");
@@ -312,11 +311,9 @@ t("fresh config has a checks/ project and video off", /checks/.test(fs.readFileS
 const fromDev = spawnSync("node", [INIT, QA, "--from-dev"], { encoding: "utf8", env: { ...env, AISDLC_ROOT: QA } });
 t("init --from-dev finds the sibling dev workspace", fromDev.status, 0);
 const qaJira = JSON.parse(fs.readFileSync(path.join(QA, "config/integrations.yaml"), "utf8").replace(/^\s*#.*$/gm, "")).jira;
-const fromDevOut = JSON.parse(fromDev.stdout);
-t("init --from-dev no longer copies an MCP server", fs.existsSync(path.join(QA, ".mcp.json")), false);
-t("init --from-dev sets jira.base_url from an older dev workspace's JIRA_URL", qaJira.base_url, "https://example.atlassian.net");
+t("init --from-dev creates no .mcp.json", fs.existsSync(path.join(QA, ".mcp.json")), false);
+t("init --from-dev sets jira.base_url from the dev workspace's integrations.yaml", qaJira.base_url, "https://example.atlassian.net");
 t("init --from-dev copies the acceptance-criteria field", qaJira.acceptance_criteria_field, "customfield_10050");
-t("init --from-dev reports the corporate CA for NODE_EXTRA_CA_CERTS", fromDevOut.ca_certificate && fromDevOut.ca_certificate.path, "C:/ProgramData/Cloudflare/installed_cert.pem");
 t("init --from-dev never copies claude.env content", /SECRET_MARKER|do-not-copy/.test(fromDev.stdout + fs.readFileSync(path.join(QA, "config/integrations.yaml"), "utf8")), false);
 
 t("a fresh workspace has no specs/ folder", fs.existsSync(path.join(QA, "specs")), false);

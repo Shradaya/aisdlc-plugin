@@ -7,11 +7,9 @@
 //   node aisdlc-qa-init.js [target-dir] --mcp-backup   before `npx playwright init-agents`, which overwrites .mcp.json
 //   node aisdlc-qa-init.js [target-dir] --mcp-merge    after it: merge the saved servers back next to playwright-test
 //   node aisdlc-qa-init.js [target-dir] --from-dev [dev-workspace] [--dry-run]
-//        reuse Jira connection settings from an aisdlc-dev workspace (found next to or above the target when no path is
-//        given): jira.base_url (else JIRA_URL from an older dev workspace's atlassian MCP server entry), auth_scheme,
-//        acceptance_criteria_field and credential variable names, each only when ours is unset or default. Reports
-//        the corporate CA such an MCP entry mounted, to set as NODE_EXTRA_CA_CERTS. Never copies an MCP server; never
-//        reads claude.env or .env.
+//        reuse Jira connection settings from an aisdlc-dev workspace's config/integrations.yaml (found next to or
+//        above the target when no path is given): jira.base_url, auth_scheme, acceptance_criteria_field and
+//        credential variable names, each only when ours is unset or default. Never reads .mcp.json, claude.env or .env.
 //   node aisdlc-qa-init.js [target-dir] --migrate-layout [--dry-run] [--force]
 //        move an existing workspace to one folder per ticket: specs/<T>.md -> tasks/<T>/spec.md, and test files under
 //        tests/<feature-area>/ that name exactly one ticket -> tests/<T>/ (header rewritten to tasks/<T>/spec.md; a
@@ -170,20 +168,16 @@ if (flag("--from-dev")) {
   }
   const dev = candidates[0];
   const report = { ok: true, dry_run: dryRun, dev_workspace: dev, changes: [] };
-  // Jira is reached over REST (scripts/jira/jira-attach.js), so only connection settings are copied, never an MCP server.
+  // Jira is reached over REST (scripts/jira/jira-attach.js), so only connection settings are copied, from the dev
+  // workspace's own config/integrations.yaml; no MCP server is read or copied.
   let devJira = {};
   try { devJira = readJson(path.join(dev, "config", "integrations.yaml")).jira || {}; } catch {}
-  // Older dev workspaces kept the site URL (and a corporate CA mount) in their atlassian MCP server entry.
-  const devMcp = path.join(dev, ".mcp.json");
-  let server = null;
-  try { server = fs.existsSync(devMcp) ? (readJson(devMcp).mcpServers || {}).atlassian || null : null; } catch {}
   const integ = path.join(target, "config", "integrations.yaml");
   if (fs.existsSync(integ)) {
     const cfg = readJson(integ);
     const jira = cfg.jira || (cfg.jira = {});
     let changed = false;
-    const devUrl = devJira.base_url || (server && server.env && /^https?:\/\//.test(server.env.JIRA_URL || "") ? server.env.JIRA_URL : "");
-    if (!jira.base_url && devUrl) { jira.base_url = devUrl.replace(/\/+$/, ""); changed = true; report.changes.push(`jira.base_url = ${jira.base_url}`); }
+    if (!jira.base_url && devJira.base_url) { jira.base_url = String(devJira.base_url).replace(/\/+$/, ""); changed = true; report.changes.push(`jira.base_url = ${jira.base_url}`); }
     if (devJira.auth_scheme && devJira.auth_scheme !== (jira.auth_scheme || "basic") && (jira.auth_scheme || "basic") === "basic") {
       jira.auth_scheme = devJira.auth_scheme; changed = true; report.changes.push(`jira.auth_scheme = ${jira.auth_scheme}`);
     }
@@ -201,12 +195,6 @@ if (flag("--from-dev")) {
     if (changed && !dryRun) writeYaml(integ, cfg);
   }
   if (!report.changes.length) report.changes.push("nothing to copy (jira settings already set, or none in the dev workspace)");
-  // A corporate CA the dev MCP server mounted: Node needs it as NODE_EXTRA_CA_CERTS instead (an environment variable).
-  const mount = server && (server.args || []).map(String).find((a) => /:\/certs\/[^:]+\.pem(:ro)?$/.test(a));
-  if (mount) {
-    const cert = mount.replace(/:\/certs\/[^:]+\.pem(:ro)?$/, "");
-    report.ca_certificate = { path: cert, set: process.env.NODE_EXTRA_CA_CERTS ? "set" : "missing", hint: `set NODE_EXTRA_CA_CERTS=${cert} before starting the session` };
-  }
   // Credentials are never copied or read from files; only whether they are set in this environment.
   report.credentials = Object.fromEntries(["JIRA_EMAIL", "JIRA_API_TOKEN"].map((n) => [n, process.env[n] ? "set" : "missing"]));
   console.log(JSON.stringify(report));
