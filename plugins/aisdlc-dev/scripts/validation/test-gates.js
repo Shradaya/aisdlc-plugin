@@ -5,13 +5,17 @@ const { spawnSync, execSync } = require("child_process");
 const SRC = path.resolve(__dirname, "..", "..");
 const W = fs.mkdtempSync(path.join(os.tmpdir(), "aisdlc-test-"));
 for (const d of ["hooks", "scripts/state", "scripts/lib", "config", "tasks", "logs"]) fs.mkdirSync(path.join(W, d), { recursive: true });
-for (const f of ["hooks/pre-tool-policy.js", "scripts/state/aisdlc-state.js", "scripts/lib/repo-paths.js", "scripts/lib/root.js", "scripts/lib/yaml.js"]) fs.copyFileSync(path.join(SRC, f), path.join(W, f));
+for (const f of ["hooks/pre-tool-policy.js", "scripts/state/aisdlc-state.js", "scripts/lib/repo-paths.js", "scripts/lib/root.js", "scripts/lib/yaml.js", "scripts/lib/env-branches.js"]) fs.copyFileSync(path.join(SRC, f), path.join(W, f));
 // task-types.yaml is the plugin default (<plugin>/config); the hook and state CLI read it from the test workspace config/
 fs.copyFileSync(path.join(SRC, "config", "task-types.yaml"), path.join(W, "config", "task-types.yaml"));
 const repo = path.join(W, "..", path.basename(W) + "-backend");
 fs.mkdirSync(repo, { recursive: true });
 execSync("git init -q -b main && git config user.email t@t && git config user.name t && git commit -q --allow-empty -m init", { cwd: repo });
 fs.writeFileSync(path.join(W, "config/repositories.yaml"), JSON.stringify({ repositories: { backend: { path: repo, base_branch: "main" } } }));
+fs.writeFileSync(path.join(W, "config/integrations.yaml"), JSON.stringify({ git_hosting: {
+  pr_target_branches: ["lf-develop", "lf-qa", "lf-uat"],
+  environments: { "lf-develop": "dev", "lf-qa": "qa", "lf-uat": "uat" },
+  env_branch_format: "{ticket}-{env}" } }));
 const env = { ...process.env, AISDLC_ROOT: W };
 const state = (...a) => spawnSync("node", [path.join(W, "scripts/state/aisdlc-state.js"), ...a], { env, encoding: "utf8" });
 const hook = (ev) => { const r = spawnSync("node", [path.join(W, "hooks/pre-tool-policy.js")], { env, input: JSON.stringify(ev), encoding: "utf8" }); if (process.env.V) console.log("   ", r.stderr.trim().split("\n").join(" ")); return r.status; };
@@ -52,5 +56,63 @@ t("recover CONFLICTED -> IMPLEMENTING", state("transition", "FEAT-1", "IMPLEMENT
 t("edit allowed again after recovery", write(src), 0);
 state("transition", "FEAT-1", "CI_FAILED");
 t("CI_FAILED fix edits allowed", write(src), 0);
+
+// --- environment branches (<TICKET>-<env>): where a committed ticket's conflict resolution may happen ---------------------
+const envLib = require(path.join(SRC, "scripts/lib/env-branches.js"));
+const hosting = JSON.parse(fs.readFileSync(path.join(W, "config/integrations.yaml"), "utf8")).git_hosting;
+t("env branch name from the format and environment map", envLib.envBranchName(hosting, "EL-5739", "lf-qa"), "EL-5739-qa");
+t("a target without an environment name uses its own branch name", envLib.envBranchName({ pr_target_branches: ["rel"], env_branch_format: "{ticket}-{env}" }, "EL-1", "rel"), "EL-1-rel");
+t("a custom format is honoured", envLib.envBranchName({ ...hosting, env_branch_format: "env/{env}/{ticket}" }, "EL-1", "lf-uat"), "env/uat/EL-1");
+t("parse: an env branch gives its ticket and target", JSON.stringify(envLib.parseEnvBranch(hosting, "EL-5739-uat")), JSON.stringify({ ticket: "EL-5739", target: "lf-uat" }));
+t("parse: a name with extra text is not an env branch", envLib.parseEnvBranch(hosting, "EL-5739-uat-copy"), null);
+t("parse: a prefixed name is not an env branch", envLib.parseEnvBranch(hosting, "feature/EL-5739-uat"), null);
+t("parse: the plain ticket branch is not an env branch", envLib.parseEnvBranch(hosting, "EL-5739"), null);
+t("parse: an unknown environment is not an env branch", envLib.parseEnvBranch(hosting, "EL-5739-prod"), null);
+const cli = (...a) => spawnSync("node", [path.join(SRC, "scripts/git-hosting/env-branch.js"), ...a], { env, encoding: "utf8" });
+t("env-branch CLI maps every target", JSON.stringify(JSON.parse(cli("EL-7").stdout).branches), JSON.stringify({ "lf-develop": "EL-7-dev", "lf-qa": "EL-7-qa", "lf-uat": "EL-7-uat" }));
+t("env-branch CLI maps one named target", JSON.parse(cli("EL-7", "lf-qa").stdout).branches["lf-qa"], "EL-7-qa");
+t("env-branch CLI refuses a target that is not configured", cli("EL-7", "main").status, 1);
+t("env-branch CLI refuses a bad ticket", cli("nope").status, 1);
+
+// a second ticket, taken to PR_CREATED, where source edits are blocked (FEAT-1 is cancelled so it cannot widen what FEAT-2 may do)
+state("transition", "FEAT-1", "CANCELLED");
+state("init", "FEAT-2", "feature", "backend");
+for (const s of ["TICKET_READY","UNDERSTOOD","REPOSITORIES_PREPARED"]) state("transition", "FEAT-2", s);
+fs.writeFileSync(path.join(W, "tasks/FEAT-2/specification.md"), "spec");
+state("approve", "FEAT-2", "specification");
+for (const s of ["SPEC_APPROVED","PLAN_APPROVED","IMPLEMENTING","COMMITTED"]) state("transition", "FEAT-2", s);
+t("COMMITTED: source edits are still allowed on the ticket branch (the carve-out is not needed here)", write(src), 0);
+state("transition", "FEAT-2", "PR_CREATED");
+const sh = (c) => execSync(c, { cwd: repo, stdio: "ignore" });
+sh("git checkout -q main");
+sh("git checkout -q -b lf-qa"); fs.writeFileSync(path.join(repo, "conflict.txt"), "qa side\n"); sh("git add -A && git commit -q -m 'qa change'");
+sh("git checkout -q main");
+sh("git checkout -q -b FEAT-2"); fs.writeFileSync(path.join(repo, "conflict.txt"), "feature side\n"); sh("git add -A && git commit -q -m 'FEAT-2: feature change'");
+const ticketBranchEdit = write(src);
+t("PR_CREATED: a source edit on the ticket branch stays blocked", ticketBranchEdit, 2);
+sh("git checkout -q -b FEAT-2-qa");
+t("PR_CREATED: an edit on the env branch with NO merge in progress stays blocked", write(src), 2);
+t("env branch: a commit with the ticket's message is allowed", bash(`git commit -m "FEAT-2: Merge lf-qa into FEAT-2-qa"`, repo), 0);
+t("env branch: a commit with another ticket's message is blocked", bash(`git commit -m "FEAT-1: nope"`, repo), 2);
+t("env branch: a commit with no ticket prefix is blocked", bash(`git commit -m "merge stuff"`, repo), 2);
+t("env branch: git's default merge message form (--no-edit, no -m) is blocked", bash(`git commit --no-edit`, repo), 2);
+try { sh("git merge --no-ff --no-commit lf-qa"); } catch {} // conflicts on conflict.txt: leaves MERGE_HEAD
+t("PR_CREATED: an edit on the env branch DURING a merge is allowed (conflict resolution)", write(src), 0);
+t("PR_CREATED: shell write into the repo during the merge is allowed", bash(`echo resolved > ${src.split(path.sep).join("/")}`, repo), 0);
+sh("git merge --abort");
+t("merge aborted: edits blocked again", write(src), 2);
+sh("git checkout -q FEAT-2");
+sh("git checkout -q -b FEAT-2-notanenv");
+try { sh("git merge --no-ff --no-commit lf-qa"); } catch {}
+t("a look-alike branch name does not get the allowance, even mid-merge", write(src), 2);
+t("a look-alike branch name cannot take commits", bash(`git commit -m "FEAT-2: x"`, repo), 2);
+sh("git merge --abort");
+sh("git checkout -q FEAT-2");
+sh("git checkout -q -b FEAT-9-qa");
+try { sh("git merge --no-ff --no-commit lf-qa"); } catch {}
+t("another ticket's env branch (no task lists this repo for it) gets no allowance", write(src), 2);
+t("another ticket's env branch cannot take FEAT-2 commits", bash(`git commit -m "FEAT-2: x"`, repo), 2);
+sh("git merge --abort"); sh("git checkout -q FEAT-2");
+
 console.log(fail ? `\n${fail} FAILED` : "\nall passed");
 process.exit(fail ? 1 : 0);
