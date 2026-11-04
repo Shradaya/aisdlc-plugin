@@ -7,12 +7,14 @@
 //                                                                   create a PR (or report the existing open one);
 //                                                                   --draft opens it as a draft pull request
 //   status <repo-path> <pr-id>                                      print state, draft flag and source/destination
+//   find <repo-path> <source> <dest>                                read-only: the open PR from <source> into <dest>, if any
 //
 // Output: one JSON line. Exit codes: 0 ok, 1 error, 2 credentials missing.
 const fs = require("fs");
 const { execFileSync } = require("child_process");
 
-const API = "https://api.bitbucket.org/2.0";
+// AISDLC_BITBUCKET_API points the helper at a local mock for tests; it is never set in normal use.
+const API = process.env.AISDLC_BITBUCKET_API || "https://api.bitbucket.org/2.0";
 
 // Finishing the process reliably on Windows is the whole trick here.
 //   - We must print exactly one JSON line and have it captured by the caller.
@@ -98,7 +100,7 @@ const q = (s) => encodeURIComponent(s);
 async function main() {
   if (!email || !token) out({ ok: false, error: "BITBUCKET_EMAIL and BITBUCKET_API_TOKEN must both be set" }, 2);
   const [cmd, repoPath, ...rest] = process.argv.slice(2);
-  if (!cmd || !repoPath) out({ ok: false, error: "usage: create|status <repo-path> ..." }, 1);
+  if (!cmd || !repoPath) out({ ok: false, error: "usage: create|status|find|comment <repo-path> ..." }, 1);
   const slug = repoSlug(repoPath);
 
   if (cmd === "create") {
@@ -120,6 +122,13 @@ async function main() {
       ...(draft ? { draft: true } : {}),
     });
     out({ ok: true, existing: false, id: pr.id, url: pr.links.html.href, source, destination: dest, draft: Boolean(pr.draft) });
+  } else if (cmd === "find") {
+    const [source, dest] = rest;
+    if (!source || !dest) out({ ok: false, error: "usage: find <repo-path> <source> <dest>" }, 1);
+    const filter = `state="OPEN" AND source.branch.name="${source}" AND destination.branch.name="${dest}"`;
+    const found = await call("GET", `/repositories/${slug}/pullrequests?q=${q(filter)}&fields=values.id,values.draft,values.links.html.href`);
+    const pr = found.values?.[0];
+    out(pr ? { ok: true, found: true, id: pr.id, url: pr.links.html.href, draft: Boolean(pr.draft), source, destination: dest } : { ok: true, found: false, source, destination: dest });
   } else if (cmd === "status") {
     const pr = await call("GET", `/repositories/${slug}/pullrequests/${q(rest[0])}?fields=id,state,draft,source.branch.name,destination.branch.name,links.html.href`);
     out({ ok: true, id: pr.id, state: pr.state, draft: Boolean(pr.draft), source: pr.source.branch.name, destination: pr.destination.branch.name, url: pr.links.html.href });
