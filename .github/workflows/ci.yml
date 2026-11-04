@@ -1,0 +1,29 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [aisdlc-plugin]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Vendored core is up to date
+        run: node scripts/sync-core.js --check
+      - name: Test suites
+        run: |
+          set -e
+          for t in scripts/test-*.js plugins/*/scripts/validation/test-*.js; do
+            echo "== $t"
+            node "$t"
+          done
+      - name: Plugin versions and changelogs
+        run: node scripts/version-check.js
+      - name: Behavior changes need a version bump
+        if: github.event_name == 'pull_request'
+        run: node scripts/version-check.js --base "origin/${{ github.base_ref }}"
