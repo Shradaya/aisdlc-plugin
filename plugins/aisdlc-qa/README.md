@@ -60,7 +60,6 @@ The QA hooks act only in a folder whose `config/workspace.yaml` has `"kind": "qa
 4. **Jira.**
    - Set `jira.base_url` in `config/integrations.yaml`.
    - That's all for reading tickets: the plugin talks to the Jira REST API itself, so there is no Jira MCP server to set up. Check the connection with `node <plugin>/scripts/jira/jira-attach.js check`. Behind Cloudflare WARP or Zscaler, set `NODE_EXTRA_CA_CERTS` to the corporate certificate (WARP: `C:/ProgramData/Cloudflare/installed_cert.pem`). `init --from-dev` copies the site URL for you if you have an aisdlc-dev workspace.
-   - **Upgrading a workspace that used the Jira MCP server:** run `/aisdlc-qa:init` in it (the session-start message tells you when it's needed). Its `--migrate-jira` step switches Jira to REST and adds the new settings without changing yours. After `jira-attach.js check` passes, `--remove-mcp` drops only the `atlassian` server from `.mcp.json` (backed up to `.mcp.json.aisdlc-jira-backup`); `playwright-test` stays.
    - To let the plugin move the ticket's status, set `jira.write.status_transitions.defect_found` and/or `verified` to the exact Jira transition names, and add the `write:issue:jira` scope to the token. Off by default.
    - To let the plugin post defect and results comments and upload evidence, set `jira.write.add_comment` and `jira.write.add_attachment` to `true`, and give the token the write scopes listed in that file. Both are off by default.
 5. Run `/aisdlc-qa:status` to check everything.

@@ -40,7 +40,6 @@ Run the `--scope project` and `--scope local` forms from inside the workspace fo
    ```
 
    Set `jira.base_url` in `config/integrations.yaml`. Tickets are read over the Jira REST API by `scripts/jira/jira-fetch.js`, so there is no MCP server to set up; `node <plugin>/scripts/jira/jira-fetch.js check` confirms the connection. Behind Cloudflare WARP or Zscaler, set `NODE_EXTRA_CA_CERTS` to the corporate root certificate (WARP: `C:/ProgramData/Cloudflare/installed_cert.pem`). Token scopes are listed in `config/integrations.yaml` and in `web/docs/guide/getting-started.md`. Jira writes are off by default.
-   **Upgrading a workspace that used the Jira MCP server:** run `/aisdlc-dev:init` in it (the session-start message tells you when it's needed). It runs `--migrate-jira`, which switches Jira to the REST helper and adds the new settings without changing yours. After `jira-fetch.js check` passes, it offers `--remove-mcp` to drop the `atlassian` server from `.mcp.json` (backed up to `.mcp.json.aisdlc-jira-backup`).
 4. Register each repository with `/aisdlc-dev:add-repo <name> <path>`. Add `--kind design` for a design repository published by `aisdlc-design`.
 5. Run `/aisdlc-dev:status` to see repositories, active tasks, integrations, and which credentials are `set` or `missing` (names only, never values). For the same in your browser, refreshing itself as work moves on, run `/aisdlc-dev:status-page`.
 

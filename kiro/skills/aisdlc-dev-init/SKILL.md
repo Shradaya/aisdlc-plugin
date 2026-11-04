@@ -12,7 +12,6 @@ Turn a folder into the aisdlc dev workspace that stores the registry, repository
    `node %DEV%\scripts\init\aisdlc-init.js <target> --dry-run`
 2. Show what would be created, merged, and skipped. If `--force` would overwrite files, confirm with the user first.
 3. Run the same command without `--dry-run`.
-   - Existing workspace on the Jira MCP adapter (the output has a `Jira:` line): `node %DEV%\scripts\init\aisdlc-init.js <target> --migrate-jira --dry-run`, confirm, then run without `--dry-run`. Next, `node %DEV%\scripts\jira\jira-fetch.js check`. Once that passes, `--migrate-jira --remove-mcp` removes the Jira MCP server from `.mcp.json` (backed up to `.mcp.json.aisdlc-jira-backup` first; other servers are kept).
 4. Report the result and next steps:
    - Copy `claude.env.example` to `claude.env` and set `AISDLC_REPOS_ROOT` (paths only).
    - `cd web && npm install && npm run dev` (Node 20+) for the docs site.

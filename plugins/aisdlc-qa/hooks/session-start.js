@@ -23,8 +23,6 @@ if (fs.existsSync(td)) for (const t of fs.readdirSync(td)) {
 }
 out.push(`aisdlc-qa: ${active.length + waiting.length} active QA task(s)${active.length ? " (" + active.join(", ") + ")" : ""}`);
 if (waiting.length) out.push(`Waiting for a developer fix: ${waiting.join(", ")}. Check with /aisdlc-qa:status; re-verify with /aisdlc-qa:run <TICKET>.`);
-const jiraWhy = require("../scripts/lib/jira-migrate").jiraMigrationNeeded(ROOT);
-if (jiraWhy) out.push(`Setup: ${jiraWhy}. Jira is now reached over its REST API; run /aisdlc-qa:init to migrate this workspace (scripts/init/aisdlc-qa-init.js --migrate-jira).`);
 if (!fs.existsSync(path.join(ROOT, "node_modules", "@playwright", "test")))
   out.push("Setup: Playwright is not installed here yet; run /aisdlc-qa:init (or npm install, then npx playwright install chromium).");
 else if (!fs.existsSync(path.join(ROOT, ".claude", "agents", "playwright-test-generator.md")))

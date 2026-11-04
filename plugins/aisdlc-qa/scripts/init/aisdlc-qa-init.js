@@ -12,10 +12,6 @@
 //        acceptance_criteria_field and credential variable names, each only when ours is unset or default. Reports
 //        the corporate CA such an MCP entry mounted, to set as NODE_EXTRA_CA_CERTS. Never copies an MCP server; never
 //        reads claude.env or .env.
-//   node aisdlc-qa-init.js [target-dir] --migrate-jira [--remove-mcp] [--dry-run]
-//        existing workspace: switch Jira from the MCP adapter to the REST helper and add the new Jira settings
-//        (missing keys only); --remove-mcp also removes the Jira MCP server from .mcp.json (backed up first;
-//        playwright-test and any other server stay).
 //   node aisdlc-qa-init.js [target-dir] --migrate-layout [--dry-run] [--force]
 //        move an existing workspace to one folder per ticket: specs/<T>.md -> tasks/<T>/spec.md, and test files under
 //        tests/<feature-area>/ that name exactly one ticket -> tests/<T>/ (header rewritten to tasks/<T>/spec.md; a
@@ -239,19 +235,6 @@ if (flag("--mcp-backup") || flag("--mcp-merge")) {
   process.exit(0);
 }
 
-// Existing workspace: move Jira from the MCP adapter to the REST helper (see scripts/lib/jira-migrate.js).
-if (flag("--migrate-jira")) {
-  const { migrateJira } = require("../lib/jira-migrate");
-  const report = migrateJira(target, {
-    templatePath: path.join(TEMPLATES, "workspace", "config", "integrations.yaml"),
-    removeMcp: flag("--remove-mcp"), dryRun,
-  });
-  report.next = report.pending
-    ? "Check the REST connection: node <plugin>/scripts/jira/jira-attach.js check; when it passes, re-run with --remove-mcp (playwright-test stays)."
-    : "Check the REST connection: node <plugin>/scripts/jira/jira-attach.js check";
-  console.log(JSON.stringify(report, null, 2));
-  process.exit(0);
-}
 if (only && !PARTS[only]) { console.error(`--only must be one of: ${Object.keys(PARTS).join(", ")}`); process.exit(2); }
 if (!fs.existsSync(TEMPLATES)) { console.error(`Templates not found at ${TEMPLATES}`); process.exit(2); }
 
@@ -308,10 +291,6 @@ for (const [name, dir] of Object.entries(PARTS)) {
 
 console.log(`${dryRun ? "[dry run] " : ""}aisdlc-qa init -> ${target}`);
 for (const [k, v] of Object.entries(report)) if (v.length) console.log(`${k} (${v.length}):\n  ${v.join("\n  ")}`);
-{
-  const why = require("../lib/jira-migrate").jiraMigrationNeeded(target);
-  if (why) console.log(`\nJira: ${why}. Migrate with: node ${__filename} ${target} --migrate-jira --dry-run`);
-}
 console.log("\nNext: fill in config/environments.yaml (QA/UAT base URLs, login) and config/integrations.yaml (Jira site URL).");
 console.log("Then, in this folder: npm install; npx playwright install chromium; npx playwright init-agents --loop=claude (around it: --mcp-backup / --mcp-merge).");
 console.log("Test a ticket: start Claude Code in this folder, then /aisdlc-qa:test <TICKET>.");

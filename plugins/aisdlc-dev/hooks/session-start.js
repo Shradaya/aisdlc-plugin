@@ -29,8 +29,6 @@ if (fs.existsSync(td)) for (const t of fs.readdirSync(td)) {
   try { const j = JSON.parse(fs.readFileSync(f, "utf8")); if (j.task.status !== "COMPLETED") active.push(`${j.task.id}: ${j.task.status}`); }
   catch { out.push(`WARNING: corrupt task file ${f}`); }
 }
-const jiraWhy = require("../scripts/lib/jira-migrate").jiraMigrationNeeded(ROOT);
-if (jiraWhy) out.push(`NOTICE: ${jiraWhy}. Jira is now read over its REST API; run /aisdlc-dev:init to migrate this workspace (scripts/init/aisdlc-init.js --migrate-jira).`);
 const codeRepos = Object.keys(repos).length - designRepos;
 out.push(`aisdlc: ${codeRepos} code repositories${designRepos ? `, ${designRepos} design repositories` : ""}, ${active.length} active tasks${active.length ? " (" + active.join(", ") + ")" : ""}`);
 console.log(out.join("\n"));
