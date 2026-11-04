@@ -125,6 +125,7 @@ node plugins/aisdlc-dev/scripts/validation/test-jira-client.js    # Jira request
 node plugins/aisdlc-dev/scripts/validation/cred-check.js        # run from a dev workspace
 node plugins/aisdlc-design/scripts/validation/test-gates-design.js
 node plugins/aisdlc-qa/scripts/validation/test-gates-qa.js
+node plugins/aisdlc-dev/scripts/validation/test-status-export.js    # status page snapshot (--export) and Markdown status (--markdown)
 node plugins/aisdlc-dev/scripts/validation/test-check-targets.js   # merge dry run, real git repos
 node plugins/aisdlc-dev/scripts/validation/test-trace-gate.js       # cross-repository trace required before editing source (both hooks)
 node plugins/aisdlc-dev/scripts/validation/test-sensitivity.js      # data sensitivity resolver (checklists, overrides, data files in a diff)

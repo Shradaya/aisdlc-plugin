@@ -61,7 +61,7 @@ Run the `--scope project` and `--scope local` forms from inside the workspace fo
 | `/aisdlc-dev:finish <TICKET>` | Final completion gate |
 | `/aisdlc-dev:resume <TICKET>` | Continue an interrupted task from its first incomplete safe state |
 | `/aisdlc-dev:status` | Read-only workspace overview |
-| `/aisdlc-dev:status-page` | Live status page in the browser: each ticket's past, current and upcoming states, approvals, next step, history and all its documents |
+| `/aisdlc-dev:status-page` | Live status page in the browser: each ticket's past, current and upcoming states, approvals, next step, history and all its documents. `--export <file.html>` saves a self-contained snapshot of it (one file, no server); `--markdown <TICKET>` prints one ticket's status as Markdown |
 | `/aisdlc-dev:add-repo` · `refresh-repo` · `remove-repo` | Onboard, refresh or unregister a repository |
 | `/aisdlc-dev:repository-preparation <TICKET>` | Stash local changes, fast-forward `main`, create branch `<TICKET>` in each affected repository |
 | `/aisdlc-dev:init` | Scaffold a dev workspace |
