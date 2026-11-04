@@ -54,6 +54,7 @@ Run the `--scope project` and `--scope local` forms from inside the workspace fo
 | `/aisdlc-dev:approve` · `reject <TICKET> <gate>` | Record a human decision on the specification or plan gate |
 | `/aisdlc-dev:commit <TICKET>` | Compliant commit `<TICKET>: <summary>` on branch `<TICKET>` |
 | `/aisdlc-dev:pr` · `pull-request` · `create-pr <TICKET>` | Push the branch, create the PRs (to `lf-develop`, `lf-qa`, `lf-uat`), track CI and merge |
+| `/aisdlc-dev:sync-main [repo ...] [targets]` | After a release: bring `main` back into `lf-develop`, `lf-qa` and `lf-uat` (one PR per repository and environment; a dated sync branch only where there are conflicts) |
 | `/aisdlc-dev:promote <TICKET> [targets]` | For a target `create-pr` found conflicts in: resolve them on the ticket's environment branch (`<TICKET>-<env>`) and open the PR from there |
 | `/aisdlc-dev:pr-review <repo> <pr>` | Review any pull request against its requirement and the repository's knowledge |
 | `/aisdlc-dev:post-release <TICKET>` | After release: consolidate product knowledge into `system/product/` and clean up task artifacts |

@@ -13,6 +13,8 @@
 # overrides https://api.atlassian.com (Jira Data Center's "bearer" scheme always uses the site URL; this never applies).
 # "git_hosting.environments" maps each target branch to a short environment name, and "env_branch_format" names the
 # branch /aisdlc-dev:promote creates for a ticket whose task branch conflicts with a target (EL-5739 -> EL-5739-qa).
+# "sync_branch_format" names the branch /aisdlc-dev:sync-main uses when the base branch conflicts with a target
+# ({base}-{env}-{date}, date as YYYYMMDD: main-qa-20261105).
 # Jira workflow transitions MUST be configured explicitly (spec §20.1): an empty "status_transitions" map means none are allowed.
 {
   "jira": {
@@ -52,6 +54,7 @@
     "pr_target_branches": ["lf-develop", "lf-qa", "lf-uat"],
     "environments": { "lf-develop": "dev", "lf-qa": "qa", "lf-uat": "uat" },
     "env_branch_format": "{ticket}-{env}",
+    "sync_branch_format": "{base}-{env}-{date}",
     "credentials": {
       "email_env": "BITBUCKET_EMAIL",
       "api_token_env": "BITBUCKET_API_TOKEN"
