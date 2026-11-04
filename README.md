@@ -120,11 +120,8 @@ Checks (no network or model needed):
 ```bash
 node plugins/aisdlc-dev/scripts/validation/test-gates.js
 node plugins/aisdlc-dev/scripts/validation/test-repo-paths.js
-<<<<<<< HEAD
 node scripts/test-version-check.js
-=======
 node plugins/aisdlc-dev/scripts/validation/test-init-detect.js
->>>>>>> origin/aisdlc-plugin
 node plugins/aisdlc-dev/scripts/validation/test-jira-client.js    # Jira request routing (classic vs scoped tokens), mock server
 node plugins/aisdlc-dev/scripts/validation/cred-check.js        # run from a dev workspace
 node plugins/aisdlc-design/scripts/validation/test-gates-design.js
