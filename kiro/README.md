@@ -11,6 +11,7 @@ A guidance port of the aisdlc Claude Code plugins for use in **Kiro**. Kiro does
 | Lifecycle procedures (skills) | Ported here as Kiro skills |
 | State engine enforcement (legal transitions, approval gates) | **Kept** — the CLI still refuses illegal transitions, unapproved IMPLEMENTING, and unapproved COMMITTED |
 | PreToolUse gate hook (hard blocks) | **Ported** — installed as a Kiro `PreToolUse` hook that blocks disallowed tool calls (exit-2), verified against Kiro's hook contract |
+| `on_edit` checks after every edit | **Not ported**: Kiro's `PostToolUse` hook cannot return output to the model, so a failing check would never reach it |
 | `marketplace.json` / `/plugin` install | Not used; Kiro installs skills from `.kiro/skills/` and the gate hook from `.kiro/hooks/` |
 
 The installer drops a `PreToolUse` gate hook into the workspace's `.kiro/hooks/` (dev gate for `--set dev`, design gate for `--set design`, both for `--set all`). It hard-blocks: source edits before spec approval (and after COMMITTED, and when the approved spec hash no longer matches), prototype edits before the design brief / unapproved-after-approval, wrong commit format or branch, force-push, history rewrite, and secret printing/extraction. Pass `--no-hooks` for guidance-only (scope b). The state CLI remains the backstop regardless.
