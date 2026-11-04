@@ -94,7 +94,7 @@ What is enforced, and where:
 
 ## Agents
 
-- **Analysts:** `repository-analyst`, `architecture-analyst`, `dependency-analyst`, `test-analyst`, `impact-analyst`, `product-knowledge-analyst`.
+- **Analysts:** `repository-analyst`, `architecture-analyst`, `dependency-analyst`, `test-analyst`, `impact-analyst`, `service-tracer` (searches the code of every registered repository for the contracts a change touches), `product-knowledge-analyst`.
 - **Writers:** `specification-writer`, `implementation-planner`, `test-writer`. The test writer sees only the approved specification, never the implementation.
 - **Independent reviewers (read-only):** `backend-reviewer`, `frontend-reviewer`, `database-reviewer`, `security-reviewer`, `test-reviewer`, `documentation-reviewer`.
 
