@@ -93,6 +93,6 @@ Missing path, non-Git path, missing `main`, or an already-registered name: stop,
 ## Safety restrictions
 - MUST NOT modify the code repository (no checkout, stash, branch, commit, config or source edits).
 - MUST NOT write secret values (variable names only) into any artifact.
-- Writes only under `repositories/`, `system/`, and `config/repositories.yaml`.
+- Writes only under `repositories/`, `system/`, and `config/repositories.yaml`. Never add or change an `on_edit` rule there on your own initiative: those commands run automatically after every edit, so only write one the developer asked for (the hook asks them to confirm it).
 - Phase M never invents product behavior: every statement traces to code evidence or a developer answer, and unanswered items stay `unknown`.
 - Do not skip Phase M to save time; a repository without confirmed system placement is reported as `placement: incomplete` in `metadata.json` and flagged in `/aisdlc-dev:status`.

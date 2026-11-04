@@ -54,12 +54,14 @@ Run the `--scope project` and `--scope local` forms from inside the workspace fo
 | `/aisdlc-dev:approve` · `reject <TICKET> <gate>` | Record a human decision on the specification or plan gate |
 | `/aisdlc-dev:commit <TICKET>` | Compliant commit `<TICKET>: <summary>` on branch `<TICKET>` |
 | `/aisdlc-dev:pr` · `pull-request` · `create-pr <TICKET>` | Push the branch, create the PRs (to `lf-develop`, `lf-qa`, `lf-uat`), track CI and merge |
+| `/aisdlc-dev:sync-main [repo ...] [targets]` | After a release: bring `main` back into `lf-develop`, `lf-qa` and `lf-uat` (one PR per repository and environment; a dated sync branch only where there are conflicts) |
+| `/aisdlc-dev:promote <TICKET> [targets]` | For a target `create-pr` found conflicts in: resolve them on the ticket's environment branch (`<TICKET>-<env>`) and open the PR from there |
 | `/aisdlc-dev:pr-review <repo> <pr>` | Review any pull request against its requirement and the repository's knowledge |
 | `/aisdlc-dev:post-release <TICKET>` | After release: consolidate product knowledge into `system/product/` and clean up task artifacts |
 | `/aisdlc-dev:finish <TICKET>` | Final completion gate |
 | `/aisdlc-dev:resume <TICKET>` | Continue an interrupted task from its first incomplete safe state |
 | `/aisdlc-dev:status` | Read-only workspace overview |
-| `/aisdlc-dev:status-page` | Live status page in the browser: each ticket's past, current and upcoming states, approvals, next step, history and all its documents |
+| `/aisdlc-dev:status-page` | Live status page in the browser: each ticket's past, current and upcoming states, approvals, next step, history and all its documents. `--export <file.html>` saves a self-contained snapshot of it (one file, no server); `--markdown <TICKET>` prints one ticket's status as Markdown |
 | `/aisdlc-dev:add-repo` · `refresh-repo` · `remove-repo` | Onboard, refresh or unregister a repository |
 | `/aisdlc-dev:repository-preparation <TICKET>` | Stash local changes, fast-forward `main`, create branch `<TICKET>` in each affected repository |
 | `/aisdlc-dev:init` | Scaffold a dev workspace |
@@ -92,13 +94,17 @@ What is enforced, and where:
 
 ## Agents
 
-- **Analysts:** `repository-analyst`, `architecture-analyst`, `dependency-analyst`, `test-analyst`, `impact-analyst`, `product-knowledge-analyst`.
+- **Analysts:** `repository-analyst`, `architecture-analyst`, `dependency-analyst`, `test-analyst`, `impact-analyst`, `service-tracer` (searches the code of every registered repository for the contracts a change touches), `product-knowledge-analyst`.
 - **Writers:** `specification-writer`, `implementation-planner`, `test-writer`. The test writer sees only the approved specification, never the implementation.
 - **Independent reviewers (read-only):** `backend-reviewer`, `frontend-reviewer`, `database-reviewer`, `security-reviewer`, `test-reviewer`, `documentation-reviewer`.
 
 ## Helpers
 
 - **`scripts/git-hosting/bitbucket-pr.js`** is the Bitbucket Cloud PR helper (`create`, `status`, `comment`).
+- **`data`** (in `config/workspace.yaml`) declares what the repositories handle: `sensitivity` (`none`, `pii`, `phi`, `financial`) and `data_files` (extensions that hold such data). Anything but `none` makes the security review mandatory and gives the reviewer that sensitivity's checklist (`config/sensitivity/<name>.md`; a same-named file in the workspace's `config/` overrides the plugin's), plus the data files a change adds. `scripts/review/sensitivity.js` resolves it for `code-review`.
+- **`on_edit`** (per repository, in `config/repositories.yaml`) lists checks that run right after Claude edits a file there: a formatter (`"fix": true`), a linter, the related test. `hooks/post-tool-edit.js` runs them without a shell and reports failures back to Claude so it fixes them; they run outside the permission prompts, so an edit that changes `on_edit` asks the developer to confirm. Claude Code only (Kiro's PostToolUse hook cannot return output to the model). See the FAQ's "Can aisdlc format and check each file Claude edits?".
+- **`real_systems`** (in `config/workspace.yaml`) lists commands that touch real systems; `hooks/pre-tool-policy.js` asks the developer to confirm each one, with its reason, instead of running it (`scripts/lib/real-systems.js`). See the guide's "Commands that ask first".
+- **`scripts/git-hosting/check-targets.js`** is a read-only dry run of how a branch merges into each target branch: clean, already merged, or conflicts (with the files, and which targets share the same conflict), plus named imports the merge would leave dangling. It never checks anything out or writes a ref. `/aisdlc-dev:create-pr` runs it before opening any PR. Needs git 2.38+.
   - Credentials come from the environment only.
   - It prints one JSON line and exits `0` ok, `1` error, `2` credentials missing.
   - It shuts down cleanly on Windows: no hard `process.exit()` while the HTTP socket is closing.
@@ -117,6 +123,7 @@ What is enforced, and where:
 ```
 node scripts/validation/test-gates.js
 node scripts/validation/test-repo-paths.js
+node scripts/validation/test-init-detect.js
 node scripts/validation/test-status-page.js
 node scripts/validation/cred-check.js      # run from a dev workspace
 ```

@@ -7,6 +7,14 @@
 //   --port  default 4317; 0 picks a free port. If an aisdlc status server for this workspace already runs on the
 //           port, prints its URL and exits 0.
 //   --json  print the /api/status payload once and exit (no server).
+//   --export <file.html> [--with-docs] [--force]
+//           write a self-contained snapshot of the same page (one file, no server, opens from disk or an email):
+//           the overview and every task's detail as of now. The local workspace path and which credential variables
+//           are set are left out. Task documents (Jira text, specifications, ...) are left out too unless --with-docs,
+//           which embeds the text ones (not images or binaries). Refuses to overwrite a file without --force.
+//   --markdown <TICKET> [--out <file.md>]
+//           print one task's status as Markdown (state, next step, approvals with who and when, repositories,
+//           commits, pull requests, CI, release, recent history), for a comment or a hand-off, and exit.
 // Safety: binds 127.0.0.1 only, answers only Host localhost/127.0.0.1 (DNS-rebinding guard), never writes,
 // never runs a state command; serves files only from inside tasks/<ticket>/ and never env/key files.
 const fs = require("fs");
@@ -317,6 +325,126 @@ function docFile(id, rel) {
 
 if (args.includes("--json")) {
   console.log(JSON.stringify(status(), null, 2));
+  process.exit(0);
+}
+
+// ---------- snapshot export and Markdown status (no server) ----------
+const MAX_HISTORY = 12;
+const mdCell = (v) => String(v == null || v === "" ? "-" : v).replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+const shortWhen = (iso) => (iso ? String(iso).replace("T", " ").replace(/\.\d+Z$/, "Z") : "-");
+
+// What the page needs, as the server would answer it, without anything specific to this machine.
+function snapshot(withDocs) {
+  const st = status();
+  st.workspace = { name: st.workspace.name };
+  st.credentials = [];
+  const out = { generated_at: st.generated_at, with_documents: withDocs, status: st, tasks: {}, docs: {} };
+  for (const t of st.tasks) {
+    if (t.unreadable) continue;
+    const d = taskDetail(t.id);
+    if (!d) continue;
+    out.tasks[t.id] = d;
+    if (!withDocs) continue;
+    out.docs[t.id] = {};
+    for (const doc of d.documents) {
+      if (doc.kind !== "text" || doc.size > MAX_DOC_BYTES) continue;
+      const file = docFile(t.id, doc.path);
+      if (file) out.docs[t.id][doc.path] = fs.readFileSync(file, "utf8");
+    }
+  }
+  return out;
+}
+
+// Answers the page's /api/... requests from the embedded snapshot, in place of the server.
+const SNAPSHOT_SHIM = `(function () {
+  var S = JSON.parse(document.getElementById("aisdlc-snapshot").textContent);
+  window.AISDLC_SNAPSHOT = { generated_at: S.generated_at, with_documents: S.with_documents };
+  function reply(body, status, type) {
+    return Promise.resolve(new Response(typeof body === "string" ? body : JSON.stringify(body), { status: status, headers: { "Content-Type": type || "application/json" } }));
+  }
+  window.fetch = function (url) {
+    var u = new URL(String(url), "http://snapshot.local"), p = u.pathname;
+    if (p === "/api/status") return reply(S.status, 200);
+    if (p === "/api/ping") return reply({ app: "aisdlc-status-snapshot" }, 200);
+    var m = p.match(/^\\/api\\/tasks\\/([^/]+)(\\/doc)?$/);
+    if (!m) return reply({ error: "not found" }, 404);
+    var id = decodeURIComponent(m[1]);
+    if (!Object.prototype.hasOwnProperty.call(S.tasks, id)) return reply({ error: "no such task" }, 404);
+    if (!m[2]) return reply(S.tasks[id], 200);
+    var docs = S.docs[id] || {}, rel = u.searchParams.get("path");
+    if (Object.prototype.hasOwnProperty.call(docs, rel)) return reply(docs[rel], 200, "text/plain; charset=utf-8");
+    return reply({ error: S.with_documents ? "this document is not included in the snapshot" : "documents are not included in this snapshot (export with --with-docs)" }, 404);
+  };
+})();`;
+
+function exportHtml(withDocs) {
+  const html = fs.readFileSync(PAGE, "utf8");
+  const at = html.indexOf("<script>");
+  if (at < 0) throw new Error("status-page.html has no <script>");
+  // The data sits in a JSON script block: "<" and the JS line separators are escaped so that no document text can
+  // close the block or break out of it.
+  const data = JSON.stringify(snapshot(withDocs)).replace(/</g, "\\u003c").replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
+  return html.slice(0, at) + `<script id="aisdlc-snapshot" type="application/json">${data}</script>\n<script id="aisdlc-snapshot-shim">${SNAPSHOT_SHIM}</script>\n` + html.slice(at);
+}
+
+function markdownStatus(id) {
+  const d = taskDetail(id);
+  if (!d) return null;
+  const s = d.summary, t = d.task;
+  const L = [];
+  L.push(`# ${id}${s.title ? ": " + s.title : ""}`, "");
+  L.push("| | |", "|---|---|");
+  L.push(`| Type | ${mdCell(s.type)} (${mdCell(s.lifecycle)} lifecycle) |`);
+  L.push(`| State | \`${s.status}\`${s.failure ? ` (interrupted at \`${mdCell(s.resume_state)}\`)` : ""}, step ${s.position} of ${s.total} |`);
+  if (s.reason) L.push(`| Reason | ${mdCell(s.reason)} |`);
+  L.push(`| Updated | ${shortWhen(s.updated_at)} |`);
+  if (s.repositories.length) L.push(`| Repositories | ${s.repositories.map((r) => "`" + r + "`").join(", ")} |`);
+  L.push("");
+  if (s.next) L.push(`**Next (${s.next.who === "claude" ? "Claude" : s.next.who === "you" ? "developer" : s.next.who}):** ${s.next.text}`, "");
+  if (s.awaiting_approval) L.push(`**Waiting for the ${s.awaiting_approval} approval.**`, "");
+  if (d.approvals.length) {
+    L.push("## Approvals", "", "| Gate | Status | By | When | Note |", "|---|---|---|---|---|");
+    for (const a of d.approvals)
+      L.push(`| ${mdCell(a.gate)} | ${mdCell(a.status)} | ${mdCell(a.approved_by)} | ${shortWhen(a.approved_at || a.rejected_at)} | ${a.changed_since_approval ? `${mdCell(a.artifact)} changed after approval` : a.reason ? mdCell(a.reason) : "-"} |`);
+    L.push("");
+  }
+  const commits = Object.entries(t.commits || {}), prs = Object.entries(t.pull_requests || {}), envs = t.env_branches || {};
+  if (commits.length) { L.push("## Commits", "", ...commits.map(([r, c]) => `- \`${r}\`: \`${String(c).slice(0, 12)}\``), ""); }
+  if (prs.length) {
+    L.push("## Pull requests", "", ...prs.map(([k, url]) => `- \`${k}\`${envs[k] ? ` (from \`${envs[k]}\`)` : ""}: ${url}`), "");
+  }
+  if (t.ci) L.push(`## CI`, "", `Status: ${mdCell(t.ci.status)}${t.ci.provider ? ` (${mdCell(t.ci.provider)})` : ""}${t.ci.checks ? "; checks: " + Object.entries(t.ci.checks).map(([k, v]) => `${k} ${v}`).join(", ") : ""}`, "");
+  if (t.release && t.release.status && t.release.status !== "not-released") L.push("## Release", "", `${mdCell(t.release.status)}${t.release.environment ? " to " + mdCell(t.release.environment) : ""}${t.release.released_at ? " at " + shortWhen(t.release.released_at) : ""}`, "");
+  const recent = d.history.filter((e) => e.event === "state-transition" || e.event === "approval-granted" || e.event === "approval-rejected" || e.event === "pr-created").slice(-MAX_HISTORY);
+  if (recent.length) {
+    L.push(`## Recent history (last ${recent.length})`, "", "| When | Event | Detail |", "|---|---|---|");
+    for (const e of recent)
+      L.push(`| ${shortWhen(e.timestamp)} | ${mdCell(e.event)} | ${e.from && e.to ? `${mdCell(e.from)} -> ${mdCell(e.to)}` : mdCell(e.gate || e.repository || e.reason)} |`);
+    L.push("");
+  }
+  return L.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd() + "\n";
+}
+
+if (args.includes("--export")) {
+  const out = opt("--export", "");
+  if (!out || out.startsWith("--")) { console.error("usage: status-server.js --export <file.html> [--with-docs] [--force]"); process.exit(1); }
+  const file = path.resolve(out);
+  if (fs.existsSync(file) && !args.includes("--force")) { console.error(`${file} already exists; use --force to overwrite it.`); process.exit(1); }
+  const withDocs = args.includes("--with-docs");
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, exportHtml(withDocs));
+  const n = Object.keys(snapshot(false).tasks).length;
+  console.log(`Snapshot written: ${file} (${n} task${n === 1 ? "" : "s"}; documents ${withDocs ? "included (text only)" : "not included; use --with-docs"}; local paths and credential status left out)`);
+  process.exit(0);
+}
+if (args.includes("--markdown")) {
+  const id = opt("--markdown", "");
+  if (!TICKET_RE.test(id)) { console.error("usage: status-server.js --markdown <TICKET> [--out <file.md>]"); process.exit(1); }
+  const md = markdownStatus(id);
+  if (!md) { console.error(`no task record for ${id}`); process.exit(1); }
+  const out = opt("--out", "");
+  if (out) { fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true }); fs.writeFileSync(path.resolve(out), md); console.log(`Status written: ${path.resolve(out)}`); }
+  else process.stdout.write(md);
   process.exit(0);
 }
 

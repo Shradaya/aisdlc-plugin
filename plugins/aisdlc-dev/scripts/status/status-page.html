@@ -175,6 +175,11 @@ async function getJSON(url) {
   return r.json();
 }
 function live(ok, at) {
+  if (window.AISDLC_SNAPSHOT) {
+    document.getElementById("dot").className = "dot off";
+    document.getElementById("updated").textContent = "snapshot · taken " + when(window.AISDLC_SNAPSHOT.generated_at) + " · not live";
+    return;
+  }
   document.getElementById("dot").className = "dot" + (ok ? "" : " off");
   document.getElementById("updated").textContent = ok ? "live · updated " + new Date(at).toLocaleTimeString() : "server not reachable (is the status page still running?)";
 }
@@ -303,7 +308,8 @@ async function loadDoc(d) {
   const head = `<div class="doc-head"><b>${esc(p)}</b><span class="small muted">${esc(bytes(doc.size))} · modified ${esc(when(doc.modified))}</span>
     ${isMd ? `<span class="seg"><button data-view="rendered" class="${state.docView === "rendered" ? "on" : ""}">Rendered</button><button data-view="source" class="${state.docView === "source" ? "on" : ""}">Source</button></span>` : ""}</div>`;
   let body;
-  if (doc.kind === "image") body = `<img src="${url}" alt="${esc(p)}">`;
+  if (window.AISDLC_SNAPSHOT && doc.kind !== "text") body = `<p class="empty">Images and binary files are not included in a snapshot.</p>`;
+  else if (doc.kind === "image") body = `<img src="${url}" alt="${esc(p)}">`;
   else if (doc.kind === "binary") body = `<p>Binary file. <a href="${url}">Download</a></p>`;
   else {
     const r = await fetch(url, { cache: "no-store" });
@@ -446,7 +452,7 @@ async function render() {
     if (e.status === 404 && m) { lastTaskKey = null; $app.innerHTML = `<div class="crumb"><a href="#/">← All tasks</a></div><p class="empty">${esc(e.message)}: ${esc(decodeURIComponent(m[1]))}.</p>`; live(true, Date.now()); }
     else live(false);
   }
-  timer = setTimeout(render, 4000);
+  timer = setTimeout(render, window.AISDLC_SNAPSHOT ? 600000 : 4000);
 }
 window.addEventListener("hashchange", () => { lastTaskKey = null; render(); });
 render();

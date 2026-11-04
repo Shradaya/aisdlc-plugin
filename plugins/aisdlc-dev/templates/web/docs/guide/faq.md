@@ -26,6 +26,24 @@ No. `/aisdlc-dev:add-repo` is read-only: it does not check out branches, stash, 
 
 Features always need a specification approval. For defects use `/aisdlc-dev:bug`, which has no specification gate but still requires a confirmed root cause and regression coverage. For investigation without changes use `/aisdlc-dev:investigate`.
 
+### Our project handles patient, personal or financial data. Does aisdlc know?
+
+Set `data.sensitivity` in `config/workspace.yaml` to `phi`, `pii` or `financial` (default `none`), and list the file extensions that hold it in `data_files` (for example `.csv`, `.hl7`). Once set, `/aisdlc-dev:code-review` makes the `security-reviewer` mandatory for every change and gives it that sensitivity's checklist, plus the names of any matching files the change adds (never their contents). The checklists ship in the plugin's `config/sensitivity/`; put a same-named file in your workspace's `config/sensitivity/` to use your own instead.
+
+### Can aisdlc format and check each file Claude edits?
+
+Yes. List checks per repository in `config/repositories.yaml` under `on_edit`; they run right after Claude edits a file there and failures go back to Claude to fix:
+
+```json
+"on_edit": [
+  { "files": "*.js,*.ts", "run": "node_modules/.bin/prettier --write {file}", "fix": true },
+  { "files": "*.js,*.ts", "run": "node_modules/.bin/eslint --quiet {file}" },
+  { "files": "src/*.js", "run": "node_modules/.bin/mocha {test}", "test": "test/{name}.spec.js" }
+]
+```
+
+`files` are comma-separated globs on the path in the repository (or the bare file name); `run` is split on spaces (quotes group) and run in the repository folder **without a shell**, with `{file}` (absolute path), `{rel}`, `{name}`, `{dir}` and `{test}` filled in. `"fix": true` marks a formatter: it runs, and its result is ignored. `test` is a path template; the rule runs only when that file exists. `timeout` is in seconds (default 60). A tool under the repository that is not installed yet (no `npm install`) skips its rule. Because these commands run automatically, outside the permission prompts, an edit by Claude that changes `on_edit` asks you to confirm first. This works in Claude Code; Kiro's hooks cannot send a check's output back to the model.
+
 ### Jira is down. Can I still work?
 
 Yes. aisdlc asks you for the ticket details and marks the source as user-provided. See [When Jira is unavailable](/guide/jira-unavailable).

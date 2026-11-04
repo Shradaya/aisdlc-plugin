@@ -4,7 +4,7 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { execSync } = require("child_process");
+const { execSync, execFileSync } = require("child_process");
 
 const ROOT = require("../scripts/lib/root").resolveRoot();
 if (!ROOT) process.exit(0); // installed user-wide: do nothing outside an aisdlc workspace
@@ -15,13 +15,19 @@ const readJson = (f, d) => {
 };
 const TYPES = readJson(require("../scripts/lib/root").configPath(ROOT, "task-types.yaml"), {});
 const REPOS = readJson(path.join(ROOT, "config", "repositories.yaml"), { repositories: {} }).repositories || {};
+const POLICIES = readJson(require("../scripts/lib/root").configPath(ROOT, "policies.yaml"), {});
 
 const { resolveRepoPath } = require("../scripts/lib/repo-paths");
 const norm = (p) => path.resolve(p).replace(/\\/g, "/").toLowerCase();
 const repoRoots = Object.entries(REPOS)
   .map(([name, r]) => ({ name, loc: resolveRepoPath(name, r, ROOT) }))
   .filter((r) => r.loc)
-  .map((r) => ({ name: r.name, root: norm(r.loc.path) }));
+  .map((r) => ({ name: r.name, root: norm(r.loc.path), dir: r.loc.path }));
+// A ticket's environment branches (<TICKET>-<env>), which /aisdlc-dev:promote creates to resolve conflicts with a target.
+const envBr = require("../scripts/lib/env-branches");
+const HOSTING = envBr.gitHostingConfig(ROOT);
+const BASE = envBr.baseBranch(ROOT);
+const envBranchesOf = (ticket) => envBr.envBranches(HOSTING, ticket).map((e) => e.branch);
 const repoOf = (p) => repoRoots.find((r) => norm(p) === r.root || norm(p).startsWith(r.root + "/"));
 
 function block(reason) { process.stderr.write("BLOCKED\nReason: " + reason + "\n"); process.exit(2); }
@@ -39,8 +45,59 @@ function specHash(id) {
   return fs.existsSync(f) ? "sha256:" + crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex") : null;
 }
 
+// Conflict resolution on a ticket's environment branch: the repo is on <TICKET>-<env>, a merge is in progress
+// (MERGE_HEAD), and the task is in PR_CREATED, where source edits are otherwise blocked (they are still allowed at
+// COMMITTED, so nothing is needed there). Nothing else on that branch, and nothing on the ticket branch itself, gets
+// this allowance.
+function envBranchMergeAllowed(repo) {
+  const r = repoRoots.find((x) => x.name === repo);
+  if (!r) return false;
+  const g = (...args) => execFileSync("git", args, { cwd: r.dir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  let parsed;
+  try {
+    parsed = envBr.parseEnvBranch(HOSTING, g("rev-parse", "--abbrev-ref", "HEAD"));
+    if (!parsed) return false;
+    // The merge in progress must be one promote starts: the target branch into the env branch, or the task branch into it.
+    const head = g("rev-parse", "-q", "--verify", "MERGE_HEAD");
+    const sameCommit = (ref) => { try { return g("rev-parse", "-q", "--verify", `${ref}^{commit}`) === head; } catch { return false; } };
+    if (![`origin/${parsed.target}`, parsed.ticket].some(sameCommit)) return false;
+  } catch { return false; }
+  return activeTasks().some((t) => t.task.id === parsed.ticket && (t.repositories || []).includes(repo) && t.task.status === "PR_CREATED");
+}
+
+// Post-release sync (/aisdlc-dev:sync-main) is repository maintenance, not ticket work, so there is no task to
+// check. The same narrow rule applies as for environment branches: the repo is on a sync branch
+// (<base>-<env>-<date>) and the merge in progress is exactly the one the skill starts, the target branch.
+function syncBranchMergeAllowed(repo) {
+  const r = repoRoots.find((x) => x.name === repo);
+  if (!r) return false;
+  const g = (...args) => execFileSync("git", args, { cwd: r.dir, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  try {
+    const parsed = envBr.parseSyncBranch(HOSTING, BASE, g("rev-parse", "--abbrev-ref", "HEAD"));
+    if (!parsed) return false;
+    return g("rev-parse", "-q", "--verify", `origin/${parsed.target}^{commit}`) === g("rev-parse", "-q", "--verify", "MERGE_HEAD");
+  } catch { return false; }
+}
+
 // May application source in `repo` be modified right now? Returns a block reason or null.
 function sourceWriteReason(repo) {
+  const reason = taskSourceWriteReason(repo);
+  return reason && (envBranchMergeAllowed(repo) || syncBranchMergeAllowed(repo)) ? null : reason;
+}
+
+// A task that spans two or more repositories (or has trace_required set because a shared contract changes) must have a
+// completed cross-repository trace before source is edited (policies.yaml require_trace_for_cross_repo, honoured only
+// when exactly true so a workspace policies.yaml written before the key existed is unaffected).
+function traceReason(t) {
+  const family = (t.task.lifecycle || t.task.type) === "bug" ? "bug" : "feature";
+  if ((POLICIES[family] || {}).require_trace_for_cross_repo !== true) return null;
+  const n = (t.repositories || []).length;
+  if (n < 2 && t.trace_required !== true) return null;
+  const done = t.workflow && t.workflow.trace === "completed" && fs.existsSync(path.join(ROOT, "tasks", t.task.id, "trace.md"));
+  return done ? null : `Task ${t.task.id} ${n >= 2 ? `spans ${n} repositories` : "changes a shared contract"} and has no completed cross-repository trace; run the cross-repo-trace skill (it writes tasks/${t.task.id}/trace.md) before editing source.`;
+}
+
+function taskSourceWriteReason(repo) {
   const tasks = activeTasks().filter((t) => (t.repositories || []).includes(repo));
   if (!tasks.length) return `No active aisdlc task lists repository '${repo}'.`;
   let reason = "Feature specification has not been approved.";
@@ -58,12 +115,60 @@ function sourceWriteReason(repo) {
       if (a.status !== "approved") continue;
       if (a.spec_hash !== specHash(t.task.id)) { reason = `Specification for ${t.task.id} changed after approval; reapproval required.`; continue; }
     }
+    const traceBlock = traceReason(t);
+    if (traceBlock) { reason = traceBlock; continue; }
     return null;
   }
   return reason;
 }
 
-const PROTECTED_ARTIFACTS = ["jira.md","requirements.md","impact-analysis.md","knowledge-manifest.yaml","specification.md","implementation-plan.md","validation.md","code-review.md","documentation.md","repository-preparation.yaml","knowledge-consolidation.yaml","release.yaml"];
+// Commands the workspace marks as touching real systems (config/workspace.yaml "real_systems"): not blocked, but the
+// developer is asked to confirm, with the rule's reason. A malformed list asks about every command rather than
+// quietly switching the rule off. Output format: PreToolUse "ask" (exit 0 with a hookSpecificOutput decision).
+const realSystems = require("../scripts/lib/real-systems");
+const REAL_SYSTEMS = (readJson(path.join(ROOT, "config", "workspace.yaml"), {}) || {}).real_systems;
+function askReasons(cmd, cwd, posix) {
+  const problems = realSystems.validate(REAL_SYSTEMS);
+  if (problems.length) return [`config/workspace.yaml real_systems is invalid (${problems.join("; ")}); fix it so the list applies.`];
+  const hits = realSystems.check(cmd, REAL_SYSTEMS, { posix, cwd, repoOf: (dir) => (repoOf(dir) || {}).name || null });
+  return [...new Set(hits.map((h) => `${h.rule.reason} (matches real_systems "${h.rule.command}")`))];
+}
+function ask(reasons) {
+  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "ask", permissionDecisionReason: reasons.join(" | ") } }) + "\n");
+  process.exit(0);
+}
+
+// on_edit rules (config/repositories.yaml) run automatically after every edit, outside Claude's permission prompts,
+// so a change to them must not slip in unnoticed: an edit that changes any repository's on_edit asks first.
+const REGISTRY = norm(path.join(ROOT, "config", "repositories.yaml"));
+const onEditMap = (text) => {
+  try {
+    const repos = JSON.parse(text.replace(/^\s*#.*$/gm, "")).repositories || {};
+    return JSON.stringify(Object.fromEntries(Object.entries(repos).filter(([, r]) => r && r.on_edit !== undefined).map(([n, r]) => [n, r.on_edit])));
+  } catch { return null; }
+};
+function registryOnEditChange(tool, input, target) {
+  if (norm(target) !== REGISTRY) return null;
+  let current = "";
+  try { current = fs.readFileSync(target, "utf8"); } catch {}
+  let proposed;
+  if (tool === "Write") proposed = String(input.content ?? "");
+  else {
+    const edits = tool === "MultiEdit" ? input.edits || [] : [input];
+    proposed = current;
+    for (const e of edits) {
+      const o = String(e.old_string ?? ""), n = String(e.new_string ?? "");
+      if (!o || !proposed.includes(o)) return /on_edit/.test(n) ? "an edit to config/repositories.yaml that mentions on_edit" : null; // cannot apply it: be conservative
+      proposed = e.replace_all ? proposed.split(o).join(n) : proposed.replace(o, () => n);
+    }
+  }
+  const before = onEditMap(current), after = onEditMap(proposed);
+  if (before === null || after === null) return /on_edit/.test(proposed) && proposed !== current ? "an edit to config/repositories.yaml that mentions on_edit (the file could not be compared)" : null;
+  return before === after ? null : "a change to the on_edit commands in config/repositories.yaml";
+}
+const ON_EDIT_ASK = (what) => `${what}. on_edit commands run automatically after every edit, outside Claude's permission prompts: confirm they are the ones you want.`;
+
+const PROTECTED_ARTIFACTS = ["jira.md","requirements.md","impact-analysis.md","knowledge-manifest.yaml","specification.md","implementation-plan.md","validation.md","code-review.md","documentation.md","trace.md","repository-preparation.yaml","knowledge-consolidation.yaml","release.yaml"];
 
 function deletionAllowed(ticket) {
   const t = readJson(path.join(ROOT, "tasks", ticket, "task.yaml"), null);
@@ -84,6 +189,8 @@ if (["Write", "Edit", "NotebookEdit", "MultiEdit"].includes(tool)) {
   if (/(^|\/)(credentials|secrets)\//.test(n) || /\.(pem|key)$/.test(n)) block("Protected path.");
   const repo = repoOf(target);
   if (repo) { const r = sourceWriteReason(repo.name); if (r) block(r); }
+  const onEditChange = registryOnEditChange(tool, input, target);
+  if (onEditChange) ask([ON_EDIT_ASK(onEditChange)]);
   process.exit(0);
 }
 
@@ -121,16 +228,29 @@ if (tool === "Bash" || tool === "PowerShell") {
   // git commit policy (§29.3, §30.4)
   if (/git\s+(-C\s+\S+\s+)?commit\b/.test(cmd)) {
     const msgs = [...cmd.matchAll(/-m\s+(?:"((?:[^"\\]|\\.)*)"|'([^']*)')/g)].map((m) => m[1] ?? m[2]);
-    const tasks = activeTasks();
-    if (!tasks.length) block("No active aisdlc task; commits are not allowed.");
-    if (msgs.length !== 1 || msgs[0].includes("\n")) block("Commit must have exactly one single-line -m message and no body.");
-    const ids = tasks.map((t) => t.task.id);
-    const m = msgs[0].match(/^([A-Z][A-Z0-9]*-\d+): (\S.*)$/);
-    if (!m || !ids.includes(m[1])) block(`Commit message must match '<ticket-number>: <changes summary>' for an active task (${ids.join(", ")}).`);
     let branch = "";
     const dir = (cmd.match(/-C\s+("[^"]+"|\S+)/) || [])[1]?.replace(/"/g, "") || cwd;
     try { branch = execSync("git rev-parse --abbrev-ref HEAD", { cwd: dir, encoding: "utf8" }).trim(); } catch {}
-    if (branch !== m[1]) block(`Active aisdlc task requires branch ${m[1]} (current: ${branch || "unknown"}).`);
+    // Post-release sync (/aisdlc-dev:sync-main) is not ticket work: its branch names the base and target, not a
+    // ticket, so it follows its own message rule instead of "<ticket>: <summary>".
+    const syncParsed = envBr.parseSyncBranch(HOSTING, BASE, branch);
+    if (syncParsed) {
+      if (msgs.length !== 1 || msgs[0].includes("\n")) block("Commit must have exactly one single-line -m message and no body.");
+      const prefix = `Sync ${BASE} into ${syncParsed.target}: `;
+      if (!msgs[0].startsWith(prefix) || !msgs[0].slice(prefix.length).trim())
+        block(`On ${branch}, the commit message must start with '${prefix}' followed by a summary.`);
+    } else {
+      const tasks = activeTasks();
+      if (!tasks.length) block("No active aisdlc task; commits are not allowed.");
+      if (msgs.length !== 1 || msgs[0].includes("\n")) block("Commit must have exactly one single-line -m message and no body.");
+      const ids = tasks.map((t) => t.task.id);
+      const m = msgs[0].match(/^([A-Z][A-Z0-9]*-\d+): (\S.*)$/);
+      if (!m || !ids.includes(m[1])) block(`Commit message must match '<ticket-number>: <changes summary>' for an active task (${ids.join(", ")}).`);
+      // The task branch is exactly the ticket; the one other branch a ticket's commits may land on is its environment
+      // branch (<TICKET>-<env>), which /aisdlc-dev:promote creates to resolve conflicts with a target branch.
+      if (branch !== m[1] && !(envBranchesOf(m[1]).includes(branch)))
+        block(`Active aisdlc task requires branch ${m[1]}${envBranchesOf(m[1]).length ? ` (or one of its environment branches: ${envBranchesOf(m[1]).join(", ")})` : ""} (current: ${branch || "unknown"}).`);
+    }
   }
 
   // shell writes into registered repositories (bypass guard for the implementation gate).
@@ -148,5 +268,11 @@ if (tool === "Bash" || tool === "PowerShell") {
       }
     }
   }
+
+  // Everything above only blocks. Last: commands marked as touching real systems ask first.
+  const asks = askReasons(cmd, cwd, tool === "Bash");
+  if (/repositories\.yaml/.test(cmd) && /on_edit/.test(cmd) && /(>|sed\s+-i|\btee\b|set-content|add-content|out-file)/i.test(cmd))
+    asks.push(ON_EDIT_ASK("a shell command that writes on_edit commands to config/repositories.yaml"));
+  if (asks.length) ask(asks);
 }
 process.exit(0);

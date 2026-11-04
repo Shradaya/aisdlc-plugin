@@ -10,6 +10,7 @@ All commands are namespaced with the plugin name. `<ticket-number>` is a ticket 
 | `/aisdlc-dev:refresh-repo <repo-name>` | Update the knowledge package from the commits since the last analysis. Full study on structural change. |
 | `/aisdlc-dev:remove-repo <repo-name>` | Remove a repository from the registry. |
 | `/aisdlc-dev:status` | Registered repositories, knowledge freshness, active tasks and states, integrations, pending approvals, conflicts, non-compliant repositories. |
+| `/aisdlc-dev:status-page --export <file.html>` · `--markdown <TICKET>` | A shareable copy: one self-contained HTML snapshot of the status page as of now (no server; local paths and credential status left out; documents only with `--with-docs`), or one ticket's status as Markdown |
 | `/aisdlc-dev:status-page` | Live status page in the browser (local, read-only): every task's past, current and upcoming states, approvals, next step, history and documents, plus repositories and blocking issues. |
 
 ## Task commands
@@ -42,7 +43,9 @@ Bugs and investigations have their own state machines. The other task types use 
 | `/aisdlc-dev:resume <ticket-number>` | Continue an interrupted task from the first incomplete safe state. See [resume](/guide/resume). |
 | `/aisdlc-dev:commit <ticket-number>` | Commit through the commit skill: message `<ticket-number>: <changes summary>`, on branch `<ticket-number>`. |
 | `/aisdlc-dev:pr <ticket-number>` | Create the pull request(s) once implementation, tests, review and commit are done. |
-| `/aisdlc-dev:create-pr <ticket-number> [target-branches]` | Open pull requests from the task branch to `lf-develop`, `lf-qa` and `lf-uat` (or a subset) in every affected repository, with the team description template (`pr_target_branches` in `config/integrations.yaml`). |
+| `/aisdlc-dev:create-pr <ticket-number> [target-branches]` | Dry-run merge each target first (clean, already merged, or conflicting — no PR opens into a conflicting target); open pull requests from the task branch to `lf-develop`, `lf-qa` and `lf-uat` (or a subset) in every affected repository, with the team description template (`pr_target_branches` in `config/integrations.yaml`). |
+| `/aisdlc-dev:sync-main [repo ...] [target-branches]` | After a release: bring `main` back into the environment branches. Dry-runs the merge into each (already synced, release merge only, clean, or conflicting), asks before building anything, opens one PR per repository and environment (from `main` itself when clean, else from a dated `main-<env>-<date>` branch where the conflicts are resolved). Creates no task. |
+| `/aisdlc-dev:promote <ticket-number> [target-branches]` | For a target `create-pr` could not merge into cleanly: build the ticket's environment branch (`<ticket>-<env>`), merge the target into it, resolve the conflicts there, verify, and open the PR from that branch. Never touches the task branch or the target. |
 | `/aisdlc-dev:pr-review <repo-name> <pr-id-or-url>` | Review a Bitbucket pull request (yours or a teammate's) against its ticket, the repository's documented conventions and interfaces, and aisdlc rules. Writes an advisory review to `reviews/<repo-name>/pr-<id>.md`; never approves, merges or edits, and posts comments only if you ask. |
 | `/aisdlc-dev:finish <ticket-number>` | Finalize a task. For features it refuses unless the state is `TEMPORARY_ARTIFACTS_CLEANED`. It never deletes artifacts. |
 
