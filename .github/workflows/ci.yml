@@ -13,6 +13,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: No merge conflict markers
+        run: node scripts/check-conflict-markers.js
       - name: Vendored core is up to date
         run: node scripts/sync-core.js --check
       - name: Test suites
