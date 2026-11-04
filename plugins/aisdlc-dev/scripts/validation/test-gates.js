@@ -5,7 +5,7 @@ const { spawnSync, execSync } = require("child_process");
 const SRC = path.resolve(__dirname, "..", "..");
 const W = fs.mkdtempSync(path.join(os.tmpdir(), "aisdlc-test-"));
 for (const d of ["hooks", "scripts/state", "scripts/lib", "config", "tasks", "logs"]) fs.mkdirSync(path.join(W, d), { recursive: true });
-for (const f of ["hooks/pre-tool-policy.js", "scripts/state/aisdlc-state.js", "scripts/lib/repo-paths.js", "scripts/lib/root.js", "scripts/lib/yaml.js", "scripts/lib/env-branches.js"]) fs.copyFileSync(path.join(SRC, f), path.join(W, f));
+for (const f of ["hooks/pre-tool-policy.js", "scripts/state/aisdlc-state.js", "scripts/lib/repo-paths.js", "scripts/lib/root.js", "scripts/lib/yaml.js", "scripts/lib/env-branches.js", "scripts/lib/real-systems.js"]) fs.copyFileSync(path.join(SRC, f), path.join(W, f));
 // task-types.yaml is the plugin default (<plugin>/config); the hook and state CLI read it from the test workspace config/
 fs.copyFileSync(path.join(SRC, "config", "task-types.yaml"), path.join(W, "config", "task-types.yaml"));
 const repo = path.join(W, "..", path.basename(W) + "-backend");

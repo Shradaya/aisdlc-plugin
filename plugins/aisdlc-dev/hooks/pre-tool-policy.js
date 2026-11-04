@@ -107,6 +107,22 @@ function taskSourceWriteReason(repo) {
   return reason;
 }
 
+// Commands the workspace marks as touching real systems (config/workspace.yaml "real_systems"): not blocked, but the
+// developer is asked to confirm, with the rule's reason. A malformed list asks about every command rather than
+// quietly switching the rule off. Output format: PreToolUse "ask" (exit 0 with a hookSpecificOutput decision).
+const realSystems = require("../scripts/lib/real-systems");
+const REAL_SYSTEMS = (readJson(path.join(ROOT, "config", "workspace.yaml"), {}) || {}).real_systems;
+function askReasons(cmd, cwd, posix) {
+  const problems = realSystems.validate(REAL_SYSTEMS);
+  if (problems.length) return [`config/workspace.yaml real_systems is invalid (${problems.join("; ")}); fix it so the list applies.`];
+  const hits = realSystems.check(cmd, REAL_SYSTEMS, { posix, cwd, repoOf: (dir) => (repoOf(dir) || {}).name || null });
+  return [...new Set(hits.map((h) => `${h.rule.reason} (matches real_systems "${h.rule.command}")`))];
+}
+function ask(reasons) {
+  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "ask", permissionDecisionReason: reasons.join(" | ") } }) + "\n");
+  process.exit(0);
+}
+
 const PROTECTED_ARTIFACTS = ["jira.md","requirements.md","impact-analysis.md","knowledge-manifest.yaml","specification.md","implementation-plan.md","validation.md","code-review.md","documentation.md","repository-preparation.yaml","knowledge-consolidation.yaml","release.yaml"];
 
 function deletionAllowed(ticket) {
@@ -205,5 +221,9 @@ if (tool === "Bash" || tool === "PowerShell") {
       }
     }
   }
+
+  // Everything above only blocks. Last: commands marked as touching real systems ask first.
+  const asks = askReasons(cmd, cwd, tool === "Bash");
+  if (asks.length) ask(asks);
 }
 process.exit(0);
