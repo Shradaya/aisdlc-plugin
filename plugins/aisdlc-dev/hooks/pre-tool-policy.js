@@ -102,6 +102,10 @@ if (tool === "Bash" || tool === "PowerShell") {
   if (/\b(echo|write-output|write-host|printf|cat|type|out-file|set-content)\b[^|;&\n]*(BITBUCKET_API_TOKEN|JIRA_API_TOKEN)/i.test(cmd) || /^\s*\$env:(BITBUCKET_API_TOKEN|JIRA_API_TOKEN)\s*$/i.test(cmd))
     block("Integration credentials must not be printed or written; check only whether they are set.");
 
+  // Jira is read only through the REST helper, which keeps credentials out of command lines and output
+  if (/\b(curl|wget|invoke-restmethod|invoke-webrequest|irm|iwr)\b[^|;&\n]*(atlassian\.net|\/rest\/api\/)/i.test(cmd))
+    block("Call Jira through scripts/jira/jira-fetch.js, not ad-hoc HTTP.");
+
   // task state integrity
   if (/task\.yaml/.test(cmd) && /(>|sed\s+-i|set-content|out-file|add-content|tee\b|rm\b|remove-item|mv\b|move-item)/i.test(cmd) && !/aisdlc-state\.js/.test(cmd))
     block("task.yaml may only be changed through scripts/state/aisdlc-state.js.");

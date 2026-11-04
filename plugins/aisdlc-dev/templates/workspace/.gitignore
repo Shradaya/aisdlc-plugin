@@ -5,7 +5,7 @@ claude.env
 logs/audit.jsonl
 node_modules/
 
-# Local MCP server config (machine-specific paths; copy from .mcp.json.example)
+# Local MCP server config, if you add one (machine-specific; Jira does not need it)
 .mcp.json
 
 # Claude Code per-developer local overrides (shared config lives in .claude/settings.json)

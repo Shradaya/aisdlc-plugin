@@ -22,7 +22,7 @@ Explicit `/aisdlc-dev:init [target-folder] [--only claude|web|workspace] [--dry-
 ## What it creates (parts)
 - `claude`: `.claude/settings.json`, `.claude/rules/*.md`.
 - `web`: `web/**`, the VitePress docs site (no `node_modules`).
-- `workspace`: `config/{repositories,integrations,workspace}.yaml` (the registry starts empty), `repositories/`, `system/{architecture,product,decisions,designs}/`, `system/repository-relationships.yaml`, `tasks/`, `logs/`, `CLAUDE.md`, `claude.env.example`, `.mcp.json.example`, `.gitignore`.
+- `workspace`: `config/{repositories,integrations,workspace}.yaml` (the registry starts empty), `repositories/`, `system/{architecture,product,decisions,designs}/`, `system/repository-relationships.yaml`, `tasks/`, `logs/`, `CLAUDE.md`, `claude.env.example`, `.gitignore`.
 
 Once `config/repositories.yaml` exists the folder is an aisdlc workspace: hooks and CLIs resolve it from the folder itself, any subfolder, or `AISDLC_ROOT`. All plugin output (repository knowledge, system and product docs, task state, audit logs, web) is stored there, and the repositories it works on stay wherever they are cloned (registered by path through `claude.env`).
 

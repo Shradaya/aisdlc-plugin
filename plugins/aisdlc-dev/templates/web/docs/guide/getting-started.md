@@ -5,7 +5,7 @@
 - Claude Code.
 - A local clone of the aisdlc workspace repository (the control plane). It contains `.claude-plugin/plugin.json`, `skills/`, `hooks/`, `config/`, `repositories/`, `system/` and `tasks/`.
 - Local clones of the application repositories you want aisdlc to manage. Each must be a Git repository whose default branch is `main`.
-- Optional but recommended: a Jira connector (MCP) so tickets are fetched automatically. Without it aisdlc [asks you for the details](/guide/jira-unavailable).
+- Optional but recommended: a Jira API token and your Jira site URL, so tickets are fetched automatically over the Jira REST API (no MCP server needed). Without it aisdlc [asks you for the details](/guide/jira-unavailable).
 
 ## Where your repositories live (`claude.env`)
 
@@ -48,7 +48,7 @@ export JIRA_API_TOKEN="<your Jira API token>"
 claude --plugin-dir .
 ```
 
-`/aisdlc-dev:status` shows each variable as `set` or `missing` (never the value). If one is missing, aisdlc falls back: Jira details are [asked interactively](/guide/jira-unavailable), and pull requests are saved as `pr-description.md` for you to open by hand. The Jira variable names are an aisdlc convention; if your Jira connector expects different names, change them in `config/integrations.yaml`.
+`/aisdlc-dev:status` shows each variable as `set` or `missing` (never the value). If one is missing, aisdlc falls back: Jira details are [asked interactively](/guide/jira-unavailable), and pull requests are saved as `pr-description.md` for you to open by hand. The Jira variable names are an aisdlc convention; to use different names, change them in `config/integrations.yaml` (`jira.credentials`). For Jira Data Center with a personal access token, set `jira.auth_scheme` to `bearer` (only the token variable is then needed). Behind Cloudflare WARP or Zscaler, set `NODE_EXTRA_CA_CERTS` to the corporate root certificate so Node trusts the proxy.
 
 ### Token scopes
 

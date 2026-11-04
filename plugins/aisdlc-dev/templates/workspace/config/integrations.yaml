@@ -1,12 +1,19 @@
 # External integrations (spec §6, §20, §40, §42.1). JSON-compatible YAML; '#' comments only on their own lines.
-# Adapters are MCP/connector-backed. Nothing here is assumed to be connected; `status` reports availability at runtime.
+# Jira and git hosting are reached over their REST APIs by the plugin's own scripts (no MCP server to set up).
+# Nothing here is assumed to be connected; `status` reports availability at runtime.
 # Credentials are read from environment variables ONLY; this file stores the variable names, never values.
-# Jira Cloud also needs your site URL in "jira.base_url" (not a secret); the Jira variable names are an aisdlc convention.
+# Jira needs your site URL in "jira.base_url" (not a secret); the Jira variable names are an aisdlc convention.
+# "auth_scheme": "basic" (Jira Cloud: email + API token) or "bearer" (Jira Data Center personal access token).
+# "acceptance_criteria_field": optional custom field id (e.g. "customfield_10050"); empty = find it by name, then
+# fall back to an "Acceptance Criteria" section of the description.
 # Jira workflow transitions MUST be configured explicitly (spec §20.1): an empty "status_transitions" map means none are allowed.
 {
   "jira": {
-    "adapter": "mcp",
+    "adapter": "rest-api",
+    "script": "${CLAUDE_PLUGIN_ROOT}/scripts/jira/jira-fetch.js",
     "base_url": "",
+    "auth_scheme": "basic",
+    "acceptance_criteria_field": "",
     "required_for_ticket_fetch": false,
     "read": ["issue", "fields", "description", "acceptance_criteria", "labels", "priority", "linked_issues", "comments_when_required"],
     "write": {

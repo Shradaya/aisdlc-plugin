@@ -118,6 +118,10 @@ t("results comment before sign-off blocked", bash(`${JA} comment ${T} c.txt`), 2
 t("dry-run attach allowed", bash(`${JA} attach ${T} a.png --dry-run`), 0);
 t("defect comment allowed in TESTS_EXECUTED", bash(`${JA} defect ${T} d.txt a.png`), 0);
 t("status read always allowed", bash(`${JA} status ${T}`), 0);
+t("issue read always allowed", bash(`${JA} issue ${T} --comments`), 0);
+t("defect_found transition allowed in TESTS_EXECUTED", bash(`${JA} transition ${T} defect_found`), 0);
+t("verified transition before sign-off blocked", bash(`${JA} transition ${T} verified`), 2);
+t("unknown transition key blocked", bash(`${JA} transition ${T} done`), 2);
 t("ad-hoc HTTP to Jira blocked", bash(`curl -u x https://example.atlassian.net/rest/api/2/issue/${T}/comment`), 2);
 
 // --- defects and sign-off --------------------------------------------------------------------------------------------
@@ -130,11 +134,13 @@ t("reply allowed after re-verify", bash(`${JA} reply ${T} 10001 f.txt`), 0);
 state("set", T, "defects.D1.status", '"fixed"');
 t("AWAITING_RESULTS_SIGNOFF once defects are fixed", state("transition", T, "AWAITING_RESULTS_SIGNOFF").status, 0);
 t("defect comment refused at sign-off", bash(`${JA} defect ${T} d.txt`), 2);
+t("defect_found transition refused at sign-off", bash(`${JA} transition ${T} defect_found`), 2);
 t("RESULTS_SIGNED_OFF without sign-off refused", state("transition", T, "RESULTS_SIGNED_OFF").status, 2);
 put(`tasks/${T}/results.md`, "# QA-1 results\nVerdict: PASS\n");
 t("approve signoff", state("approve", T, "signoff").status, 0);
 t("RESULTS_SIGNED_OFF", state("transition", T, "RESULTS_SIGNED_OFF").status, 0);
 t("evidence attach allowed after sign-off", bash(`${JA} attach ${T} a.png`), 0);
+t("verified transition allowed after sign-off", bash(`${JA} transition ${T} verified`), 0);
 put(`tasks/${T}/results.md`, "# QA-1 results\nVerdict: PASS (edited)\n");
 t("evidence attach blocked after results changed", bash(`${JA} attach ${T} a.png`), 2);
 t("EVIDENCE_PUBLISHED refused after results changed", state("transition", T, "EVIDENCE_PUBLISHED").status, 2);
@@ -247,6 +253,9 @@ t("jira-attach --dry-run needs no credentials", dry.status, 0);
 t("jira-attach --dry-run prints JSON", /"dry_run":true/.test(dry.stdout), true);
 t("jira-attach refuses when writes are disabled",
   node(S("jira/jira-attach.js"), ["comment", T, path.join(W, `tasks/${T}/results.md`)], { JIRA_EMAIL: "x@example.test", JIRA_API_TOKEN: "x" }).status, 1);
+t("jira-attach issue without credentials exits 2", node(S("jira/jira-attach.js"), ["issue", T]).status, 2);
+t("jira-attach issue --dry-run lists the reads", /rest\/api\/2\/issue\/QA-1\/comment/.test(node(S("jira/jira-attach.js"), ["issue", T, "--comments", "--dry-run"]).stdout), true);
+t("jira-attach refuses an unconfigured transition", node(S("jira/jira-attach.js"), ["transition", T, "verified", "--dry-run"]).status, 1);
 
 const run = path.join(W, `tasks/${T}/evidence/run-1`);
 for (const d of ["report/data", `screenshots/${T}-S1`, `screenshots/${T}-S2`]) fs.mkdirSync(path.join(run, d), { recursive: true });
@@ -288,9 +297,8 @@ const P = fs.mkdtempSync(path.join(os.tmpdir(), "aisdlc-qa-init-"));
 const QA = path.join(P, "aisdlc-qa"), DEV = path.join(P, "aisdlc-dev");
 for (const d of [QA, path.join(DEV, "config"), path.join(DEV, "repositories"), path.join(DEV, "system")]) fs.mkdirSync(d, { recursive: true });
 fs.writeFileSync(path.join(DEV, "config/repositories.yaml"), "{}");
-fs.writeFileSync(path.join(DEV, "config/integrations.yaml"), JSON.stringify({ jira: { base_url: "" } }));
+fs.writeFileSync(path.join(DEV, "config/integrations.yaml"), JSON.stringify({ jira: { base_url: "https://example.atlassian.net/", acceptance_criteria_field: "customfield_10050" } }));
 fs.writeFileSync(path.join(DEV, "claude.env"), "SECRET_MARKER=do-not-copy\n");
-fs.writeFileSync(path.join(DEV, ".mcp.json"), JSON.stringify({ mcpServers: { atlassian: { command: "docker", args: ["-v", "C:/ProgramData/Cloudflare/installed_cert.pem:/certs/ca.pem:ro"], env: { JIRA_URL: "https://example.atlassian.net" } } } }));
 fs.mkdirSync(path.join(QA, ".claude"));
 fs.writeFileSync(path.join(QA, ".claude/settings.json"), JSON.stringify({ permissions: { allow: ["Read"] }, model: "x" }));
 const INIT = path.join(SRC, "scripts/init/aisdlc-qa-init.js");
@@ -302,10 +310,11 @@ t("init merges .claude/settings.json additively", st.model === "x" && st.permiss
 t("fresh config has a checks/ project and video off", /checks/.test(fs.readFileSync(path.join(QA, "playwright.config.ts"), "utf8")) && /QA_VIDEO === '1'/.test(fs.readFileSync(path.join(QA, "playwright.config.ts"), "utf8")), true);
 const fromDev = spawnSync("node", [INIT, QA, "--from-dev"], { encoding: "utf8", env: { ...env, AISDLC_ROOT: QA } });
 t("init --from-dev finds the sibling dev workspace", fromDev.status, 0);
-const qaMcp = JSON.parse(fs.readFileSync(path.join(QA, ".mcp.json"), "utf8"));
-t("init --from-dev copies the atlassian server with its certificate mount", /installed_cert\.pem/.test(JSON.stringify(qaMcp.mcpServers.atlassian)), true);
-t("init --from-dev sets jira.base_url from the dev server's JIRA_URL", JSON.parse(fs.readFileSync(path.join(QA, "config/integrations.yaml"), "utf8").replace(/^\s*#.*$/gm, "")).jira.base_url, "https://example.atlassian.net");
-t("init --from-dev never copies claude.env content", /SECRET_MARKER|do-not-copy/.test(fromDev.stdout + fs.readFileSync(path.join(QA, ".mcp.json"), "utf8") + fs.readFileSync(path.join(QA, "config/integrations.yaml"), "utf8")), false);
+const qaJira = JSON.parse(fs.readFileSync(path.join(QA, "config/integrations.yaml"), "utf8").replace(/^\s*#.*$/gm, "")).jira;
+t("init --from-dev creates no .mcp.json", fs.existsSync(path.join(QA, ".mcp.json")), false);
+t("init --from-dev sets jira.base_url from the dev workspace's integrations.yaml", qaJira.base_url, "https://example.atlassian.net");
+t("init --from-dev copies the acceptance-criteria field", qaJira.acceptance_criteria_field, "customfield_10050");
+t("init --from-dev never copies claude.env content", /SECRET_MARKER|do-not-copy/.test(fromDev.stdout + fs.readFileSync(path.join(QA, "config/integrations.yaml"), "utf8")), false);
 
 t("a fresh workspace has no specs/ folder", fs.existsSync(path.join(QA, "specs")), false);
 t("a fresh workspace has only auth.setup.ts and seed.spec.ts in tests/", fs.readdirSync(path.join(QA, "tests")).sort().join(","), "auth.setup.ts,seed.spec.ts");

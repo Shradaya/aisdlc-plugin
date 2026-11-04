@@ -28,7 +28,7 @@ Run the `--scope project` and `--scope local` forms from inside the workspace fo
    - `.claude/settings.json` and `.claude/rules/`
    - the `web/` docs site
    - `config/`, `repositories/`, `system/`, `tasks/` and `logs/`
-   - `CLAUDE.md`, `claude.env.example` and `.mcp.json.example`
+   - `CLAUDE.md` and `claude.env.example`
 2. Copy `claude.env.example` to `claude.env` and set `AISDLC_REPOS_ROOT`, the folder holding your clones. This file holds paths only, never secrets.
 3. Set credentials as environment variables in the terminal before starting Claude Code. They are never put in files.
 
@@ -39,7 +39,7 @@ Run the `--scope project` and `--scope local` forms from inside the workspace fo
    $env:BITBUCKET_API_TOKEN = "<Bitbucket API token>"
    ```
 
-   Set `jira.base_url` in `config/integrations.yaml`. For Jira MCP access, copy `.mcp.json.example` to `.mcp.json`. Token scopes are listed in `config/integrations.yaml` and in `web/docs/guide/getting-started.md`. Jira writes are off by default.
+   Set `jira.base_url` in `config/integrations.yaml`. Tickets are read over the Jira REST API by `scripts/jira/jira-fetch.js`, so there is no MCP server to set up; `node <plugin>/scripts/jira/jira-fetch.js check` confirms the connection. Behind Cloudflare WARP or Zscaler, set `NODE_EXTRA_CA_CERTS` to the corporate root certificate (WARP: `C:/ProgramData/Cloudflare/installed_cert.pem`). Token scopes are listed in `config/integrations.yaml` and in `web/docs/guide/getting-started.md`. Jira writes are off by default.
 4. Register each repository with `/aisdlc-dev:add-repo <name> <path>`. Add `--kind design` for a design repository published by `aisdlc-design`.
 5. Run `/aisdlc-dev:status` to see repositories, active tasks, integrations, and which credentials are `set` or `missing` (names only, never values). For the same in your browser, refreshing itself as work moves on, run `/aisdlc-dev:status-page`.
 
