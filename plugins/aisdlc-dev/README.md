@@ -99,6 +99,7 @@ What is enforced, and where:
 ## Helpers
 
 - **`scripts/git-hosting/bitbucket-pr.js`** is the Bitbucket Cloud PR helper (`create`, `status`, `comment`).
+- **`scripts/git-hosting/check-targets.js`** is a read-only dry run of how a branch merges into each target branch: clean, already merged, or conflicts (with the files, and which targets share the same conflict), plus named imports the merge would leave dangling. It never checks anything out or writes a ref. `/aisdlc-dev:create-pr` runs it before opening any PR. Needs git 2.38+.
   - Credentials come from the environment only.
   - It prints one JSON line and exits `0` ok, `1` error, `2` credentials missing.
   - It shuts down cleanly on Windows: no hard `process.exit()` while the HTTP socket is closing.
