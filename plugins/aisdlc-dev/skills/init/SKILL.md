@@ -17,7 +17,8 @@ Explicit `/aisdlc-dev:init [target-folder] [--only claude|web|workspace] [--dry-
 1. Run a preview: `node ${CLAUDE_PLUGIN_ROOT}/scripts/init/aisdlc-init.js $ARGUMENTS --dry-run`.
 2. Show what would be created, merged and skipped. If `--force` would overwrite files, confirm with AskUserQuestion first.
 3. Run the same command without `--dry-run`.
-4. Report the result and the next steps: copy `claude.env.example` to `claude.env` and set `AISDLC_REPOS_ROOT` (paths only), run `cd web && npm install && npm run dev` (Node 20+) for the docs site, then `/aisdlc-dev:add-repo <name> <path>` for each repository.
+4. After the repositories are registered (or `AISDLC_REPOS_ROOT` is set), offer to draft settings from them: `node ${CLAUDE_PLUGIN_ROOT}/scripts/init/aisdlc-detect.js --root <target>` prints the detected provider, org, base and environment branches, ticket key pattern, commit style and lint/test commands. Show it; only after the developer agrees, re-run with `--write` (updates `git.base_branch`, `git.commit_format`, `git_hosting.provider` and `pr_target_branches`; comments and other keys are kept). Lint/test commands are shown, never written.
+5. Report the result and the next steps: copy `claude.env.example` to `claude.env` and set `AISDLC_REPOS_ROOT` (paths only), run `cd web && npm install && npm run dev` (Node 20+) for the docs site, then `/aisdlc-dev:add-repo <name> <path>` for each repository.
 
 ## What it creates (parts)
 - `claude`: `.claude/settings.json`, `.claude/rules/*.md`.
