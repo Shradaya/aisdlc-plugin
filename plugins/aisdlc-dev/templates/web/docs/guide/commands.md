@@ -10,6 +10,7 @@ All commands are namespaced with the plugin name. `<ticket-number>` is a ticket 
 | `/aisdlc-dev:refresh-repo <repo-name>` | Update the knowledge package from the commits since the last analysis. Full study on structural change. |
 | `/aisdlc-dev:remove-repo <repo-name>` | Remove a repository from the registry. |
 | `/aisdlc-dev:status` | Registered repositories, knowledge freshness, active tasks and states, integrations, pending approvals, conflicts, non-compliant repositories. |
+| `/aisdlc-dev:status-page --export <file.html>` · `--markdown <TICKET>` | A shareable copy: one self-contained HTML snapshot of the status page as of now (no server; local paths and credential status left out; documents only with `--with-docs`), or one ticket's status as Markdown |
 | `/aisdlc-dev:status-page` | Live status page in the browser (local, read-only): every task's past, current and upcoming states, approvals, next step, history and documents, plus repositories and blocking issues. |
 
 ## Task commands
