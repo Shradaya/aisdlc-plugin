@@ -16,6 +16,7 @@ Failure states (reachable from any state): BLOCKED, WAITING_FOR_INPUT, WAITING_F
 |---|---|---|---|
 | Ticket | CREATED -> TICKET_READY | jira-ticket | `jira.md` |
 | Understand + impact | TICKET_READY -> UNDERSTOOD | feature skill, impact-analysis, impact-analyst | `requirements.md`, `knowledge-manifest.yaml`, `impact-analysis.md` |
+| Trace (two or more repositories, or a shared contract) | before REPOSITORIES_PREPARED | cross-repo-trace, service-tracer | `trace.md` |
 | Prepare | -> REPOSITORIES_PREPARED | repository-preparation | `repository-preparation.yaml` |
 | Specify + approve | -> SPEC_APPROVED | feature-specification, specification-writer, design-link (UI repositories only) | `specification.md`, `system/designs/<DESIGN-TICKET>/` |
 | Plan + approve | -> PLAN_APPROVED | implementation-planner | `implementation-plan.md` |

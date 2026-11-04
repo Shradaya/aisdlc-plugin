@@ -26,6 +26,10 @@ No. `/aisdlc-dev:add-repo` is read-only: it does not check out branches, stash, 
 
 Features always need a specification approval. For defects use `/aisdlc-dev:bug`, which has no specification gate but still requires a confirmed root cause and regression coverage. For investigation without changes use `/aisdlc-dev:investigate`.
 
+### Our project handles patient, personal or financial data. Does aisdlc know?
+
+Set `data.sensitivity` in `config/workspace.yaml` to `phi`, `pii` or `financial` (default `none`), and list the file extensions that hold it in `data_files` (for example `.csv`, `.hl7`). Once set, `/aisdlc-dev:code-review` makes the `security-reviewer` mandatory for every change and gives it that sensitivity's checklist, plus the names of any matching files the change adds (never their contents). The checklists ship in the plugin's `config/sensitivity/`; put a same-named file in your workspace's `config/sensitivity/` to use your own instead.
+
 ### Can aisdlc format and check each file Claude edits?
 
 Yes. List checks per repository in `config/repositories.yaml` under `on_edit`; they run right after Claude edits a file there and failures go back to Claude to fix:

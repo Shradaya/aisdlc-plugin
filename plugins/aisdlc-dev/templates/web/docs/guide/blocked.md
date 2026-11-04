@@ -77,6 +77,15 @@ Reason: Task FEAT-1234 is in AWAITING_SPEC_APPROVAL; source edits are not allowe
 
 **Do:** read the state named in the message and look it up in the [state tables](/guide/feature-lifecycle). Usually you need to approve a gate or finish an earlier step. Source edits are allowed only between the approval point (`SPEC_APPROVED` for features, `REPOSITORIES_PREPARED` for bugs) and `COMMITTED`.
 
+### Cross-repository task without a trace
+
+```text
+BLOCKED
+Reason: Task FEAT-1234 spans 2 repositories and has no completed cross-repository trace; run the cross-repo-trace skill (it writes tasks/FEAT-1234/trace.md) before editing source.
+```
+
+**Do:** run the trace. A task that lists two or more repositories, or changes a shared contract (a field, collection, endpoint, queue or event payload, shared constant), must first have the `service-tracer` search the code of **every** registered repository for those contracts. The result, `tasks/<ticket>/trace.md`, lists every producer and consumer, copies of the contract that have already drifted, repositories nobody had listed, what must change together and a deploy order. Source edits stay blocked until `trace.md` exists and the task's `workflow.trace` is `completed`. The check is on by default (`require_trace_for_cross_repo` in `policies.yaml`) and applies only when that key is exactly `true`.
+
 ### Repository not part of any active task
 
 ```text

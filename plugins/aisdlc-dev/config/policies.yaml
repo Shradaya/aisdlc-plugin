@@ -1,4 +1,7 @@
 # Workflow and safety policies (spec §54). JSON-compatible YAML; '#' comments only on their own lines.
+# require_trace_for_cross_repo: a task that spans two or more repositories (or has trace_required set because a shared
+# contract changes) cannot edit source until the cross-repo-trace skill has written tasks/<ticket>/trace.md. The source-edit
+# hook enforces it, and only when the value is exactly true, so a workspace's own policies.yaml that predates this key is unaffected.
 {
   "safety": {
     "protected_branches": ["main"],
@@ -12,11 +15,13 @@
     "require_spec_approval": true,
     "require_plan_for_cross_repo": true,
     "require_plan_for_database_change": true,
-    "require_plan_for_api_change": true
+    "require_plan_for_api_change": true,
+    "require_trace_for_cross_repo": true
   },
   "bug": {
     "require_regression_test": true,
-    "require_plan_for_cross_repo": true
+    "require_plan_for_cross_repo": true,
+    "require_trace_for_cross_repo": true
   },
   "repository": {
     "require_main_branch": true,
