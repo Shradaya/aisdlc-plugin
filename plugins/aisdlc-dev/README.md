@@ -122,6 +122,7 @@ What is enforced, and where:
 ```
 node scripts/validation/test-gates.js
 node scripts/validation/test-repo-paths.js
+node scripts/validation/test-init-detect.js
 node scripts/validation/test-status-page.js
 node scripts/validation/cred-check.js      # run from a dev workspace
 ```
