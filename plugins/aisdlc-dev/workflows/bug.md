@@ -4,7 +4,7 @@ Reference for `/aisdlc-dev:bug` (spec §18.2, §35). Procedure: `skills/bug/SKIL
 
 ## States
 
-CREATED, TICKET_READY, UNDER_INVESTIGATION, ROOT_CAUSE_CONFIRMED, REPOSITORIES_IDENTIFIED, REPOSITORIES_PREPARED, IMPLEMENTING, VALIDATING, REVIEWING, COMMITTING, COMMITTED, PR_CREATED, CI_VALIDATING, COMPLETED. Failure states as in `workflows/feature.md`.
+CREATED, TICKET_READY, UNDER_INVESTIGATION, ROOT_CAUSE_CONFIRMED, REPOSITORIES_PREPARED, IMPLEMENTING, COMMITTED, PR_CREATED, COMPLETED. Failure states as in `workflows/feature.md`. (Shortened: IMPLEMENTING absorbs validation and review as sub-steps; COMMITTED absorbs committing; PR_CREATED absorbs CI validation.)
 
 ## Flow
 

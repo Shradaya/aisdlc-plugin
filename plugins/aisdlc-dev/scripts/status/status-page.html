@@ -32,13 +32,13 @@
   a:hover { text-decoration: underline; }
   code, pre, .mono { font-family: var(--mono); }
   header.top { position: sticky; top: 0; z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
-  .top-in { max-width: 1240px; margin: 0 auto; padding: 10px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .top-in { padding: 10px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .brand { font-weight: 700; font-size: 16px; color: var(--text); }
   .brand small { font-weight: 500; color: var(--muted); margin-left: 6px; }
   .live { margin-left: auto; font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); display: inline-block; }
   .dot.off { background: var(--bad); }
-  main { max-width: 1240px; margin: 0 auto; padding: 20px 16px 60px; }
+  main { padding: 20px 16px 60px; }
   h1 { font-size: 22px; margin: 0; line-height: 1.25; }
   h2 { font-size: 15px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 650; }
   section.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; min-width: 0; }
@@ -123,7 +123,7 @@
   .viewer img { max-width: 100%; border: 1px solid var(--line); border-radius: 6px; }
   .md h1 { font-size: 21px; margin: 0 0 12px; } .md h2 { font-size: 17px; text-transform: none; letter-spacing: 0; color: var(--text); margin: 22px 0 8px; }
   .md h3 { font-size: 15px; margin: 18px 0 6px; } .md h4, .md h5, .md h6 { font-size: 14px; margin: 14px 0 4px; }
-  .md p, .md li { max-width: 80ch; } .md table { width: auto; margin: 10px 0; font-size: 13px; } .md th, .md td { border: 1px solid var(--line); }
+  .md table { width: auto; margin: 10px 0; font-size: 13px; } .md th, .md td { border: 1px solid var(--line); }
   .md blockquote { margin: 10px 0; padding: 4px 14px; border-left: 3px solid var(--line); color: var(--muted); }
   .md code { background: var(--surface-2); padding: 1px 4px; border-radius: 4px; font-size: .9em; } .md pre code { background: none; padding: 0; }
   .md hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
@@ -166,6 +166,7 @@ function statusChip(s) {
   const cls = BLOCKING.includes(s) || s === "CANCELLED" ? "bad" : /APPROVAL$/.test(s) ? "gate" : s === "COMPLETED" ? "ok" : "accent";
   return `<span class="chip ${cls}">${esc(s)}</span>`;
 }
+const awaitingChip = (t) => t.awaiting_approval ? `<div><span class="chip gate">awaiting ${esc(t.awaiting_approval)} approval</span></div>` : "";
 const whoChip = (n) => n ? `<span class="who ${esc(n.who)}">${esc(WHO[n.who] || n.who)}</span>` : "";
 
 async function getJSON(url) {
@@ -190,7 +191,7 @@ function overview(d) {
     : `<tr class="click" data-href="#/task/${enc(t.id)}">
         <td><a class="mono" href="#/task/${enc(t.id)}">${esc(t.id)}</a><div class="small muted">${esc(t.title || "")}</div></td>
         <td>${esc(t.type)}</td>
-        <td>${statusChip(t.status)}${t.failure && t.resume_state ? `<div class="small muted">left ${esc(t.resume_state)}</div>` : ""}</td>
+        <td>${statusChip(t.status)}${t.failure && t.resume_state ? `<div class="small muted">left ${esc(t.resume_state)}</div>` : ""}${awaitingChip(t)}</td>
         <td><div class="bar ${t.failure ? "bad" : ""}" title="${t.position} of ${t.total}"><i style="width:${t.total ? Math.round((t.position / t.total) * 100) : 0}%"></i></div><div class="small muted">${t.position} / ${t.total}</div></td>
         <td>${whoChip(t.next)} <span class="small">${esc(t.next ? t.next.text : "")}</span></td>
         <td class="small muted" title="${esc(when(t.updated_at))}">${esc(ago(t.updated_at))}</td></tr>`).join("");
@@ -330,7 +331,7 @@ function detail(d, docPath, focusDocs) {
   $app.innerHTML = `
     <div class="crumb"><a href="#/">← All tasks</a></div>
     <div class="task-head"><h1 class="mono">${esc(s.id)}</h1>${statusChip(s.status)}<span class="chip">${esc(s.type)}</span>
-      <span class="small muted">state ${s.position} of ${s.total}</span>
+      <span class="small muted">state ${s.position} of ${s.total}</span>${s.awaiting_approval ? `<span class="chip gate">awaiting ${esc(s.awaiting_approval)} approval</span>` : ""}
       ${s.title ? `<div class="sub">${esc(s.title)}</div>` : ""}</div>
     ${s.failure ? `<div class="banner bad"><span class="lbl">Interrupted</span><b>${esc(s.status)}</b>${s.resume_state ? ` while in <span class="mono">${esc(s.resume_state)}</span>` : ""}${s.reason ? `<div>${esc(s.reason)}</div>` : ""}</div>` : ""}
     ${s.next ? `<div class="banner next"><span class="lbl">Next step</span>${whoChip(s.next)} ${esc(s.next.text)}</div>` : ""}

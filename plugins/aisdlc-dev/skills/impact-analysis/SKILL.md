@@ -25,10 +25,10 @@ After the requirement is understood (state UNDERSTOOD) in feature-lifecycle task
 3. Launch the `impact-analyst` subagent with only: requirements, the manifest and the listed knowledge files, and the output path.
 4. Verify the result has every section of the spec §32 template: Ticket Summary, Affected Domains, Directly Affected Repositories, Indirectly Affected Repositories, Repositories Reviewed and Excluded, APIs / Interfaces, Database / Data, Events / Messaging, Infrastructure, Security, Testing, Documentation, Deployment, Evidence. Every repository entry has: repository, impact classification (direct | indirect | excluded), reason, evidence, confidence, required change (yes/no). Logical shape: `${CLAUDE_PLUGIN_ROOT}/config/schemas/impact-analysis.schema.yaml`.
 5. Record domains: `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js set <TICKET> domains '["..."]'`.
-6. `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js transition <TICKET> IMPACT_ANALYZED` (feature lifecycle only; bugs have no such state). Append audit event `impact-analysis-complete`; `set <TICKET> workflow.impact_analysis '"completed"'`.
+6. Append audit event `impact-analysis-complete`; `set <TICKET> workflow.impact_analysis '"completed"'`. (In the shortened feature lifecycle impact analysis and repository identification are both covered by the single UNDERSTOOD state; there is no separate IMPACT_ANALYZED/REPOSITORIES_IDENTIFIED transition. Bugs have no such state either.)
 7. Confirm affected repositories with the developer (AskUserQuestion, listing each repository with reason). Repositories with `base_branch != main` are non-compliant and cannot be selected until remediated.
 8. Persist the confirmed list: `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js set <TICKET> repositories '["backend","database"]'` and append `repo-selected` events.
-9. `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js transition <TICKET> REPOSITORIES_IDENTIFIED`.
+9. For a feature-lifecycle task, the caller (feature skill) transitions `<TICKET> UNDERSTOOD` once impact analysis and repository confirmation are both complete (this skill no longer transitions on its own). For a bug task, control returns to the bug skill which transitions REPOSITORIES_PREPARED after preparation.
 
 ## Outputs
 `tasks/<TICKET>/knowledge-manifest.yaml`, `tasks/<TICKET>/impact-analysis.md`; `domains`, `repositories` and state updated via the CLI.

@@ -34,6 +34,10 @@ const TICKET_RE = /^[A-Z][A-Z0-9]*-\d+$/;
 const CREDENTIALS = ["JIRA_EMAIL", "JIRA_API_TOKEN", "BITBUCKET_EMAIL", "BITBUCKET_API_TOKEN"];
 const BLOCKING = ["BLOCKED", "CONFLICTED", "FAILED", "CI_FAILED", "JIRA_CHANGED", "WAITING_FOR_INPUT", "SPEC_REVIEW_REQUIRED"];
 const APPROVAL_RE = /^AWAITING_.*APPROVAL$|^WAITING_FOR_APPROVAL$|^SPEC_REVIEW_REQUIRED$/;
+// Approval gates are folded into the state they unlock (SPEC_APPROVED, PLAN_APPROVED, ...); older lifecycles had
+// separate AWAITING_*_APPROVAL states. Both count as gate states.
+const GATE_STATE_RE = /^AWAITING_.*APPROVAL$|_APPROVED$/;
+const GATE_STATE = { specification: "SPEC_APPROVED", plan: "PLAN_APPROVED", design: "DESIGN_APPROVED" };
 // Gate artifacts of the built-in lifecycles (aisdlc-state.js); lifecycles with "gates" name their own.
 const GATE_ARTIFACT = { specification: "specification.md", design: "design.md" };
 const DOC_DENY = /(^|\/)(\.env(\..*)?|.*\.(pem|key|p12|pfx)|id_(rsa|ed25519|ecdsa)(\.pub)?|\.lock|.*\.tmp)$/i;
@@ -114,7 +118,7 @@ function timeline(T, task, hist) {
   const cur = lc.states.indexOf(at);
   return lc.states.map((s, i) => ({
     state: s,
-    gate: /^AWAITING_.*APPROVAL$/.test(s),
+    gate: GATE_STATE_RE.test(s),
     status: i === cur ? (failure ? "interrupted" : "current") : cur >= 0 && i < cur ? (visits[s] ? "done" : "skipped") : visits[s] ? "revisited" : "future",
     visits: visits[s] || [],
   }));
@@ -160,7 +164,8 @@ function documents(id) {
     }
   };
   walk(base, "");
-  return out.sort((a, b) => a.path.split("/").length - b.path.split("/").length || a.path.localeCompare(b.path));
+  // Most recently updated first; same time falls back to path order.
+  return out.sort((a, b) => b.modified.localeCompare(a.modified) || a.path.localeCompare(b.path));
 }
 
 let repoCache = { at: 0, data: null };
@@ -227,7 +232,20 @@ function summary(T, id, task) {
     created_at: task.task.created_at || null,
     updated_at: task.task.updated_at || null,
     next: nextStep(T, task),
+    awaiting_approval: awaitingApproval(lc, task, at),
   };
+}
+
+// The gate a task is waiting on (same rule as /aisdlc-dev:status): a pending or rejected gate whose state comes
+// next (e.g. specification while at REPOSITORIES_PREPARED, plan while at SPEC_APPROVED), or any gate in
+// WAITING_FOR_APPROVAL / an AWAITING_*_APPROVAL state.
+function awaitingApproval(lc, task, at) {
+  const open = Object.entries(task.approvals || {}).filter(([, a]) => a && (a.status === "pending" || a.status === "rejected")).map(([g]) => g);
+  if (!open.length) return null;
+  if (task.task.status === "WAITING_FOR_APPROVAL" || /^AWAITING_.*APPROVAL$/.test(task.task.status || "")) return open[0];
+  if (at !== task.task.status) return null; // blocked/failed: the failure is what it waits on, not the gate
+  const i = lc.states.indexOf(at);
+  return open.find((g) => GATE_STATE[g] && lc.states.indexOf(GATE_STATE[g]) === i + 1) || null;
 }
 
 function status() {
@@ -260,7 +278,7 @@ function status() {
     generated_at: new Date().toISOString(),
     repositories: repos,
     tasks,
-    pending_approvals: active.filter((t) => APPROVAL_RE.test(t.status)).map((t) => t.id),
+    pending_approvals: active.filter((t) => t.awaiting_approval || APPROVAL_RE.test(t.status)).map((t) => t.id),
     issues,
     credentials: CREDENTIALS.map((name) => ({ name, set: Boolean(process.env[name]) })),
   };

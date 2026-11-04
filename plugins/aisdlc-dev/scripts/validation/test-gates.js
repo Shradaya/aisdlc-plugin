@@ -23,7 +23,7 @@ const src = path.join(repo, "a.js");
 
 t("no task: edit blocked", write(src), 2);
 state("init", "FEAT-1", "feature", "backend");
-for (const s of ["TICKET_READY","UNDERSTOOD","IMPACT_ANALYZED","REPOSITORIES_IDENTIFIED","REPOSITORIES_PREPARED","SPEC_DRAFTED","AWAITING_SPEC_APPROVAL"]) state("transition", "FEAT-1", s);
+for (const s of ["TICKET_READY","UNDERSTOOD","REPOSITORIES_PREPARED"]) state("transition", "FEAT-1", s);
 fs.writeFileSync(path.join(W, "tasks/FEAT-1/specification.md"), "spec v1");
 t("D: edit before approval blocked", write(src), 2);
 t("D: shell redirect before approval blocked", bash(`echo x > ${src.split(path.sep).join("/")}`), 2);
@@ -37,7 +37,7 @@ fs.writeFileSync(path.join(W, "tasks/FEAT-1/specification.md"), "spec v2 changed
 t("edit blocked after spec changed", write(src), 2);
 state("approve", "FEAT-1", "specification");
 t("edit allowed after reapproval", write(src), 0);
-for (const s of ["PLAN_DRAFTED","IMPLEMENTING"]) state("transition", "FEAT-1", s);
+for (const s of ["PLAN_APPROVED","IMPLEMENTING"]) state("transition", "FEAT-1", s);
 execSync("git checkout -q -b FEAT-1", { cwd: repo });
 t("F: invalid commit blocked", bash(`git commit -m "add scheduled reports"`, repo), 2);
 t("G: valid commit allowed", bash(`git commit -m "FEAT-1: Add scheduled report generation"`, repo), 0);

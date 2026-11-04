@@ -17,7 +17,7 @@ Explicit `/aisdlc-dev:commit <ticket-number>`, or the workflow's COMMITTING stag
 Active task, each affected repository's diff, `${CLAUDE_PLUGIN_ROOT}/config/policies.yaml` `commit.max_subject_length` (120).
 
 ## Prerequisites
-- `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js get <TICKET>` shows an active task in COMMITTING (code commits), or KNOWLEDGE_CONSOLIDATION_PENDING (consolidation commit), or TEMPORARY_ARTIFACTS_CLEANED (cleanup commit and final metadata commit) for workspace commits.
+- `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js get <TICKET>` shows an active task in IMPLEMENTING (code commits, at the commit step) or KNOWLEDGE_CONSOLIDATED (the consolidation and cleanup workspace commits).
 - Validation complete and code review complete for code commits (`validation.md`, `code-review.md`).
 
 ## Procedure

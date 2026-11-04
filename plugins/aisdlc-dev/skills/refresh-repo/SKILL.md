@@ -20,14 +20,15 @@ Explicit `/aisdlc-dev:refresh-repo <repo-name>`, or as the technical knowledge r
 Repository is registered and its path exists. If not registered, tell the developer to run `/aisdlc-dev:add-repo`.
 
 ## Procedure
+Knowledge freshness is always measured against the latest commit on the main branch (`origin/main`), not the local working checkout.
 1. Read the previously analyzed commit from `metadata.json` / `repository.yaml`.
-2. Determine current HEAD: `git -C <path> rev-parse HEAD`.
-3. Changed files: `git -C <path> diff --name-status <analyzed>..HEAD`. If the analyzed commit is unknown or not an ancestor of HEAD, treat it as a structural change.
+2. Fetch and determine the latest main tip: `git -C <path> fetch origin --prune` then `git -C <path> rev-parse origin/main`. This commit (not local `HEAD`) is the reference the knowledge is refreshed to.
+3. Changed files: `git -C <path> diff --name-status <analyzed>..origin/main`. If the analyzed commit is unknown or not an ancestor of `origin/main`, treat it as a structural change.
 4. Classify changed areas (source, tests, build, infra, migrations, CI/CD, API definitions, dependencies, docs).
 5. Map them to affected knowledge artifacts.
 6. If any structural trigger is present, run the full study instead of a partial update: read `${CLAUDE_PLUGIN_ROOT}/skills/add-repo/SKILL.md` and follow steps 3-7. Triggers: build system change; framework migration; top-level source structure change; new or removed service; deployment architecture change; database technology change; API contract change; event contract change; dependency graph change involving another registered repository.
 7. Otherwise update only the affected artifacts (use the same analyst subagents for their artifacts), keeping every claim evidenced.
-8. Update provenance on every touched artifact, `metadata.json` and `repository.yaml` (new analyzed commit, timestamp, generator version, status `current`).
+8. Update provenance on every touched artifact, `metadata.json` and `repository.yaml` (new analyzed commit = the `origin/main` tip from step 2, timestamp, generator version, status `current`).
 9. If interfaces or dependencies changed, update `system/repository-relationships.yaml`.
 10. Report changed files, updated artifacts, whether a full study ran, and unknowns.
 
