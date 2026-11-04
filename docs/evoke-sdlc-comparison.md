@@ -14,7 +14,7 @@ each is done.
 
 | # | Idea | Where in evoke-sdlc | Status |
 |---|---|---|---|
-| 1 | Scoped Atlassian API tokens (API gateway + cloud id, not just classic site-URL auth) | `scripts/jira.py:36,89-110` | in progress |
+| 1 | Scoped Atlassian API tokens (API gateway + cloud id, not just classic site-URL auth) | `scripts/jira.py:36,89-110` | done (PR pending) |
 | 2 | Pre-ship merge-tree dry run per target branch, incl. static import-break detection | `scripts/check_targets.py` | not started |
 | 3 | Single "ship list" as one approval unit covering every outward action for a ticket | `skills/ship-ticket/SKILL.md` (gates section) | not started |
 | 4 | Promotion to multiple environment branches with per-env conflict isolation (`<ticket>-<env>` branch) | `skills/promote/SKILL.md` | not started |

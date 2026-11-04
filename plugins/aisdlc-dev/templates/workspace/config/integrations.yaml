@@ -6,13 +6,19 @@
 # "auth_scheme": "basic" (Jira Cloud: email + API token) or "bearer" (Jira Data Center personal access token).
 # "acceptance_criteria_field": optional custom field id (e.g. "customfield_10050"); empty = find it by name, then
 # fall back to an "Acceptance Criteria" section of the description.
-# Jira workflow transitions MUST be configured explicitly (spec §20.1): an empty "status_transitions" map means none are allowed.
+# "api_route": "auto" (default) tries the site URL first and falls back to the Atlassian API gateway on 401/403 -
+# needed for a Jira Cloud token with granular scopes (e.g. read:issue:jira), which the site URL treats as anonymous.
+# "site" or "gateway" skip that probe when you already know which one applies. "cloud_id" (from Jira > Settings >
+# Products, or <site>/_edge/tenant_info) skips the lookup the gateway route makes on first use; "gateway_url"
+# overrides https://api.atlassian.com (Jira Data Center's "bearer" scheme always uses the site URL; this never applies).
 {
   "jira": {
     "adapter": "rest-api",
     "script": "${CLAUDE_PLUGIN_ROOT}/scripts/jira/jira-fetch.js",
     "base_url": "",
     "auth_scheme": "basic",
+    "api_route": "auto",
+    "cloud_id": "",
     "acceptance_criteria_field": "",
     "required_for_ticket_fetch": false,
     "read": ["issue", "fields", "description", "acceptance_criteria", "labels", "priority", "linked_issues", "comments_when_required"],
@@ -32,7 +38,7 @@
       "read:comment:jira": "Comments, only when the workflow asks for them",
       "read:field:jira": "Find the custom field holding acceptance criteria",
       "read:project:jira": "Resolve the project a ticket belongs to",
-      "read:jira-user": "Optional: assignee and reporter names"
+      "read:jira-user": "The connection check (jira-fetch.js check calls /myself); also assignee and reporter names"
     }
   },
   "git_hosting": {
