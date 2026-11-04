@@ -3,6 +3,10 @@
 # blocks these; it asks the developer to confirm first, showing "reason". "command" is a glob matched against the
 # whole simple command with single spaces between words (npm run seed* matches npm run seed:prod -- --force);
 # "repo" (optional) limits the rule to commands run inside that registered repository.
+# "data": what the project's repositories handle. "sensitivity" is none, pii, phi or financial: anything but none
+# makes the security review mandatory and adds that sensitivity's checklist (config/sensitivity/<name>.md; a file of
+# that name in this workspace's config/ replaces the plugin's). "data_files" are extensions that hold such data; a
+# review lists the ones a change adds so they can be checked for real data (names only, never contents).
 {
   "workspace": {
     "name": "company-ai-sdlc",
@@ -33,6 +37,10 @@
     "include_untracked_in_stash": true,
     "auto_pop_stash": false,
     "allow_force_push": false
+  },
+  "data": {
+    "sensitivity": "none",
+    "data_files": []
   },
   "approvals": {
     "feature_specification": "required",
