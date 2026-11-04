@@ -124,6 +124,7 @@ node plugins/aisdlc-dev/scripts/validation/test-jira-client.js    # Jira request
 node plugins/aisdlc-dev/scripts/validation/cred-check.js        # run from a dev workspace
 node plugins/aisdlc-design/scripts/validation/test-gates-design.js
 node plugins/aisdlc-qa/scripts/validation/test-gates-qa.js
+node plugins/aisdlc-dev/scripts/validation/test-check-targets.js   # merge dry run, real git repos
 node scripts/sync-core.js --check
 claude plugin validate .
 ```
@@ -134,7 +135,7 @@ The integration helpers share a contract:
 - Exit codes are `0` ok, `1` error, `2` credentials missing.
 - They shut down cleanly on Windows.
 
-The helpers are the Bitbucket PR helper `plugins/aisdlc-dev/scripts/git-hosting/bitbucket-pr.js` and the Jira helpers `plugins/aisdlc-dev/scripts/jira/jira-fetch.js` (read-only) and `plugins/aisdlc-qa/scripts/jira/jira-attach.js` (reads, comments, uploads, transitions). Both Jira helpers use the shared REST client `packages/aisdlc-core/lib/jira.js`, so no Jira MCP server is needed. Each is documented in its plugin's README.
+The helpers are the Bitbucket PR helper `plugins/aisdlc-dev/scripts/git-hosting/bitbucket-pr.js`, the read-only merge dry run `plugins/aisdlc-dev/scripts/git-hosting/check-targets.js` (JSON output, exit 0 whatever the merge result, exit 1 for a usage or git error) and the Jira helpers `plugins/aisdlc-dev/scripts/jira/jira-fetch.js` (read-only) and `plugins/aisdlc-qa/scripts/jira/jira-attach.js` (reads, comments, uploads, transitions). Both Jira helpers use the shared REST client `packages/aisdlc-core/lib/jira.js`, so no Jira MCP server is needed. Each is documented in its plugin's README.
 
 ## Uninstall
 
