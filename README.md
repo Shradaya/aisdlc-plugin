@@ -120,13 +120,16 @@ Checks (no network or model needed):
 ```bash
 node plugins/aisdlc-dev/scripts/validation/test-gates.js
 node plugins/aisdlc-dev/scripts/validation/test-repo-paths.js
+node scripts/test-version-check.js
 node plugins/aisdlc-dev/scripts/validation/test-jira-client.js    # Jira request routing (classic vs scoped tokens), mock server
 node plugins/aisdlc-dev/scripts/validation/cred-check.js        # run from a dev workspace
 node plugins/aisdlc-design/scripts/validation/test-gates-design.js
 node plugins/aisdlc-qa/scripts/validation/test-gates-qa.js
 node scripts/sync-core.js --check
+node scripts/version-check.js                                   # every plugin.json matches its CHANGELOG.md
 claude plugin validate .
 ```
+CI (`.github/workflows/ci.yml`) runs all of the above on every PR, plus `node scripts/version-check.js --base origin/<base-branch>`: any PR that changes a plugin's behavior (anything under `plugins/<name>/` except README, CHANGELOG, `scripts/validation/**` and `templates/web/docs/**`) must raise that plugin's `.claude-plugin/plugin.json` version above the base and add a `CHANGELOG.md` entry whose newest heading matches it.
 
 The integration helpers share a contract:
 - Credentials come from the environment only.
