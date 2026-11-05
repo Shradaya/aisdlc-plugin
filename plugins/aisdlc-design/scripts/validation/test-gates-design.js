@@ -46,6 +46,22 @@ t("prototype edit blocked after design changed", write(proto), 2);
 state("approve", "DESIGN-1", "design");
 t("prototype edit allowed after reapproval", write(proto), 0);
 
+// generated-code gate: designs/<T>/code/ follows the same rule as prototype/ (codify writes it only after approval).
+const code = path.join(W, "designs/DESIGN-1/code/react/v1/App.jsx");
+fs.mkdirSync(path.dirname(code), { recursive: true });
+t("code write allowed after approval", write(code), 0);
+t("code shell write allowed after approval", bash(`echo x > designs/DESIGN-1/code/react/v1/App.jsx`, W), 0);
+fs.writeFileSync(path.join(W, "tasks/DESIGN-1/design.md"), "design v3 changed again");
+t("code write blocked after design changed", write(code), 2);
+// A fresh ticket that never reached approval must not be able to write code.
+state("init", "DESIGN-2", "design");
+for (const s of ["TICKET_READY", "DESIGN_BRIEF", "DESIGN_DRAFTED"]) state("transition", "DESIGN-2", s);
+const code2 = path.join(W, "designs/DESIGN-2/code/html/v1/index.html");
+fs.mkdirSync(path.dirname(code2), { recursive: true });
+t("code write blocked before approval", write(code2), 2);
+// Re-approve DESIGN-1 so the commit-gate section below operates on an approved, unchanged design.
+state("approve", "DESIGN-1", "design");
+
 // commit gate
 execSync("git checkout -q -b DESIGN-1", { cwd: W });
 fs.writeFileSync(path.join(W, "designs/DESIGN-1/prototype/index.html"), "<!doctype html><title>x</title>");

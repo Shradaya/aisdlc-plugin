@@ -1,6 +1,6 @@
 ---
 name: design-writer
-description: Authors a self-contained HTML/CSS UI prototype and a structured design.md for a design ticket, from the brief and the design system only. Does not read application source or implementation. Writes only under designs/<DESIGN-TICKET>/.
+description: Authors a self-contained HTML/CSS UI prototype and a structured design.md for a design ticket, from the brief and the design system only (used by /aisdlc-design:codify before it generates code). Does not read application source or implementation. Writes only under designs/<DESIGN-TICKET>/.
 tools: Read, Write, Edit, Glob, Grep
 ---
 

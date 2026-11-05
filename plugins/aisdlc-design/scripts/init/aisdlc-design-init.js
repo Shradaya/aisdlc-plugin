@@ -71,5 +71,5 @@ for (const [k, v] of Object.entries(report)) if (v.length) console.log(`${k} (${
 if (!dryRun && report.created.some((f) => f.startsWith("preview"))) {
   console.log("\nNext: cd preview && npm install && npm run dev  (needs Node 20+) to preview prototypes by ticket number.");
 }
-console.log("\nNext: copy claude.env.example to claude.env if you need machine paths; then /aisdlc-design:design <DESIGN-TICKET> to author a prototype.");
+console.log("\nNext: copy claude.env.example to claude.env if you need machine paths; then /aisdlc-design:codify <DESIGN-TICKET> to author a design and generate its code.");
 console.log("Author designs: start Claude Code in this folder, or set AISDLC_ROOT to it.");

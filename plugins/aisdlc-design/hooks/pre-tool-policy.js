@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // PreToolUse enforcement hook (design plugin). Mirrors the dev hook's layered gate, scoped to the design lifecycle:
-// prototype files under designs/<DESIGN-TICKET>/prototype/ are authored during drafting (DESIGN_BRIEF onward) and,
-// once the design is approved, are hash-pinned so any change after approval requires reapproval (through COMMITTED);
+// prototype files under designs/<DESIGN-TICKET>/prototype/ and generated code under designs/<DESIGN-TICKET>/code/ are
+// authored during drafting (DESIGN_BRIEF onward); the generated code is produced by /aisdlc-design:codify only after
+// approval, and once the design is approved both prototype/ and code/ are hash-pinned so any change after approval
+// requires reapproval (through COMMITTED);
 // commits must match '<DESIGN-TICKET>: <summary>' on branch <DESIGN-TICKET>, and the usual dangerous-op/secret blocks apply.
 // Reads the hook event JSON on stdin; exits 2 with a reason on stderr to block. No-op outside a design workspace.
 const fs = require("fs");
@@ -34,15 +36,21 @@ function designHash(id) {
   return fs.existsSync(f) ? "sha256:" + crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex") : null;
 }
 
-// May prototype files for design ticket <id> be written right now? Returns a block reason or null.
-function designWriteReason(id) {
+// May design files for ticket <id> be written right now? `kind` is "prototype" or "code". The prototype is drafted
+// during DESIGN_BRIEF..DESIGN_DRAFTED (pre-approval) and hash-pinned after approval. Generated code is produced by
+// /aisdlc-design:codify only AFTER approval, so it is blocked until DESIGN_APPROVED with an unchanged design hash.
+// Returns a block reason or null.
+function designWriteReason(id, kind = "prototype") {
   const t = activeTasks().find((x) => x.task.id === id);
   if (!t) return `No active aisdlc design task for '${id}'.`;
   const lc = TYPES[t.task.lifecycle || t.task.type] || TYPES.design;
   const st = lc.states, i = st.indexOf(t.task.status);
   if (i < st.indexOf(lc.source_edit_min_state) || i > st.indexOf(lc.source_edit_max_state))
-    return `Design task ${id} is in ${t.task.status}; prototype edits are not allowed in this state (allowed ${lc.source_edit_min_state}..${lc.source_edit_max_state}).`;
-  if (i < st.indexOf("DESIGN_APPROVED")) return null;
+    return `Design task ${id} is in ${t.task.status}; ${kind} edits are not allowed in this state (allowed ${lc.source_edit_min_state}..${lc.source_edit_max_state}).`;
+  // Prototype authoring is allowed before approval; generated code is not.
+  if (kind !== "code" && i < st.indexOf("DESIGN_APPROVED")) return null;
+  if (kind === "code" && i < st.indexOf("DESIGN_APPROVED"))
+    return `Design ${id} is not approved; generated code under designs/${id}/code/ may only be written after approval (run /aisdlc-design:codify and approve the design first).`;
   const a = t.approvals && t.approvals.design;
   if (!a || a.status !== "approved") return "Design has not been approved.";
   if (a.artifact_hash !== designHash(id)) return `Design for ${id} changed after approval; reapproval required.`;
@@ -66,10 +74,12 @@ if (["Write", "Edit", "NotebookEdit", "MultiEdit"].includes(tool)) {
   if (/\/tasks\/[^/]+\/task\.yaml$/.test(n)) block("task.yaml may only be changed through scripts/state/aisdlc-state.js.");
   if (/\/\.git\//.test(n + "/")) block(".git is protected.");
   if (/(^|\/)(credentials|secrets)\//.test(n) || /\.(pem|key)$/.test(n)) block("Protected path.");
-  // task.md artifacts (design.md, versions/*) are writable; prototype files under designs/<TICKET>/prototype/ follow the gate.
+  // task.md artifacts (design.md, versions/*) are writable; prototype files under designs/<TICKET>/prototype/ and
+  // generated code under designs/<TICKET>/code/ follow the gate (code is generated only after approval).
   const ticket = designTicketOf(n);
-  if (ticket && /\/designs\/[a-z][a-z0-9]*-\d+\/prototype\//.test(n)) {
-    const r = designWriteReason(ticket);
+  const folder = (n.match(/\/designs\/[a-z][a-z0-9]*-\d+\/(prototype|code)\//) || [])[1];
+  if (ticket && folder) {
+    const r = designWriteReason(ticket, folder);
     if (r) block(r);
   }
   process.exit(0);
@@ -109,13 +119,13 @@ if (tool === "Bash" || tool === "PowerShell") {
     if (branch !== m[1]) block(`Active aisdlc design task requires branch ${m[1]} (current: ${branch || "unknown"}).`);
   }
 
-  // shell writes into prototype folders follow the same gate as Write/Edit.
+  // shell writes into prototype or generated-code folders follow the same gate as Write/Edit.
   const isStateTool = /aisdlc-state\.js/.test(cmd);
   const writeish = /(>>?\s|sed\s+-i|set-content|add-content|out-file|\btee\b|new-item|copy-item|move-item|\bmv\b|\bcp\b)/i;
   if (!isStateTool && writeish.test(cmd)) {
     const lc = cmd.replace(/\\/g, "/");
-    for (const m of lc.matchAll(/designs\/([a-z][a-z0-9]*-\d+)\/prototype\//gi)) {
-      const r = designWriteReason(m[1].toUpperCase());
+    for (const m of lc.matchAll(/designs\/([a-z][a-z0-9]*-\d+)\/(prototype|code)\//gi)) {
+      const r = designWriteReason(m[1].toUpperCase(), m[2].toLowerCase());
       if (r) block(r);
     }
   }

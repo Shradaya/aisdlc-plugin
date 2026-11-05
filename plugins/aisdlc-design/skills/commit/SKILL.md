@@ -14,7 +14,7 @@ Publish an approved design: commit `designs/<DESIGN-TICKET>/` into the design re
 Explicit `/aisdlc-design:commit <DESIGN-TICKET>`. The task must be at DESIGN_APPROVED. Run inside the design workspace.
 
 ## Prerequisites
-- `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js get <DESIGN-TICKET>` shows DESIGN_APPROVED and `approvals.design.status` = `approved`. If not, stop and tell the designer to finish `/aisdlc-design:design <DESIGN-TICKET>` first.
+- `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js get <DESIGN-TICKET>` shows DESIGN_APPROVED and `approvals.design.status` = `approved`. If not, stop and tell the designer to finish `/aisdlc-design:codify <DESIGN-TICKET>` first.
 - The design workspace is a git repository with a `main` branch.
 
 ## Procedure

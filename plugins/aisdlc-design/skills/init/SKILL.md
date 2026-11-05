@@ -17,7 +17,7 @@ Explicit `/aisdlc-design:init [target-folder] [--only workspace|preview] [--dry-
 1. Run a preview: `node ${CLAUDE_PLUGIN_ROOT}/scripts/init/aisdlc-design-init.js $ARGUMENTS --dry-run`.
 2. Show what would be created, merged and skipped. If `--force` would overwrite files, confirm with AskUserQuestion first.
 3. Run the same command without `--dry-run`.
-4. Report the result and the next steps: run `cd preview && npm install && npm run dev` (Node 20+) for the preview app, fill in `design-system/{tokens,components,patterns}.md`, optionally set `AISDLC_DESIGN_SYSTEM` (and `AISDLC_DESIGN_SYSTEM_URL`) in `claude.env` to author against a Claude Design design system, then `/aisdlc-design:design <DESIGN-TICKET>` to author a prototype.
+4. Report the result and the next steps: run `cd preview && npm install && npm run dev` (Node 20+) for the preview app, fill in `design-system/{tokens,components,patterns}.md`, optionally set `AISDLC_DESIGN_SYSTEM` (and `AISDLC_DESIGN_SYSTEM_URL`) in `claude.env` to author against a Claude Design design system, then `/aisdlc-design:codify <DESIGN-TICKET>` to author a design and generate its code.
 
 ## What it creates (parts)
 - `workspace`: `config/repositories.yaml` (the marker that makes it a workspace), `design-system/{tokens,components,patterns}.md`, `designs/`, `tasks/`, `logs/`, `CLAUDE.md`, `claude.env.example`, `.gitignore`.

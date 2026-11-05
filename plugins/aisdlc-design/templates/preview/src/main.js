@@ -213,7 +213,7 @@ async function load() {
         ? `Folders in designs/: ${info.entries.join(", ")}. A ticket needs an .html file in designs/<TICKET>/prototype/ (or designs/<TICKET>/).`
         : `No ticket folders found in ${info.designsDir}.`;
       empty.innerHTML =
-        "<p>No prototypes detected. Author one with <code>/aisdlc-design:design &lt;DESIGN-TICKET&gt;</code>, then Refresh.<br><small>" +
+        "<p>No prototypes detected. Author one with <code>/aisdlc-design:codify &lt;DESIGN-TICKET&gt;</code>, then Refresh.<br><small>" +
         found +
         "</small></p>";
     }

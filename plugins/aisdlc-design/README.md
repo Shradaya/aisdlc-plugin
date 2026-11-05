@@ -39,8 +39,9 @@ The design plugin needs no tokens. If Jira is unavailable, the ticket details ar
 
 | Command | What it does |
 |---|---|
-| `/aisdlc-design:design <DESIGN-TICKET>` | Write the brief, then author the prototype in HTML/CSS (or in Claude Design, then export), version it, and ask for your approval. Resumes an existing task. |
+| `/aisdlc-design:codify <DESIGN-TICKET>` | Capture the brief, author a prototype, run your approval, then generate the requested front-end code (HTML/CSS or React JS) under `designs/<DESIGN-TICKET>/code/`. The design title is the ticket number. Resumes an existing task. |
 | `/aisdlc-design:commit <DESIGN-TICKET>` | Commit the approved design on branch `<DESIGN-TICKET>` as `<DESIGN-TICKET>: <summary>`, then guide the push |
+| `/aisdlc-design:comment <DESIGN-TICKET> <version>` | Upload that version's design files to the Jira ticket as attachments and post one comment (needs `jira.write.add_attachment`/`add_comment`) |
 | `/aisdlc-design:init` | Scaffold a design workspace and the preview app |
 
 ## Lifecycle and gates
@@ -51,18 +52,21 @@ The lifecycle contract is [`workflows/design.md`](workflows/design.md):
 
 What is enforced:
 
-- **Prototype edits.** Files under `designs/<T>/prototype/` can be written from DESIGN_BRIEF onward. After approval they are pinned to the approved `design.md` hash, so any change needs reapproval. The hook enforces this.
+- **Approval before code.** `/aisdlc-design:codify` generates the front-end code only after you approve the design. The hook blocks writes under `designs/<T>/code/` (and `designs/<T>/prototype/`) until the design is approved and `design.md` is unchanged since approval.
+- **Prototype and code edits.** Files under `designs/<T>/prototype/` and `designs/<T>/code/` can be written from DESIGN_BRIEF onward. After approval they are pinned to the approved `design.md` hash, so any change needs reapproval. The hook enforces this.
 - **Commits.** The state engine refuses COMMITTED without approval. Commits must be `<T>: <summary>` on branch `<T>`, and must never go to `main` or be force-pushed.
 - **Pinned versions.** A version snapshot that a feature ticket pins is never edited; a changed design becomes a new version.
+- **Jira publishing.** `/aisdlc-design:comment` writes to Jira only when `jira.write.add_attachment` and `jira.write.add_comment` are both enabled; it only attaches files and posts one comment.
 
-What a design produces:
+What codify produces:
 
 - `designs/<T>/design.md`: screens, states, copy, tokens, interactions and open questions.
-- `designs/<T>/prototype/`: self-contained HTML/CSS.
+- `designs/<T>/prototype/`: self-contained HTML/CSS (the reviewable, approved artifact).
+- `designs/<T>/code/<html|react>/v<N>/`: the generated front-end code for the approved version.
 - `designs/<T>/versions/v<N>/`: hashed snapshots.
 - `designs/<T>/children.yaml`: which feature tickets pin which version.
 
-Agent: `design-writer`. It authors from the brief and the design system only, never from application source.
+Agent: `design-writer`. It authors the prototype from the brief and the design system only, never from application source.
 
 ## Checks
 
