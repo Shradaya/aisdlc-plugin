@@ -1,0 +1,6 @@
+{
+  "name": "aisdlc-pm",
+  "version": "1.0.0",
+  "description": "AI-SDLC project-manager plugin (PM side): draft requirements and acceptance criteria for a ticket and write them into the Jira ticket as the source of truth. Approvals stay human-only.",
+  "author": { "name": "Evoke Medical Care" }
+}

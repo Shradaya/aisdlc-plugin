@@ -1,0 +1,18 @@
+# PM (project-manager) workspace configuration. JSON-compatible YAML; '#' comments only on their own lines.
+# "kind": "pm" marks this folder as an aisdlc PM workspace: the aisdlc-pm hooks enforce their gates here, and the
+# aisdlc-dev / aisdlc-design / aisdlc-qa hooks stay out of it when those plugins are installed too.
+{
+  "workspace": {
+    "kind": "pm",
+    "name": "pm-workspace",
+    "version": 1,
+    "task_root": "tasks",
+    "audit_log": "logs/audit.jsonl"
+  },
+  "git": {
+    "base_branch": "main",
+    "task_branch_format": "{ticket}",
+    "commit_format": "{ticket}: {summary}",
+    "allow_force_push": false
+  }
+}
