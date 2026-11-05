@@ -1,0 +1,7 @@
+# Design workspace marker (JSON-compatible YAML; full-line '#' comments only).
+# A design workspace does not register code repositories the way the dev workspace does; this file's presence
+# is what makes the folder an aisdlc workspace (resolved by the plugin's scripts/lib/root.js). The design folder
+# itself is the git repository the designer commits designs/<DESIGN-TICKET>/ into and pushes for developers.
+{
+  "repositories": {}
+}

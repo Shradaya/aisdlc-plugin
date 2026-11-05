@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AISDLC Plugins — User Guide</title>
+<style>
+  :root {
+    --pm: #6b4fbb; --design: #b84a8f; --dev: #2f6db0; --qa: #2e8b57;
+    --bg: #ffffff; --fg: #1d2128; --muted: #5b6472;
+    --line: #e3e7ec; --code: #f4f6f9; --accent: #2f6db0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font: 16px/1.6 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--fg); background: var(--bg);
+  }
+  header {
+    padding: 36px 40px 28px; border-bottom: 1px solid var(--line);
+    background: linear-gradient(135deg, #f7f5fc, #eef3f9);
+  }
+  header h1 { margin: 0 0 6px; font-size: 28px; }
+  header p { margin: 0; color: var(--muted); max-width: 70ch; }
+  .wrap { display: flex; gap: 32px; align-items: flex-start; }
+  nav {
+    position: sticky; top: 0; align-self: flex-start; flex: 0 0 240px;
+    padding: 24px 16px; max-height: 100vh; overflow: auto; border-right: 1px solid var(--line);
+    font-size: 14px;
+  }
+  nav a { display: block; padding: 4px 8px; color: var(--muted); text-decoration: none; border-radius: 6px; }
+  nav a:hover { background: var(--code); color: var(--fg); }
+  nav .grp { font-weight: 600; color: var(--fg); margin: 14px 0 4px; }
+  main { flex: 1 1 auto; padding: 24px 40px 80px; min-width: 0; max-width: 960px; }
+  h2 { font-size: 22px; margin: 36px 0 8px; padding-top: 8px; scroll-margin-top: 16px; }
+  h3 { font-size: 17px; margin: 22px 0 6px; scroll-margin-top: 16px; }
+  p, li { color: var(--fg); }
+  .lead { color: var(--muted); }
+  code, kbd {
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace; font-size: 0.88em;
+    background: var(--code); padding: 2px 6px; border-radius: 5px;
+  }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0 20px; font-size: 14.5px; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+  th { background: var(--code); font-weight: 600; }
+  td code { white-space: nowrap; }
+  .role-tag {
+    display: inline-block; padding: 2px 10px; border-radius: 999px; color: #fff;
+    font-size: 12px; font-weight: 600; letter-spacing: .3px; vertical-align: middle;
+  }
+  .pm { background: var(--pm); } .design { background: var(--design); }
+  .dev { background: var(--dev); } .qa { background: var(--qa); }
+  .pill { border-left: 4px solid var(--accent); background: #f7fafd; padding: 10px 16px; margin: 14px 0; border-radius: 0 8px 8px 0; }
+  .pill.pm { border-color: var(--pm); background: #f6f3fc; }
+  .pill.design { border-color: var(--design); background: #fbf2f7; }
+  .pill.dev { border-color: var(--dev); background: #f1f7fc; }
+  .pill.qa { border-color: var(--qa); background: #f0f8f3; }
+  .step { border: 1px solid var(--line); border-radius: 10px; padding: 16px 20px; margin: 16px 0; }
+  .step h3 { margin-top: 0; }
+  .step .who { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  .flowline { font-family: "SF Mono", Consolas, monospace; font-size: 13px; background: var(--code); padding: 14px 16px; border-radius: 8px; overflow-x: auto; }
+  .note { font-size: 14px; color: var(--muted); }
+  .warn { background: #fff7e6; border-left: 4px solid #d99a00; padding: 10px 16px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 14.5px; }
+  footer { border-top: 1px solid var(--line); padding: 20px 40px; color: var(--muted); font-size: 13px; }
+  @media (max-width: 820px) { .wrap { display: block; } nav { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--line); flex-basis: auto; } main { padding: 20px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>AISDLC Plugins — User Guide</h1>
+  <p>How the Project Manager, Designer, Developer and QA roles use the aisdlc Claude Code plugins to carry one ticket from a requirement all the way to production. The plugins talk to the AISDLC server, which is the shared source of truth; approvals are always made by a person in the server web UI, never by an agent.</p>
+</header>
+
+<div class="wrap">
+<nav>
+  <div class="grp">Getting started</div>
+  <a href="#concepts">Key concepts</a>
+  <a href="#common">Commands every role shares</a>
+  <div class="grp">Skills by role</div>
+  <a href="#pm">Project Manager</a>
+  <a href="#design">Designer</a>
+  <a href="#dev">Developer</a>
+  <a href="#qa">QA</a>
+  <div class="grp">End-to-end flow</div>
+  <a href="#flow">The whole journey</a>
+  <a href="#flow-pm">1. PM</a>
+  <a href="#flow-design">2. Design</a>
+  <a href="#flow-dev">3. Dev → QA env</a>
+  <a href="#flow-qa">4. QA</a>
+  <a href="#flow-uat">5. UAT &amp; regression</a>
+  <a href="#flow-prod">6. Production</a>
+  <a href="#defect">Defect loop</a>
+</nav>
+
+<main>
+
+<h2 id="concepts">Key concepts</h2>
+<p class="lead">A few ideas make the rest of the guide easy to follow.</p>
+<ul>
+  <li><b>One ticket, one flow.</b> A ticket moves PM → (Design) → Dev → QA environment → QA → UAT → QA regression → Production. Each phase is owned by one role, and only that role can move the ticket out of it.</li>
+  <li><b>The server is the knowledge base.</b> You <code>push</code> your files to it and <code>pull</code> other roles' files from it. Each role only pushes and pulls its own files.</li>
+  <li><b>Approvals are human-only.</b> Gate approvals (acceptance criteria, design, specification, plan, scenarios, sign-off, regression) are made by a person in the server web UI. No plugin command and no agent can approve.</li>
+  <li><b>Automatic state sync.</b> When you <code>push</code> a ticket without naming a target, the server reads your local state and moves the ticket as far as your role and the approvals allow — then stops at the next gate or hand-off and tells you why.</li>
+  <li><b>Secrets stay local.</b> Jira and server credentials come only from environment variables. The plugins never print, store or push them.</li>
+</ul>
+
+<h2 id="common">Commands every role shares</h2>
+<p class="lead">All four plugins expose the same server commands, worded for that role. Replace <code>&lt;role&gt;</code> with <code>pm</code>, <code>design</code>, <code>dev</code> or <code>qa</code>.</p>
+<table>
+  <tr><th>Skill</th><th>What it does</th></tr>
+  <tr><td><code>/aisdlc-&lt;role&gt;:init</code></td><td>Scaffold a local workspace for this role (folders, config, CLAUDE.md).</td></tr>
+  <tr><td><code>/aisdlc-&lt;role&gt;:server</code></td><td>Link the workspace to the AISDLC server, log in, and download this role's workspace files with <code>init --project</code>.</td></tr>
+  <tr><td><code>/aisdlc-&lt;role&gt;:pull</code></td><td>Fetch a ticket's files and its current phase (<code>pull &lt;TICKET&gt;</code>), or refresh workspace knowledge (<code>pull plugin</code>).</td></tr>
+  <tr><td><code>/aisdlc-&lt;role&gt;:push</code></td><td>Send this role's files for a ticket and let the server advance its state (<code>push &lt;TICKET&gt;</code>); <code>push *</code> for all; <code>push plugin</code> for workspace knowledge.</td></tr>
+</table>
+<p class="note">The developer and QA plugins also have a <code>waiting</code> skill — <code>/aisdlc-dev:waiting</code> and <code>/aisdlc-qa:waiting</code> — that lists the tickets currently sitting in a phase your role owns. The PM plugin has the same, <code>/aisdlc-pm:waiting</code>.</p>
+
+<!-- ================= PM ================= -->
+<h2 id="pm"><span class="role-tag pm">PM</span> Project Manager skills</h2>
+<p class="lead">The PM turns a Jira issue into clear requirements and acceptance criteria, writes them back to Jira, and hands the ticket to design or development.</p>
+<table>
+  <tr><th>Skill</th><th>When to use it</th></tr>
+  <tr><td><code>/aisdlc-pm:init</code></td><td>First-time setup of a PM workspace.</td></tr>
+  <tr><td><code>/aisdlc-pm:server</code></td><td>Link the workspace to the server and log in.</td></tr>
+  <tr><td><code>/aisdlc-pm:ticket-new</code></td><td>Create a ticket on the server for a Jira key (PM or admin only), with a preview before it is created.</td></tr>
+  <tr><td><code>/aisdlc-pm:requirements</code></td><td>Draft <code>requirements.md</code> from the Jira issue or a pasted brief, asking you about every gap.</td></tr>
+  <tr><td><code>/aisdlc-pm:acceptance-criteria</code></td><td>Draft numbered acceptance criteria (AC1…ACn, Given/When/Then) from the requirements. The numbering stays stable because QA builds its scenarios from it.</td></tr>
+  <tr><td><code>/aisdlc-pm:jira-sync</code></td><td>Write the requirements and acceptance criteria into the Jira description, inside a marked block, after a preview, a diff and your explicit confirmation. Supports a dry run and makes a backup first.</td></tr>
+  <tr><td><code>/aisdlc-pm:push</code> / <code>pull</code></td><td>Send <code>requirements.md</code> and <code>acceptance-criteria.md</code> to the server; fetch a ticket's files.</td></tr>
+  <tr><td><code>/aisdlc-pm:handoff</code></td><td>After a human approves the acceptance criteria in the web UI, move the ticket to design or to development. Never approves.</td></tr>
+  <tr><td><code>/aisdlc-pm:refine</code></td><td>Handle a ticket a developer or designer sent back, or a changed Jira issue, and revise the requirements and criteria.</td></tr>
+  <tr><td><code>/aisdlc-pm:waiting</code></td><td>Show the tickets waiting on the PM.</td></tr>
+</table>
+
+<!-- ================= Design ================= -->
+<h2 id="design"><span class="role-tag design">Design</span> Designer skills</h2>
+<p class="lead">The designer authors a UI/UX prototype for a design ticket and hands the approved design to development. The design block is optional; a ticket can skip straight to development.</p>
+<table>
+  <tr><th>Skill</th><th>When to use it</th></tr>
+  <tr><td><code>/aisdlc-design:init</code></td><td>Set up a design workspace, including the preview web app.</td></tr>
+  <tr><td><code>/aisdlc-design:server</code></td><td>Link to the server and log in.</td></tr>
+  <tr><td><code>/aisdlc-design:design</code></td><td>Author the prototype (HTML/CSS directly, or Claude Design then export), produce <code>design.md</code> plus a self-contained prototype, version and hash it, and run the designer's review.</td></tr>
+  <tr><td><code>/aisdlc-design:commit</code></td><td>Commit the approved design to the design repository and guide the push so developers can consume it.</td></tr>
+  <tr><td><code>/aisdlc-design:push</code> / <code>pull</code></td><td>Send the ticket's design files to the server; fetch the requirements and acceptance criteria the PM wrote.</td></tr>
+</table>
+
+<!-- ================= Dev ================= -->
+<h2 id="dev"><span class="role-tag dev">Dev</span> Developer skills</h2>
+<p class="lead">The largest plugin. The core path is <code>feature</code>; the rest are the individual stages and the specialised workflows. Only the skills a user runs directly are listed as commands; many are stages the <code>feature</code> workflow calls for you.</p>
+
+<h3>Start and overview</h3>
+<table>
+  <tr><th>Skill</th><th>When to use it</th></tr>
+  <tr><td><code>/aisdlc-dev:init</code> / <code>:server</code></td><td>Set up the workspace and link it to the server.</td></tr>
+  <tr><td><code>/aisdlc-dev:feature</code></td><td>The primary feature workflow — from the server's requirements through specification, implementation, review, commit, PR, CI and the release hand-offs, up to post-release.</td></tr>
+  <tr><td><code>/aisdlc-dev:status</code> / <code>:status-page</code></td><td>Read-only local overview of tasks, repositories and approvals. (The server web UI now shows the same lifecycle, approvals and documents.)</td></tr>
+  <tr><td><code>/aisdlc-dev:waiting</code></td><td>List tickets waiting on the developer and what to do next.</td></tr>
+  <tr><td><code>/aisdlc-dev:resume</code></td><td>Resume an interrupted or failed task from the first safe state.</td></tr>
+</table>
+
+<h3>Other task types</h3>
+<table>
+  <tr><th>Skill</th><th>When to use it</th></tr>
+  <tr><td><code>/aisdlc-dev:bug</code></td><td>Bug workflow — reproduce, confirm root cause, minimal fix with a regression test, no feature-sized spec.</td></tr>
+  <tr><td><code>/aisdlc-dev:investigate</code></td><td>Read-only investigation; never modifies source.</td></tr>
+  <tr><td><code>/aisdlc-dev:refactor</code>, <code>:api-change</code>, <code>:database-change</code>, <code>:dependency-upgrade</code>, <code>:documentation</code></td><td>Specialised workflows that reuse the feature stages for those kinds of change.</td></tr>
+</table>
+
+<h3>Knowledge, analysis and design</h3>
+<table>
+  <tr><th>Skill</th><th>When to use it</th></tr>
+  <tr><td><code>/aisdlc-dev:add-repo</code>, <code>:refresh-repo</code>, <code>:remove-repo</code></td><td>Register, refresh or unregister a repository and its knowledge package.</td></tr>
+  <tr><td><code>/aisdlc-dev:impact-analysis</code></td><td>Identify affected repositories and domains before implementation.</td></tr>
+  <tr><td><code>/aisdlc-dev:cross-repo-trace</code></td><td>Trace a shared contract across every repository before editing — mandatory for multi-repo changes.</td></tr>
+  <tr><td><code>/aisdlc-dev:design-link</code></td><td>Read the approved design for a design ticket and pin it into the specification.</td></tr>
+  <tr><td><code>/aisdlc-dev:adr</code></td><td>Write an Architecture Decision Record when boundaries, data ownership or integration patterns change.</td></tr>
+</table>
+
+<h3>Specification, build and review</h3>
+<table>
+  <tr><th>Skill</th><th>When to use it</th></tr>
+  <tr><td><code>/aisdlc-dev:feature-specification</code></td><td>Produce <code>specification.md</code> and run the human approval checkpoint — the hard gate before implementation.</td></tr>
+  <tr><td><code>/aisdlc-dev:approve</code> / <code>:reject</code></td><td>Record a human approval or rejection of the specification or plan gate (local; the server gate is still approved in the web UI).</td></tr>
+  <tr><td><code>/aisdlc-dev:repository-preparation</code></td><td>Prepare each repository and create the ticket branch.</td></tr>
+  <tr><td><code>/aisdlc-dev:testing</code></td><td>Write and run black-box tests from the approved specification; record validation evidence.</td></tr>
+  <tr><td><code>/aisdlc-dev:code-review</code></td><td>Independent review of the implementation against the specification.</td></tr>
+  <tr><td><code>/aisdlc-dev:commit</code></td><td>Create a compliant commit on the task branch.</td></tr>
+</table>
+
+<h3>Pull requests, release and close-out</h3>
+<table>
+  <tr><th>Skill</th><th>When to use it</th></tr>
+  <tr><td><code>/aisdlc-dev:create-pr</code></td><td>Open PRs from the task branch to <code>lf-develop</code>, <code>lf-qa</code> and <code>lf-uat</code> in every affected repository.</td></tr>
+  <tr><td><code>/aisdlc-dev:promote</code></td><td>When a target branch won't merge cleanly, build the ticket's environment branch, resolve conflicts and open the PR from it.</td></tr>
+  <tr><td><code>/aisdlc-dev:release</code></td><td>Record a release and move the ticket on — <code>qa</code> (merged to lf-qa = released to the QA environment), <code>uat</code> (merged to lf-uat), or <code>prod</code> (production released) — then push the new state to the server.</td></tr>
+  <tr><td><code>/aisdlc-dev:fix-defect</code></td><td>Take a ticket back to development after QA found a defect or the UAT regression failed; fix with a regression test and hand it back to QA.</td></tr>
+  <tr><td><code>/aisdlc-dev:sync-main</code></td><td>After a release, merge <code>main</code> back into the environment branches.</td></tr>
+  <tr><td><code>/aisdlc-dev:post-release</code></td><td>After production release, verify, consolidate product knowledge and clean up temporary task artifacts.</td></tr>
+  <tr><td><code>/aisdlc-dev:product-knowledge-consolidation</code></td><td>Turn a released feature's task knowledge into durable product docs under <code>system/product/</code>.</td></tr>
+  <tr><td><code>/aisdlc-dev:finish</code></td><td>The final completion gate — mark the task COMPLETED.</td></tr>
+  <tr><td><code>/aisdlc-dev:pr-review</code></td><td>Review someone's PR; never approves, merges or edits code.</td></tr>
+</table>
+
+<!-- ================= QA ================= -->
+<h2 id="qa"><span class="role-tag qa">QA</span> QA skills</h2>
+<p class="lead">QA tests the feature in the QA environment, runs the regression on UAT, and keeps the evidence and Playwright tests.</p>
+<table>
+  <tr><th>Skill</th><th>When to use it</th></tr>
+  <tr><td><code>/aisdlc-qa:init</code> / <code>:server</code></td><td>Set up the QA workspace and Playwright test repository, and link to the server.</td></tr>
+  <tr><td><code>/aisdlc-qa:add-env</code></td><td>Add or change a test environment (qa, uat, …) or block a production host.</td></tr>
+  <tr><td><code>/aisdlc-qa:jira-ticket</code></td><td>Retrieve the Jira ticket with numbered acceptance criteria and a snapshot hash.</td></tr>
+  <tr><td><code>/aisdlc-qa:test</code></td><td>The main QA workflow for one ticket — draft scenarios from the acceptance criteria for you to approve, generate Playwright tests, run them, triage failures, report defects, re-verify and get the sign-off.</td></tr>
+  <tr><td><code>/aisdlc-qa:run</code></td><td>Run a ticket's Playwright tests in a visible browser and collect evidence; also used to re-verify a fix and to run the UAT regression.</td></tr>
+  <tr><td><code>/aisdlc-qa:check</code></td><td>Quick ad-hoc check without a Jira ticket; never production.</td></tr>
+  <tr><td><code>/aisdlc-qa:publish</code></td><td>Attach the evidence and post the results comment to the Jira ticket.</td></tr>
+  <tr><td><code>/aisdlc-qa:commit</code></td><td>Commit a signed-off ticket's tests and scenarios to the QA test repository so they join the regression suite.</td></tr>
+  <tr><td><code>/aisdlc-qa:push</code> / <code>pull</code></td><td>Send the ticket's QA files (scenarios, results, regression results, evidence) to the server; fetch the acceptance criteria.</td></tr>
+  <tr><td><code>/aisdlc-qa:status</code> / <code>:status-page</code> / <code>:waiting</code></td><td>Overviews of QA tickets, runs and what is waiting on QA.</td></tr>
+</table>
+
+<!-- ================= FLOW ================= -->
+<h2 id="flow">The whole journey</h2>
+<p class="lead">One ticket, from a requirement to production, with the skills each role runs at each step. Approvals happen in the server web UI between the steps.</p>
+<div class="flowline">
+PM &rarr; (Design) &rarr; Dev &rarr; <b>release to QA env</b> &rarr; QA &rarr; <b>release to UAT</b> &rarr; QA regression &rarr; <b>production</b>
+</div>
+
+<h3 id="flow-pm"><span class="role-tag pm">PM</span> 1. Requirements &amp; acceptance criteria</h3>
+<div class="step">
+  <div class="who">Server phases: REQUIREMENT_GATHERING → ACCEPTANCE_CRITERIA_DEFINED</div>
+  <ol>
+    <li>Create the ticket for the Jira key — <code>/aisdlc-pm:ticket-new</code>.</li>
+    <li>Draft the requirements — <code>/aisdlc-pm:requirements</code>.</li>
+    <li>Draft the numbered acceptance criteria — <code>/aisdlc-pm:acceptance-criteria</code>.</li>
+    <li>Write them back into the Jira description — <code>/aisdlc-pm:jira-sync</code>.</li>
+    <li>Send them to the server — <code>/aisdlc-pm:push &lt;TICKET&gt;</code>.</li>
+    <li><b>A person approves the acceptance criteria in the web UI.</b></li>
+    <li>Hand off to design or development — <code>/aisdlc-pm:handoff</code>.</li>
+  </ol>
+</div>
+
+<h3 id="flow-design"><span class="role-tag design">Design</span> 2. Prototype (optional)</h3>
+<div class="step">
+  <div class="who">Server phases: DESIGN_BRIEF → … → DESIGN_COMMITTED, then back to TICKET_READY for dev</div>
+  <ol>
+    <li>Fetch the requirements and acceptance criteria — <code>/aisdlc-design:pull &lt;TICKET&gt;</code>.</li>
+    <li>Author the prototype and <code>design.md</code> — <code>/aisdlc-design:design</code>.</li>
+    <li><b>A person approves the design in the web UI.</b></li>
+    <li>Commit and hand off the approved design — <code>/aisdlc-design:commit</code>, then <code>/aisdlc-design:push &lt;TICKET&gt;</code>. The ticket returns to development as TICKET_READY.</li>
+  </ol>
+</div>
+
+<h3 id="flow-dev"><span class="role-tag dev">Dev</span> 3. Build and release to the QA environment</h3>
+<div class="step">
+  <div class="who">Server phases: TICKET_READY → … → PR_CREATED → RELEASED_TO_QA</div>
+  <ol>
+    <li>Pick up the ticket — <code>/aisdlc-dev:waiting</code>, then <code>/aisdlc-dev:pull &lt;TICKET&gt;</code> to get the requirements, criteria and design.</li>
+    <li>Run the feature workflow — <code>/aisdlc-dev:feature</code>. It walks through impact analysis, the specification (with a human approval gate), implementation, tests, review and the commit.</li>
+    <li>Open the pull requests — <code>/aisdlc-dev:create-pr</code> (use <code>/aisdlc-dev:promote</code> if a branch won't merge cleanly).</li>
+    <li>Release to the QA environment once the PR is merged into <code>lf-qa</code> — <code>/aisdlc-dev:release qa</code>. This moves the ticket to RELEASED_TO_QA and hands it to QA.</li>
+  </ol>
+</div>
+
+<h3 id="flow-qa"><span class="role-tag qa">QA</span> 4. Test in the QA environment</h3>
+<div class="step">
+  <div class="who">Server phases: ENVIRONMENT_READY → … → QA_COMMITTED</div>
+  <ol>
+    <li>Pick up the ticket — <code>/aisdlc-qa:waiting</code>, then <code>/aisdlc-qa:pull &lt;TICKET&gt;</code> for the acceptance criteria.</li>
+    <li>Run the QA workflow — <code>/aisdlc-qa:test</code>. It drafts scenarios from the criteria for you to approve, generates Playwright tests, and runs them with <code>/aisdlc-qa:run</code>.</li>
+    <li><b>A person approves the scenarios and, at the end, signs off the results in the web UI.</b></li>
+    <li>Publish evidence to Jira — <code>/aisdlc-qa:publish</code> — and commit the tests to the regression suite — <code>/aisdlc-qa:commit</code>.</li>
+    <li>Send QA's files to the server — <code>/aisdlc-qa:push &lt;TICKET&gt;</code>. QA passing hands the ticket back to dev as QA_PASSED.</li>
+  </ol>
+</div>
+
+<h3 id="flow-uat"><span class="role-tag dev">Dev</span> <span class="role-tag qa">QA</span> 5. Release to UAT &amp; regression</h3>
+<div class="step">
+  <div class="who">Server phases: QA_PASSED → RELEASED_TO_UAT → QA_REGRESSION → REGRESSION_PASSED</div>
+  <ol>
+    <li><b>Dev</b> releases to UAT once the PR is merged into <code>lf-uat</code> — <code>/aisdlc-dev:release uat</code>. The ticket becomes RELEASED_TO_UAT and goes to QA.</li>
+    <li><b>QA</b> runs the regression suite on UAT — <code>/aisdlc-qa:run</code> against the <code>uat</code> environment — and produces <code>regression-results.md</code>, then <code>/aisdlc-qa:push &lt;TICKET&gt;</code>.</li>
+    <li><b>A person approves the regression in the web UI.</b> The ticket becomes REGRESSION_PASSED and returns to dev.</li>
+  </ol>
+</div>
+
+<h3 id="flow-prod"><span class="role-tag dev">Dev</span> 6. Production &amp; close-out</h3>
+<div class="step">
+  <div class="who">Server phases: REGRESSION_PASSED → PROD_RELEASE → KNOWLEDGE_CONSOLIDATED → COMPLETED</div>
+  <ol>
+    <li>Release to production — <code>/aisdlc-dev:release prod</code>.</li>
+    <li>Bring <code>main</code> back into the environment branches — <code>/aisdlc-dev:sync-main</code>.</li>
+    <li>Verify the release and consolidate the knowledge — <code>/aisdlc-dev:post-release</code> (which runs <code>product-knowledge-consolidation</code>).</li>
+    <li>Close the ticket — <code>/aisdlc-dev:finish</code>.</li>
+  </ol>
+</div>
+
+<h3 id="defect">The defect loop</h3>
+<div class="pill qa">
+  If QA finds a defect in the QA environment (phase <b>AWAITING_DEV_FIX</b>) or the UAT regression fails, the ticket goes back to the developer. The developer runs <code>/aisdlc-dev:fix-defect</code> to return the task to implementation, fix it with a regression test, re-open the PR to the same environment branch and hand it back to QA with <code>/aisdlc-dev:release qa</code> (or <code>uat</code>). QA re-verifies with <code>/aisdlc-qa:run</code>.
+</div>
+
+<div class="warn">
+  <b>Approvals are never automated.</b> Every gate — acceptance criteria, design, specification, plan, scenarios, results sign-off, regression — is approved by a person in the server web UI. When you <code>push</code> a ticket, the server advances it only as far as the approved gates allow and then stops, telling you which approval it is waiting on.
+</div>
+
+</main>
+</div>
+
+<footer>
+  AISDLC plugins user guide. Plugins: aisdlc-pm, aisdlc-design, aisdlc-dev, aisdlc-qa. Generated for the plugin-v2 workspace. Skill names and descriptions are taken from each plugin's SKILL.md files.
+</footer>
+</body>
+</html>

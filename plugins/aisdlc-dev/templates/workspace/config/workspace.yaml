@@ -1,0 +1,62 @@
+# Workspace configuration (spec §53). JSON-compatible YAML; '#' comments only on their own lines.
+# "real_systems": commands that touch a real database, queue, cloud account or external service. The hook never
+# blocks these; it asks the developer to confirm first, showing "reason". "command" is a glob matched against the
+# whole simple command with single spaces between words (npm run seed* matches npm run seed:prod -- --force);
+# "repo" (optional) limits the rule to commands run inside that registered repository.
+# "data": what the project's repositories handle. "sensitivity" is none, pii, phi or financial: anything but none
+# makes the security review mandatory and adds that sensitivity's checklist (config/sensitivity/<name>.md; a file of
+# that name in this workspace's config/ replaces the plugin's). "data_files" are extensions that hold such data; a
+# review lists the ones a change adds so they can be checked for real data (names only, never contents).
+{
+  "workspace": {
+    "name": "company-ai-sdlc",
+    "version": 1,
+    "developer_mode": "interactive",
+    "base_branch_policy": "main",
+    "task_root": "tasks",
+    "repository_root": "repositories",
+    "system_root": "system",
+    "audit_log": "logs/audit.jsonl"
+  },
+  "integrations": {
+    "jira": {
+      "required_for_ticket_fetch": false,
+      "adapter": "rest-api"
+    },
+    "git_hosting": {
+      "provider": "configured-per-environment"
+    },
+    "ci": {
+      "provider": "configured-per-environment"
+    }
+  },
+  "git": {
+    "base_branch": "main",
+    "task_branch_format": "{ticket}",
+    "commit_format": "{ticket}: {summary}",
+    "include_untracked_in_stash": true,
+    "auto_pop_stash": false,
+    "allow_force_push": false
+  },
+  "data": {
+    "sensitivity": "none",
+    "data_files": []
+  },
+  "approvals": {
+    "feature_specification": "required",
+    "major_feature_plan": "required",
+    "merge": "human-controlled",
+    "production_deployment": "disabled"
+  },
+  "autonomy": {
+    "repository_read": "allowed",
+    "repository_write_after_gate": "allowed",
+    "commit": "workflow-controlled",
+    "push": "policy-controlled",
+    "create_pr": "policy-controlled",
+    "production_write": "disabled"
+  },
+  "real_systems": [
+    { "command": "npm run seed*", "reason": "Seeds write to whatever database the configured secret points at." }
+  ]
+}

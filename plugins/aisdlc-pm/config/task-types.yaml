@@ -1,0 +1,53 @@
+# PM (project-manager) task type and state machine. Consumed by the pm plugin's scripts/state/aisdlc-state.js and hooks.
+# JSON-compatible YAML (full-line '#' comments only) so scripts parse it without dependencies.
+#
+# The PM lifecycle has NO local approval gate: "gates" is an explicitly empty map {}. The single approval of the
+# acceptance criteria is the SERVER gate "acceptance_criteria", decided by a human in the AISDLC web UI/API. An empty
+# (truthy) gate map makes the state engine's init create an empty approvals object and leaves approve/reject with no
+# valid gate (they exit non-zero). This plugin has no approve command anywhere.
+#
+# States map 1:1 onto the server phases the PM owns (plugin-map "pm"): CREATED and COMPLETED move nothing (null);
+# REQUIREMENT_GATHERING and ACCEPTANCE_CRITERIA_DEFINED carry the same name; HANDED_OFF_TO_DESIGN -> DESIGN_BRIEF and
+# HANDED_OFF_TO_DEV -> TICKET_READY on the server.
+#
+# Rework (skip edges below): the server only moves the ticket back from UNDERSTOOD onward (a dev/design back-transition).
+# A local rework from HANDED_OFF_TO_DESIGN / HANDED_OFF_TO_DEV / COMPLETED to a PM-owned state only unlocks editing the
+# artifacts again (6.3 gate); on the next push the server reports what it can: an ACCEPTANCE_CRITERIA_DEFINED target is a
+# no-op (server already there) and a REQUIREMENT_GATHERING target is an expected ILLEGAL_TRANSITION stop (the server has
+# no backTo there). Deliberately absent: ACCEPTANCE_CRITERIA_DEFINED -> REQUIREMENT_GATHERING, which would stop with
+# ILLEGAL_TRANSITION on every push; to revise ACs the PM edits the file in place and re-pushes (the server marks the
+# gate stale and a human re-approves).
+{
+  "pm": {
+    "states": ["CREATED","REQUIREMENT_GATHERING","ACCEPTANCE_CRITERIA_DEFINED","HANDED_OFF_TO_DESIGN","HANDED_OFF_TO_DEV","COMPLETED"],
+    "skip": {
+      "ACCEPTANCE_CRITERIA_DEFINED": ["HANDED_OFF_TO_DEV"],
+      "HANDED_OFF_TO_DESIGN": ["COMPLETED","REQUIREMENT_GATHERING","ACCEPTANCE_CRITERIA_DEFINED"],
+      "HANDED_OFF_TO_DEV": ["REQUIREMENT_GATHERING","ACCEPTANCE_CRITERIA_DEFINED"],
+      "COMPLETED": ["REQUIREMENT_GATHERING","ACCEPTANCE_CRITERIA_DEFINED"]
+    },
+    "source_edit_min_state": "REQUIREMENT_GATHERING",
+    "source_edit_max_state": "ACCEPTANCE_CRITERIA_DEFINED",
+    "gates": {}
+  },
+  "failure_states": ["BLOCKED","WAITING_FOR_INPUT","WAITING_FOR_APPROVAL","CONFLICTED","FAILED","CANCELLED"],
+  "other_types_use": "pm",
+  "next_steps": {
+    "default": {
+      "CREATED": ["claude", "Load the Jira ticket for {T} (or ask for a brief) with /aisdlc-pm:requirements {T}."],
+      "REQUIREMENT_GATHERING": ["claude", "Draft tasks/{T}/requirements.md and tasks/{T}/acceptance-criteria.md; ask the PM about gaps."],
+      "ACCEPTANCE_CRITERIA_DEFINED": ["you", "Review the files, /aisdlc-pm:push {T}, then approve the acceptance criteria in the AISDLC web UI (this plugin never approves). Optionally /aisdlc-pm:jira-sync {T}. Then /aisdlc-pm:handoff {T} dev|design."],
+      "HANDED_OFF_TO_DESIGN": ["you", "The designer owns {T} now. Nothing to do until design hands it to development; mark COMPLETED once development has it."],
+      "HANDED_OFF_TO_DEV": ["you", "Development owns {T}. If it is sent back, /aisdlc-pm:pull {T} and move to ACCEPTANCE_CRITERIA_DEFINED or REQUIREMENT_GATHERING; otherwise mark COMPLETED."],
+      "COMPLETED": ["none", "Nothing further for the PM. If the ticket is sent back, /aisdlc-pm:refine {T} (it moves the task back to ACCEPTANCE_CRITERIA_DEFINED or REQUIREMENT_GATHERING)."]
+    },
+    "failure": {
+      "BLOCKED": ["you", "Read the reason (tasks/{T}/task.yaml 'reason'), fix the cause, then resume."],
+      "WAITING_FOR_INPUT": ["you", "Answer the open questions, then resume."],
+      "WAITING_FOR_APPROVAL": ["you", "Approve the acceptance criteria in the AISDLC web UI, then resume."],
+      "CONFLICTED": ["you", "The task state differs from the record. Inspect by hand, resolve, then resume."],
+      "FAILED": ["you", "Read the failure in the log, fix the cause, then resume."],
+      "CANCELLED": ["none", "The PM task was cancelled."]
+    }
+  }
+}

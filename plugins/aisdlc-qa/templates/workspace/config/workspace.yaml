@@ -1,0 +1,18 @@
+# QA workspace configuration. JSON-compatible YAML; '#' comments only on their own lines.
+# "kind": "qa" marks this folder as an aisdlc QA workspace: the aisdlc-qa hooks enforce their gates here, and the
+# aisdlc-dev / aisdlc-design hooks stay out of it when those plugins are installed too.
+{
+  "workspace": {
+    "kind": "qa",
+    "name": "qa-workspace",
+    "version": 1,
+    "task_root": "tasks",
+    "audit_log": "logs/audit.jsonl"
+  },
+  "git": {
+    "base_branch": "main",
+    "task_branch_format": "{ticket}",
+    "commit_format": "{ticket}: {summary}",
+    "allow_force_push": false
+  }
+}

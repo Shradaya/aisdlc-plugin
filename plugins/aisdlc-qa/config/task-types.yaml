@@ -1,0 +1,88 @@
+# QA task type and state machine. Consumed by the QA plugin's scripts/state/aisdlc-state.js and hooks.
+# JSON-compatible YAML (full-line '#' comments only) so scripts parse it without dependencies.
+# "gates", "requires_approval" and "requires_no_open" are the state engine's config-driven gates:
+#   scenarios  pins tasks/<T>/scenarios.md (the QA-approved scenario list)
+#   signoff    pins tasks/<T>/results.md   (the QA-signed-off results)
+# "skip" also carries the backward loops: request changes, heal, re-verify after a developer fix, re-run.
+{
+  "qa": {
+    "states": ["CREATED","TICKET_READY","ENVIRONMENT_READY","SCENARIOS_DRAFTED","AWAITING_SCENARIO_APPROVAL","SCENARIOS_APPROVED","TESTS_GENERATED","TESTS_EXECUTED","AWAITING_DEV_FIX","AWAITING_RESULTS_SIGNOFF","RESULTS_SIGNED_OFF","EVIDENCE_PUBLISHED","COMMITTED","AWAITING_UAT_RELEASE","REGRESSION_EXECUTED","REGRESSION_SIGNED_OFF","COMPLETED"],
+    "skip": {
+      "AWAITING_SCENARIO_APPROVAL": ["SCENARIOS_DRAFTED"],
+      "SCENARIOS_APPROVED": ["SCENARIOS_DRAFTED"],
+      "TESTS_GENERATED": ["SCENARIOS_DRAFTED"],
+      "TESTS_EXECUTED": ["TESTS_GENERATED","AWAITING_RESULTS_SIGNOFF","SCENARIOS_DRAFTED"],
+      "AWAITING_DEV_FIX": ["TESTS_EXECUTED","SCENARIOS_DRAFTED"],
+      "AWAITING_RESULTS_SIGNOFF": ["TESTS_EXECUTED","SCENARIOS_DRAFTED"],
+      "RESULTS_SIGNED_OFF": ["COMMITTED","SCENARIOS_DRAFTED"],
+      "COMMITTED": ["COMPLETED"],
+      "REGRESSION_EXECUTED": ["AWAITING_UAT_RELEASE"]
+    },
+    "source_edit_min_state": "SCENARIOS_APPROVED",
+    "source_edit_max_state": "COMMITTED",
+    "gates": {
+      "scenarios": {
+        "artifact": "scenarios.md",
+        "on_approve": "Next (Claude): move {T} to SCENARIOS_APPROVED, then generate the Playwright tests from the approved scenarios.",
+        "on_reject": "Next (You): tell Claude what to change in the scenarios; Claude revises tasks/{T}/scenarios.md and asks again."
+      },
+      "signoff": {
+        "artifact": "results.md",
+        "on_approve": "Next (Claude): move {T} to RESULTS_SIGNED_OFF, then attach the evidence to Jira with /aisdlc-qa:publish {T}.",
+        "on_reject": "Next (You): tell Claude what is wrong with the results; re-run with /aisdlc-qa:run {T} if needed."
+      },
+      "regression": {
+        "artifact": "regression-results.md",
+        "on_approve": "Next (Claude): move {T} to REGRESSION_SIGNED_OFF and /aisdlc-qa:push {T}; development can release to production.",
+        "on_reject": "Next (You): report the regression failures to development; re-run the regression on UAT after the fix."
+      }
+    },
+    "requires_approval": {
+      "SCENARIOS_APPROVED": "scenarios",
+      "TESTS_GENERATED": "scenarios",
+      "TESTS_EXECUTED": "scenarios",
+      "RESULTS_SIGNED_OFF": ["scenarios", "signoff"],
+      "EVIDENCE_PUBLISHED": "signoff",
+      "COMMITTED": ["scenarios", "signoff"],
+      "REGRESSION_SIGNED_OFF": "regression"
+    },
+    "requires_no_open": {
+      "AWAITING_RESULTS_SIGNOFF": "defects",
+      "RESULTS_SIGNED_OFF": "defects",
+      "REGRESSION_SIGNED_OFF": "defects"
+    }
+  },
+  "failure_states": ["BLOCKED","WAITING_FOR_INPUT","WAITING_FOR_APPROVAL","CONFLICTED","FAILED","CANCELLED","JIRA_CHANGED","SCENARIO_REVIEW_REQUIRED"],
+  "other_types_use": "qa",
+  "next_steps": {
+    "default": {
+      "CREATED": ["claude", "Load the Jira ticket for {T} (or ask you for its details if Jira is unavailable): /aisdlc-qa:test {T}."],
+      "TICKET_READY": ["claude", "Pick the test environment for {T} (qa/uat), check it is reachable and the login works, and record the build under test."],
+      "ENVIRONMENT_READY": ["claude", "Draft the test scenarios for {T} from its acceptance criteria, optionally exploring the app in a visible browser."],
+      "SCENARIOS_DRAFTED": ["you", "Review tasks/{T}/scenarios.md: every acceptance criterion covered, expected results taken from the ticket, open questions answered."],
+      "AWAITING_SCENARIO_APPROVAL": ["you", "Approve the scenarios, ask for changes, or reject the task when Claude asks. The approval is pinned to the scenarios' hash."],
+      "SCENARIOS_APPROVED": ["claude", "Generate the Playwright tests for {T} from the approved scenarios: /aisdlc-qa:test {T}."],
+      "TESTS_GENERATED": ["claude", "Run the tests for {T} in a visible browser so you can watch: /aisdlc-qa:run {T}."],
+      "TESTS_EXECUTED": ["you", "Triage each failure as app defect, test issue or environment problem (Claude asks), or move on to sign-off if everything passed: /aisdlc-qa:test {T}."],
+      "AWAITING_DEV_FIX": ["you", "Waiting for the developer to fix the defects reported on {T}. Once the fix is deployed, run /aisdlc-qa:run {T} to re-verify."],
+      "AWAITING_RESULTS_SIGNOFF": ["you", "Review tasks/{T}/results.md and the HTML report, then sign off, re-run or reject when Claude asks: /aisdlc-qa:test {T}."],
+      "RESULTS_SIGNED_OFF": ["claude", "Attach the evidence to Jira with /aisdlc-qa:publish {T} (or commit the tests with /aisdlc-qa:commit {T} if Jira writes are disabled)."],
+      "EVIDENCE_PUBLISHED": ["claude", "Commit tests/{T}/ and tasks/{T}/spec.md on branch {T}: /aisdlc-qa:commit {T}."],
+      "COMMITTED": ["you", "Push branch {T} and open a pull request so the tests join the regression suite. QA in the QA environment is done: move {T} to AWAITING_UAT_RELEASE and /aisdlc-qa:push {T} (a bug without a UAT regression may go straight to COMPLETED)."],
+      "AWAITING_UAT_RELEASE": ["you", "Waiting for development to release {T} to UAT. Then run the regression suite on UAT (/aisdlc-qa:run against the uat environment) and move {T} to REGRESSION_EXECUTED."],
+      "REGRESSION_EXECUTED": ["you", "Write tasks/{T}/regression-results.md, review it, then approve the regression gate (or report failures and wait for the fix)."],
+      "REGRESSION_SIGNED_OFF": ["claude", "Regression passed on UAT: /aisdlc-qa:push {T} so development can release to production; then mark {T} COMPLETED."],
+      "COMPLETED": ["none", "Nothing further; the tests for {T} are part of the regression suite."]
+    },
+    "failure": {
+      "BLOCKED": ["you", "Read the reason (tasks/{T}/task.yaml 'reason'), fix the cause, then resume with /aisdlc-qa:test {T}."],
+      "WAITING_FOR_INPUT": ["you", "Answer Claude's open questions, then resume with /aisdlc-qa:test {T}."],
+      "WAITING_FOR_APPROVAL": ["you", "Approve or reject the pending gate when Claude asks: /aisdlc-qa:test {T}."],
+      "CONFLICTED": ["you", "The task state differs from what is on disk or in Jira. Inspect by hand, resolve, then resume with /aisdlc-qa:test {T}."],
+      "FAILED": ["you", "Read the failure in tasks/{T}/execution-log.jsonl, fix the cause, then resume with /aisdlc-qa:test {T}."],
+      "CANCELLED": ["none", "The QA task was cancelled."],
+      "JIRA_CHANGED": ["claude", "The Jira ticket changed after the scenarios were approved; move {T} to SCENARIO_REVIEW_REQUIRED and revise the scenarios."],
+      "SCENARIO_REVIEW_REQUIRED": ["claude", "Revise tasks/{T}/scenarios.md against the updated ticket and ask for re-approval: /aisdlc-qa:test {T}."]
+    }
+  }
+}

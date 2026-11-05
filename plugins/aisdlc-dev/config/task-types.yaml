@@ -1,0 +1,74 @@
+# Task types and state machines (spec §18, §19). Consumed by the plugin's scripts/state/aisdlc-state.js and hooks.
+# JSON-compatible YAML so scripts can parse it without dependencies.
+#
+# Shortened lifecycles (2026 revision): intermediate states were merged to keep the list readable.
+#   feature: UNDERSTOOD absorbs impact analysis + repository identification; SPEC_APPROVED absorbs draft/await;
+#     PLAN_APPROVED absorbs plan draft/await; IMPLEMENTING absorbs validation + review (sub-steps, not states);
+#     COMMITTED absorbs committing; PR_CREATED absorbs CI validation; MERGED = merged to the QA environment branch
+#     (lf-qa: the initial release, QA tests it); RELEASED = merged to the UAT branch (lf-uat: counts as released, QA
+#     runs the regression on UAT); PROD_RELEASED is recorded once the production release (handled outside this
+#     plugin) is done; KNOWLEDGE_CONSOLIDATED absorbs its pending pair; COMPLETED absorbs temporary-artifact cleanup.
+#     A defect found by QA (MERGED) or a failed regression (RELEASED) sends the task back to IMPLEMENTING (see "skip").
+{
+  "feature": {
+    "states": ["CREATED","TICKET_READY","UNDERSTOOD","REPOSITORIES_PREPARED","SPEC_APPROVED","PLAN_APPROVED","IMPLEMENTING","COMMITTED","PR_CREATED","MERGED","RELEASED","PROD_RELEASED","KNOWLEDGE_CONSOLIDATED","COMPLETED"],
+    "skip": { "SPEC_APPROVED": ["IMPLEMENTING"], "PLAN_APPROVED": ["IMPLEMENTING"], "COMMITTED": ["IMPLEMENTING"], "PR_CREATED": ["IMPLEMENTING"], "MERGED": ["IMPLEMENTING"], "RELEASED": ["IMPLEMENTING"] },
+    "source_edit_min_state": "SPEC_APPROVED",
+    "source_edit_max_state": "COMMITTED"
+  },
+  "bug": {
+    "states": ["CREATED","TICKET_READY","UNDER_INVESTIGATION","ROOT_CAUSE_CONFIRMED","REPOSITORIES_PREPARED","IMPLEMENTING","COMMITTED","PR_CREATED","COMPLETED"],
+    "skip": { "COMMITTED": ["IMPLEMENTING"], "PR_CREATED": ["IMPLEMENTING"] },
+    "source_edit_min_state": "REPOSITORIES_PREPARED",
+    "source_edit_max_state": "COMMITTED"
+  },
+  "investigation": {
+    "states": ["CREATED","TICKET_READY","UNDER_INVESTIGATION","COMPLETED"],
+    "skip": {},
+    "source_edit_min_state": null,
+    "source_edit_max_state": null
+  },
+  "failure_states": ["BLOCKED","WAITING_FOR_INPUT","WAITING_FOR_APPROVAL","CONFLICTED","FAILED","CANCELLED","CI_FAILED","JIRA_CHANGED","SPEC_REVIEW_REQUIRED"],
+  "other_types_use": "feature",
+  "next_steps": {
+    "default": {
+      "CREATED": ["claude", "Retrieve the ticket (Jira, or interactive questions if Jira is unavailable)."],
+      "TICKET_READY": ["claude", "Summarize the requirement, acceptance criteria, constraints and unknowns; resolve unknowns that affect design."],
+      "UNDERSTOOD": ["claude", "Run impact analysis, then confirm the affected repositories with you. You: confirm tasks/{T}/impact-analysis.md."],
+      "REPOSITORIES_PREPARED": ["claude", "Draft the specification into tasks/{T}/specification.md, then request your approval."],
+      "SPEC_APPROVED": ["claude", "Draft the implementation plan. (Approve the spec with /aisdlc-dev:approve {T} specification; source edits stay blocked until approved.)"],
+      "PLAN_APPROVED": ["claude", "Implement in small steps, running tests and review as you go (validation and review are sub-steps of implementation)."],
+      "IMPLEMENTING": ["claude", "Implement, validate (test matrix -> validation.md) and run independent review. You: review progress; confirm the commit when ready."],
+      "COMMITTED": ["you", "Create the pull request(s) with /aisdlc-dev:create-pr {T} lf-qa (the first release goes to the QA environment; use /aisdlc-dev:promote {T} lf-qa when the branch conflicts)."],
+      "PR_CREATED": ["you", "Wait for CI, then review and merge the PR(s) into lf-qa. Merge is human-controlled. Then /aisdlc-dev:release {T} qa to record the release to the QA environment and push it so QA can start."],
+      "MERGED": ["you", "Released to the QA environment; QA runs its flow. Defects: /aisdlc-dev:fix-defect {T}. When QA has passed (/aisdlc-dev:pull {T} shows phase QA_PASSED), open the PR(s) into lf-uat with /aisdlc-dev:create-pr {T} lf-uat and merge them, then /aisdlc-dev:release {T} uat."],
+      "RELEASED": ["you", "Merged to lf-uat: released to UAT; QA runs the regression. A failed regression: /aisdlc-dev:fix-defect {T}. When /aisdlc-dev:pull {T} shows REGRESSION_PASSED, do the production release (handled outside this plugin), then record it with /aisdlc-dev:release {T} prod."],
+      "PROD_RELEASED": ["claude", "Production release recorded. Run /aisdlc-dev:post-release {T}: consolidate released behavior into system/product/. You: answer any reconciliation questions."],
+      "KNOWLEDGE_CONSOLIDATED": ["claude", "Delete the temporary task artifacts, make the cleanup commit, then /aisdlc-dev:finish {T}."],
+      "COMPLETED": ["none", "Nothing further; the task is complete."]
+    },
+    "bug": {
+      "TICKET_READY": ["claude", "Reproduce or understand the symptom and trace the execution path."],
+      "UNDER_INVESTIGATION": ["claude", "Form and validate root-cause hypotheses; write tasks/{T}/root-cause.md (including Expected vs Actual)."],
+      "ROOT_CAUSE_CONFIRMED": ["you", "Confirm the root cause, then Claude identifies and prepares the affected repositories."],
+      "REPOSITORIES_PREPARED": ["claude", "Implement the minimal fix and add a regression test; validate and review as sub-steps."],
+      "IMPLEMENTING": ["claude", "Implement the fix and regression test; run tests and review. You: review, then confirm the commit."],
+      "COMMITTED": ["you", "Create the pull request(s) with /aisdlc-dev:pr {T}."],
+      "PR_CREATED": ["you", "When CI passes, merge the PR(s); then /aisdlc-dev:finish {T} to complete the bug task."]
+    },
+    "investigation": {
+      "UNDER_INVESTIGATION": ["claude", "Gather evidence and test hypotheses; write tasks/{T}/findings.md. Read-only: no source changes."]
+    },
+    "failure": {
+      "BLOCKED": ["you", "Read the reason (tasks/{T}/task.yaml 'reason' and the BLOCKED message), fix the cause, then /aisdlc-dev:resume {T}."],
+      "WAITING_FOR_INPUT": ["you", "Answer Claude's open questions, then /aisdlc-dev:resume {T}."],
+      "WAITING_FOR_APPROVAL": ["you", "Approve or reject the pending gate with /aisdlc-dev:approve {T} <gate> or /aisdlc-dev:reject {T} <gate> <reason>."],
+      "CONFLICTED": ["you", "Repository or task state differs from the record. Inspect branches and stashes, resolve by hand, then /aisdlc-dev:resume {T}."],
+      "FAILED": ["you", "Read the failure in the log, fix the cause, then /aisdlc-dev:resume {T}."],
+      "CANCELLED": ["none", "The task was cancelled."],
+      "CI_FAILED": ["you", "Ask Claude to diagnose the failing checks; fixes follow the normal commit rules. Then /aisdlc-dev:resume {T}."],
+      "JIRA_CHANGED": ["you", "The ticket changed after approval. Review the change; the specification must be revised and re-approved."],
+      "SPEC_REVIEW_REQUIRED": ["you", "Revise the specification for the ticket change, then /aisdlc-dev:approve {T} specification."]
+    }
+  }
+}

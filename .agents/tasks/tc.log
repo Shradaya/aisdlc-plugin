@@ -1,0 +1,4 @@
+ ERR_PNPM_NO_SCRIPT  Missing script: typecheck
+
+Command "typecheck" not found.
+TC_FAIL 
