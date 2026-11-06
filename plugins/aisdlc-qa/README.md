@@ -78,6 +78,8 @@ The QA hooks act only in a folder whose `config/workspace.yaml` has `"kind": "qa
 | `/aisdlc-qa:add-env <name> <url>` · `--block-host <host>` or `=<host>` | Add or change a test environment, or block a production host |
 | `/aisdlc-qa:init [--only workspace\|agents]` | Scaffold the workspace. `--from-dev [path]` reuses the Jira settings of an aisdlc-dev workspace. `--only agents` regenerates Playwright's agents after a Playwright upgrade. |
 
+`scenarios.md` and `results.md` are short and precise by rule: one-line steps and expected results, a 2-line overview or summary, tables over prose.
+
 ## Checkpoints
 
 The lifecycle contract is [`workflows/qa.md`](workflows/qa.md).

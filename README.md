@@ -1,25 +1,31 @@
 # aisdlc plugins
 
-Claude Code plugins for an AI-assisted software delivery lifecycle (AI-SDLC), one per role, published from one marketplace (`aisdlc-marketplace`):
+Claude Code plugins for an AI-assisted software delivery lifecycle (AI-SDLC), one per role (design, dev, QA and project manager), published from one marketplace (`aisdlc-marketplace`):
 
 | Plugin | For | What it does | Docs |
 |---|---|---|---|
+| **aisdlc-pm** | Project managers | Jira ticket → requirements and acceptance criteria (approved by a human) → written into the Jira ticket as the source of truth → hand-off to design or development | [plugins/aisdlc-pm](plugins/aisdlc-pm/README.md) |
 | **aisdlc-design** | UI/UX designers | Author a prototype under a design ticket, preview it, approve it, and commit it to a design repository | [plugins/aisdlc-design](plugins/aisdlc-design/README.md) |
 | **aisdlc-dev** | Developers | Jira ticket → specification (approved) → implementation → review → commit → PR/CI → release → product knowledge | [plugins/aisdlc-dev](plugins/aisdlc-dev/README.md) |
 | **aisdlc-qa** | QA engineers | Jira ticket → test scenarios (approved) → Playwright tests run in a browser the QA watches → defects on the ticket, wait for the fix → signed-off evidence on Jira → regression suite; plus quick checks without a ticket, with the proof kept locally | [plugins/aisdlc-qa](plugins/aisdlc-qa/README.md) |
 
 Each role installs only its own plugin and sees only its own `/aisdlc-<role>:<skill>` commands.
 
-All three plugins work the same way:
+All four plugins work the same way:
 - Every piece of work hangs off a ticket.
 - A task moves through a state machine whose state changes only through the state CLI.
 - Human decisions are explicit approval gates, pinned to the hash of what was approved. Editing the approved file means approving it again.
 - Hooks block what the gates don't allow: early edits, wrong commit formats, force-push, printing secrets, testing against production.
 - Credentials are environment variables only, never files.
+- Every generated document (requirements, acceptance criteria, design, specification, impact analysis, plan, scenarios, results) is kept short and precise: terse bullets and tables, no filler.
 
 ## How the roles connect
 
 ```
+PM (aisdlc-pm): requirements + acceptance criteria (human-approved) go into the Jira ticket,
+then hand-off to design or development
+          |
+          v
 Designer (aisdlc-design)          Developer (aisdlc-dev)                  QA (aisdlc-qa)
 design ticket ─► prototype ─►     feature ticket ─► spec pins the     ─►  same ticket ─► scenarios approved
 approved, committed to the        design ─► implement ─► PR to             ─► tests run ─► defect comment on
@@ -28,14 +34,18 @@ design repository                 lf-develop / lf-qa / lf-uat              Jira 
                                                                            on Jira, tests into regression suite
 ```
 
+0. **PM → design and development.**
+   - The PM drafts `/aisdlc-pm:requirements` and `/aisdlc-pm:acceptance-criteria`, approves the criteria, writes them to the Jira ticket with `/aisdlc-pm:jira-sync`, and hands off with `/aisdlc-pm:handoff <TICKET> dev|design`.
+   - The designer and developer read them from the ticket, and QA tags scenarios `@<TICKET>-AC<n>` from the numbered criteria.
 1. **Design → development.**
-   - The designer runs `/aisdlc-design:design <DESIGN-TICKET>` and `/aisdlc-design:commit`, then pushes the design repository.
+   - The designer runs `/aisdlc-design:codify <DESIGN-TICKET>` and `/aisdlc-design:commit`, then pushes the design repository.
    - The developer registers that repository with `/aisdlc-dev:add-repo <name> <path> --kind design`.
    - During `/aisdlc-dev:feature`, the `design-link` step pins a hashed snapshot of the design into the specification.
 2. **Development → QA.**
    - Once the change is deployed to a QA environment, the QA engineer runs `/aisdlc-qa:test <TICKET>`.
    - App defects go back to the developer as comments on the Jira ticket, and the QA task waits for the fix.
    - When the developer says the fix is deployed, the QA runs `/aisdlc-qa:run <TICKET>` to re-verify.
+3. **Review loop.** After a PR is open, the developer runs `/aisdlc-dev:pr-comments <TICKET>`: it reads the reviewers' comments, triages them with the developer, fixes the valid ones (asking before each commit and push) and replies on the PR.
 
 ## Install
 
@@ -53,7 +63,7 @@ claude plugin install aisdlc-<role>@aisdlc-marketplace --scope project     # thi
 claude plugin install aisdlc-<role>@aisdlc-marketplace --scope local       # this workspace, only you
 ```
 
-`<role>` is `dev`, `design` or `qa`. Run the `--scope project` and `--scope local` forms from inside the workspace folder. Afterwards, restart Claude Code in the workspace so the hooks load. Then run `/aisdlc-<role>:init` to scaffold a workspace; each plugin's README describes its setup.
+`<role>` is `dev`, `design`, `qa` or `pm`. Run the `--scope project` and `--scope local` forms from inside the workspace folder. Afterwards, restart Claude Code in the workspace so the hooks load. Then run `/aisdlc-<role>:init` to scaffold a workspace; each plugin's README describes its setup.
 
 Don't also start Claude Code with `--plugin-dir` pointing at this folder, or the plugin loads twice.
 
@@ -88,10 +98,12 @@ Set them in PowerShell before starting Claude Code (`$env:JIRA_API_TOKEN = "..."
 
 | Path | Purpose |
 |---|---|
-| `.claude-plugin/marketplace.json` | Marketplace manifest listing the three plugins |
+| `.claude-plugin/marketplace.json` | Marketplace manifest listing the four plugins |
 | `plugins/aisdlc-dev/` | Developer plugin |
 | `plugins/aisdlc-design/` | Designer plugin, including the `preview/` app template |
 | `plugins/aisdlc-qa/` | QA plugin, including the Playwright workspace template, test runner and Jira helper |
+| `plugins/aisdlc-pm/` | Project-manager plugin: requirements, acceptance criteria, Jira write-back |
+| `scripts/package-plugins.js` | Builds one installable zip per plugin into `dist/` |
 | `packages/aisdlc-core/` | Shared core: state engine, workspace and path resolution, config loaders. The source of truth, vendored into each plugin. |
 | `scripts/sync-core.js` | Copies the shared core into each plugin; `--check` for CI |
 | `kiro/` | Port of the dev and design lifecycles as Kiro skills and hooks ([kiro/README.md](kiro/README.md)). QA is not ported yet. |

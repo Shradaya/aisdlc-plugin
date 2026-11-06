@@ -44,6 +44,8 @@ The design plugin needs no tokens. If Jira is unavailable, the ticket details ar
 | `/aisdlc-design:comment <DESIGN-TICKET> <version>` | Upload that version's design files to the Jira ticket as attachments and post one comment (needs `jira.write.add_attachment`/`add_comment`) |
 | `/aisdlc-design:init` | Scaffold a design workspace and the preview app |
 
+`design.md` and `brief.md` are short and precise by rule: terse one-line entries, no prose paragraphs, `None` for empty sections.
+
 ## Lifecycle and gates
 
 The lifecycle contract is [`workflows/design.md`](workflows/design.md):

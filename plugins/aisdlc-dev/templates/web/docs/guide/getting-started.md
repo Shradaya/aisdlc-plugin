@@ -78,7 +78,7 @@ Bitbucket:
 | `read:pullrequest:bitbucket` | Read pull request details and status. |
 | `write:pullrequest:bitbucket` | Create pull requests. |
 
-aisdlc never force-pushes and never approves or merges a pull request. Posting PR comments is disabled by default (`git_hosting.write.add_pr_comment` in `config/integrations.yaml`); enable it only if you want aisdlc to comment, which uses the same `write:pullrequest:bitbucket` scope.
+aisdlc never force-pushes and never approves or merges a pull request. Reading PR comments (`/aisdlc-dev:pr-comments`) uses `read:pullrequest:bitbucket`. Posting PR comments and replies is controlled by `git_hosting.write.add_pr_comment` in `config/integrations.yaml` (on in the workspace template; set it to `false` to stop aisdlc from commenting) and uses the `write:pullrequest:bitbucket` scope. aisdlc posts only after you confirm.
 
 ## 1. Load the plugin
 

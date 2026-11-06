@@ -115,7 +115,7 @@ Next (Claude): Draft the implementation plan.
 | **Plan approval** | **You**, when required | Required for cross-repository, database, API, security-sensitive or high-risk changes. |
 | Implement, test, review | aisdlc | Repository tests, integration and contract tests, cross-repo validation, then review agents. |
 | Commit | aisdlc | `FEAT-1234: <changes summary>` on branch `FEAT-1234`. |
-| PR, CI, merge | aisdlc, per configured policy | Pull request(s) from the generated description; CI is validated; merge follows policy. |
+| PR, CI, merge | aisdlc, per configured policy | Pull request(s) from the generated description; CI is validated; merge follows policy. Reviewer comments are handled with `/aisdlc-dev:pr-comments` (fixes go back through IMPLEMENTING and are committed and pushed only after you confirm). |
 | Release | You / your release process | Production release must be verified (see [post-release](/guide/post-release-and-finish)). |
 | `/aisdlc-dev:post-release FEAT-1234` | You | Product knowledge consolidated, temporary artifacts removed. |
 | `/aisdlc-dev:finish FEAT-1234` | You | Final verification. |

@@ -73,7 +73,11 @@ The PM hooks act only in a folder whose `config/workspace.yaml` has `"kind": "pm
 | `/aisdlc-pm:reject <TICKET> acceptance_criteria <reason>` | Record a rejection of the gate with a reason. |
 | `/aisdlc-pm:handoff <TICKET> dev\|design` | Hand over to design or development after the acceptance criteria are approved. Never approves. |
 | `/aisdlc-pm:refine <TICKET> [--jira]` | Revise the files after a rework send-back, or re-read a changed Jira issue. |
+| `/aisdlc-pm:status` | Read-only overview of every PM ticket: state, next step, whether the acceptance criteria are drafted and approved, which credentials are set (by name only). |
+| `/aisdlc-pm:status-page` | Live, local, read-only status page for the PM workspace (`--export <file.html>` for a shareable snapshot). |
 | `/aisdlc-pm:init [folder]` | Scaffold a PM workspace. `--from-dev [path]` reuses an aisdlc-dev workspace's Jira settings. |
+
+The generated documents are short and precise by rule: `requirements.md` has a 1-3 sentence problem and one-line bullets; `acceptance-criteria.md` has one behaviour per criterion and one line per Given/When/Then.
 
 ## Lifecycle reference
 

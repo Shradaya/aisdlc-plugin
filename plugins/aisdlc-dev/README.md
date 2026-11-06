@@ -77,6 +77,8 @@ The workflows also call these stages themselves; Claude can invoke them without 
 - `adr`
 - `product-knowledge-consolidation`
 
+Task documents (specification, impact analysis, plan, root cause, validation, trace) are short and precise by rule: terse bullets and one-line table rows, and an inapplicable specification section is a single `Not applicable - <why>` line. After a PR is open, `/aisdlc-dev:pr-comments` works through the reviewers' comments; it asks before every commit, push and reply.
+
 ## Lifecycle and gates
 
 The lifecycle contracts are in [`workflows/`](workflows/): `feature.md`, `bug.md`, `investigation.md`, plus one file for each specialised workflow. The feature path is:
