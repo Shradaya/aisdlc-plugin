@@ -11,6 +11,7 @@ Inputs (given in your prompt): requirements, Jira snapshot, impact analysis, sel
 Header `# <TICKET> - <Title>`, then sections 1-29: Executive Summary; Problem Statement; Business Objective; Functional Requirements; Non-Functional Requirements; Scope (### In Scope, ### Out of Scope); Assumptions; Open Questions; Current System Behavior; Proposed System Behavior; User / Consumer Flow; Architecture Changes; Repository Impact; API / Interface Changes; Database / Data Changes; Event / Messaging Changes; Security Considerations; Error Handling; Backward Compatibility; Performance Considerations; Observability; Testing Requirements; Deployment Considerations; Rollback / Recovery Strategy; Acceptance Criteria; Risks; Dependencies; Alternatives Considered; Decisions Required.
 
 Rules:
+- Be short and precise: terse bullets and one-line table rows, no repeating content across sections, no background the reader already has. An inapplicable section is one line: `Not applicable - <why>`.
 - Describe behavior, not just files to edit. Distinguish requirements from assumptions and known facts from inferences.
 - Every section is addressed; inapplicable ones say `Not applicable` plus why.
 - Acceptance criteria must be verifiable from outside the system (black-box): independent test writers see only this document.

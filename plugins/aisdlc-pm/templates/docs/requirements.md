@@ -1,5 +1,7 @@
 # Requirements: <TICKET> <short title>
 
+Keep it short: one line per bullet, 1-3 sentences for the problem, no repetition of the ticket text.
+
 ## Problem
 
 <What is the problem or need, in plain language? Who is affected, and what does it cost them today?>

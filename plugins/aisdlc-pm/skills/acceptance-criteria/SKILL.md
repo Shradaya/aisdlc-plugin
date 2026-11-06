@@ -15,7 +15,7 @@ Explicit `/aisdlc-pm:acceptance-criteria <TICKET>`. Requires `tasks/<TICKET>/req
 
 ## Procedure
 1. Read `tasks/<TICKET>/requirements.md`. If it is missing, stop and point to `/aisdlc-pm:requirements <TICKET>`.
-2. Draft or revise `tasks/<TICKET>/acceptance-criteria.md`. Each criterion is:
+2. Draft or revise `tasks/<TICKET>/acceptance-criteria.md`. Keep it short and precise: one behaviour per criterion, one line per Given/When/Then, only testable outcomes. Each criterion is:
    ```
    AC1: <short title>
    - Given <context>
