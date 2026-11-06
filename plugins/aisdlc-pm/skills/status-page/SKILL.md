@@ -1,7 +1,7 @@
 ---
 name: status-page
-description: Open the live PM status page in the browser - every PM ticket with its past, current and upcoming lifecycle states, the acceptance-criteria approval, the next step and whose turn it is, history, and all its documents (requirements.md, acceptance-criteria.md, jira.md). Read-only local web server; can also write a self-contained HTML snapshot, or one ticket's status as Markdown. Use when the PM runs /aisdlc-pm:status-page.
-argument-hint: [--port <n>] [--stop] | --export <file.html> [--with-docs] [--force] | --markdown <TICKET> [--out <file.md>]
+description: "Open the live PM status page in the browser - every PM ticket with its past, current and upcoming lifecycle states, the acceptance-criteria approval, the next step and whose turn it is, history, and all its documents (requirements.md, acceptance-criteria.md, jira.md). Read-only local web server; can also write a self-contained HTML snapshot, or one ticket's status as Markdown. Use when the PM runs /aisdlc-pm:status-page."
+argument-hint: "[--port <n>] [--stop] | --export <file.html> [--with-docs] [--force] | --markdown <TICKET> [--out <file.md>]"
 disable-model-invocation: true
 ---
 

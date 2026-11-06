@@ -1,6 +1,6 @@
 ---
 name: cross-repo-trace
-description: Trace the contracts a change touches (fields, collections, endpoints, queue or event payloads, shared constants) through the code of every registered repository, and write tasks/<ticket>/trace.md with every producer and consumer, drifted copies, repositories nobody listed, what must change together and a deploy order. Mandatory before source edits when a task spans two or more repositories or changes a shared contract.
+description: Trace the contracts a change touches (fields, collections, endpoints, queue or event payloads, shared constants) through the code of every registered repository, and write tasks/{ticket}/trace.md with every producer and consumer, drifted copies, repositories nobody listed, what must change together and a deploy order. Mandatory before source edits when a task spans two or more repositories or changes a shared contract.
 argument-hint: <ticket-number>
 ---
 

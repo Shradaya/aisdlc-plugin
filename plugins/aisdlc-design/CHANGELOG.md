@@ -2,6 +2,9 @@
 
 What changed in aisdlc-design, newest first. Versions: **major** when people must act, **minor** for something new, **patch** for fixes. README, tests and docs-site changes need no version. Every behavior change to this plugin needs a bump here and in `.claude-plugin/plugin.json` (checked by `node scripts/version-check.js --base <ref>`).
 
+## 1.1.2 (2026-11-06)
+Skill and agent descriptions no longer contain angle brackets (uploads reject them as XML tags) and are valid strict YAML.
+
 ## 1.1.1 (2026-11-06)
 Generated documents are now required to be short and precise.
 

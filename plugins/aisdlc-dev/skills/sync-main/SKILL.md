@@ -1,6 +1,6 @@
 ---
 name: sync-main
-description: After a release, bring the base branch (main) back into the environment branches (lf-develop, lf-qa, lf-uat) of the registered repositories, one pull request per repository and environment. A clean merge is a PR from main itself; a conflicting one goes through a dated sync branch (main-<env>-<date>) where the conflicts are resolved. Use only when the developer runs /aisdlc-dev:sync-main.
+description: After a release, bring the base branch (main) back into the environment branches (lf-develop, lf-qa, lf-uat) of the registered repositories, one pull request per repository and environment. A clean merge is a PR from main itself; a conflicting one goes through a dated sync branch (main-{env}-{date}) where the conflicts are resolved. Use only when the developer runs /aisdlc-dev:sync-main.
 argument-hint: "[repo ...] [target-branch ...]"
 disable-model-invocation: true
 ---

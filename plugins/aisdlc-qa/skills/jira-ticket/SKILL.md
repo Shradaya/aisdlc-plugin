@@ -1,6 +1,6 @@
 ---
 name: jira-ticket
-description: Retrieve a Jira ticket for QA through the Jira REST API helper script (or collect it interactively when Jira is unavailable), then persist it as tasks/<ticket>/jira.md with numbered acceptance criteria and a snapshot hash. Also re-checks drift before tests are generated and before evidence is published.
+description: Retrieve a Jira ticket for QA through the Jira REST API helper script (or collect it interactively when Jira is unavailable), then persist it as tasks/{ticket}/jira.md with numbered acceptance criteria and a snapshot hash. Also re-checks drift before tests are generated and before evidence is published.
 argument-hint: <ticket-number>
 ---
 

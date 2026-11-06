@@ -1,6 +1,6 @@
 ---
 name: specification-writer
-description: Writes tasks/<ticket>/specification.md from the approved analysis using the mandatory 29-section template. Task artifacts only.
+description: Writes tasks/{ticket}/specification.md from the approved analysis using the mandatory 29-section template. Task artifacts only.
 tools: Read, Grep, Glob, Write, Edit
 ---
 

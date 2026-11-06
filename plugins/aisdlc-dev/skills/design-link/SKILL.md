@@ -1,6 +1,6 @@
 ---
 name: design-link
-description: For a feature that changes a UI repository - read the authored design for a design ticket from the registered design repository (designs/<DESIGN-TICKET>/, published by the aisdlc-design plugin), record a versioned hashed snapshot under system/designs/<DESIGN-TICKET>/, and pin it in the feature specification so the feature is implemented from the design. Replaces the old ui-design skill. Before specification approval.
+description: For a feature that changes a UI repository - read the authored design for a design ticket from the registered design repository (designs/{DESIGN-TICKET}/, published by the aisdlc-design plugin), record a versioned hashed snapshot under system/designs/{DESIGN-TICKET}/, and pin it in the feature specification so the feature is implemented from the design. Replaces the old ui-design skill. Before specification approval.
 argument-hint: <ticket-number>
 ---
 

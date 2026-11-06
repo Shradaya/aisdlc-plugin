@@ -1,6 +1,6 @@
 ---
 name: scenario-writer
-description: Drafts the summarized, QA-reviewable test scenarios for a Jira ticket from the ticket snapshot (and optional exploration notes) only, mapping every acceptance criterion to scenarios with steps and expected results. Never reads application source. Writes only tasks/<TICKET>/scenarios.md.
+description: Drafts the summarized, QA-reviewable test scenarios for a Jira ticket from the ticket snapshot (and optional exploration notes) only, mapping every acceptance criterion to scenarios with steps and expected results. Never reads application source. Writes only tasks/{TICKET}/scenarios.md.
 tools: Read, Write, Edit, Glob, Grep
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: implementation-planner
-description: Produces tasks/<ticket>/implementation-plan.md from the approved specification - exact code/config changes per repository, sequencing, migrations, validation and rollback checkpoints. Task artifacts only.
+description: Produces tasks/{ticket}/implementation-plan.md from the approved specification - exact code/config changes per repository, sequencing, migrations, validation and rollback checkpoints. Task artifacts only.
 tools: Read, Grep, Glob, Write, Edit
 ---
 

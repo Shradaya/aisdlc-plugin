@@ -1,6 +1,6 @@
 ---
 name: acceptance-criteria
-description: Draft tasks/<TICKET>/acceptance-criteria.md as stable-numbered AC1..ACn (Given/When/Then) from the requirements. Use when the PM runs /aisdlc-pm:acceptance-criteria.
+description: Draft tasks/{TICKET}/acceptance-criteria.md as stable-numbered AC1..ACn (Given/When/Then) from the requirements. Use when the PM runs /aisdlc-pm:acceptance-criteria.
 argument-hint: <TICKET>
 disable-model-invocation: true
 ---

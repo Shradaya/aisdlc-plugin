@@ -1,6 +1,6 @@
 ---
 name: adr
-description: Propose or write an Architecture Decision Record (system/decisions/ADR-XXXX-<slug>.md) when a task changes service boundaries, data ownership, integration patterns, technology, events, storage, security architecture, API compatibility or deployment model.
+description: Propose or write an Architecture Decision Record (system/decisions/ADR-XXXX-{slug}.md) when a task changes service boundaries, data ownership, integration patterns, technology, events, storage, security architecture, API compatibility or deployment model.
 argument-hint: <ticket-number> <decision-title>
 ---
 

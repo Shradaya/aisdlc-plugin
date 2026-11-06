@@ -1,6 +1,6 @@
 ---
 name: codify
-description: Turn an approved design into runnable front-end code for a design ticket - capture the brief, author a self-contained HTML/CSS prototype, run the designer's approval, and only then generate the requested code (HTML/CSS or React JS) under designs/<DESIGN-TICKET>/code/<framework>/, versioned. The design title is the ticket number. Use when the designer runs /aisdlc-design:codify.
+description: Turn an approved design into runnable front-end code for a design ticket - capture the brief, author a self-contained HTML/CSS prototype, run the designer's approval, and only then generate the requested code (HTML/CSS or React JS) under designs/{DESIGN-TICKET}/code/{framework}/, versioned. The design title is the ticket number. Use when the designer runs /aisdlc-design:codify.
 argument-hint: <design-ticket-number>
 disable-model-invocation: true
 ---

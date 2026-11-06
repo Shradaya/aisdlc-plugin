@@ -1,6 +1,6 @@
 ---
 name: results-analyst
-description: Turns a QA test run's summary into tasks/<TICKET>/results.md - scenario results, a proposed classification and severity for each failure (app defect, test issue, environment/data), the defect log and the run history - for the QA to triage and sign off. Never runs tests or changes anything else.
+description: Turns a QA test run's summary into tasks/{TICKET}/results.md - scenario results, a proposed classification and severity for each failure (app defect, test issue, environment/data), the defect log and the run history - for the QA to triage and sign off. Never runs tests or changes anything else.
 tools: Read, Write, Glob, Grep
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: init
-description: Set up an aisdlc QA workspace in a folder - the workspace itself (config/, tasks/, logs/, CLAUDE.md) and the Playwright test repository in the same folder (package.json, playwright.config.ts, tests/, fixtures/; one tests/<TICKET>/ folder and one committed tasks/<TICKET>/spec.md per ticket) - then, with the QA's consent, install Playwright and generate Playwright's planner/generator/healer agents. Use only when the QA engineer runs /aisdlc-qa:init.
-argument-hint: [target-folder] [--only workspace|agents] [--from-dev [dev-workspace]] [--dry-run] [--force]
+description: "Set up an aisdlc QA workspace in a folder - the workspace itself (config/, tasks/, logs/, CLAUDE.md) and the Playwright test repository in the same folder (package.json, playwright.config.ts, tests/, fixtures/; one tests/{TICKET}/ folder and one committed tasks/{TICKET}/spec.md per ticket) - then, with the QA's consent, install Playwright and generate Playwright's planner/generator/healer agents. Use only when the QA engineer runs /aisdlc-qa:init."
+argument-hint: "[target-folder] [--only workspace|agents] [--from-dev [dev-workspace]] [--dry-run] [--force]"
 disable-model-invocation: true
 ---
 

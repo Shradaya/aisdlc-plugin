@@ -1,7 +1,7 @@
 ---
 name: init
-description: Set up an aisdlc design workspace in a folder - config/, designs/, design-system/, tasks/, logs/, CLAUDE.md and the preview/ web app where the designer authors and previews prototypes. Use only when the designer runs /aisdlc-design:init.
-argument-hint: [target-folder] [--only workspace|preview] [--dry-run] [--force]
+description: "Set up an aisdlc design workspace in a folder - config/, designs/, design-system/, tasks/, logs/, CLAUDE.md and the preview/ web app where the designer authors and previews prototypes. Use only when the designer runs /aisdlc-design:init."
+argument-hint: "[target-folder] [--only workspace|preview] [--dry-run] [--force]"
 disable-model-invocation: true
 ---
 

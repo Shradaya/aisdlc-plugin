@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Independent review of the implementation against the approved specification, with parallel specialist reviewer agents, recorded in tasks/<ticket>/code-review.md. Reviewers see only requirement, code and tests.
+description: Independent review of the implementation against the approved specification, with parallel specialist reviewer agents, recorded in tasks/{ticket}/code-review.md. Reviewers see only requirement, code and tests.
 argument-hint: <ticket-number>
 ---
 

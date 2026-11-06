@@ -1,6 +1,6 @@
 ---
 name: feature-specification
-description: Generate tasks/<ticket>/specification.md from the approved analysis, run the human approval checkpoint, and handle changes, rejection and reapproval. Hard gate before implementation.
+description: Generate tasks/{ticket}/specification.md from the approved analysis, run the human approval checkpoint, and handle changes, rejection and reapproval. Hard gate before implementation.
 argument-hint: <ticket-number>
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: testing
-description: Derive the test matrix, have the test-writer agent write black-box tests from the approved specification only, run repository and cross-repository tests, and record validation evidence in tasks/<ticket>/validation.md.
+description: Derive the test matrix, have the test-writer agent write black-box tests from the approved specification only, run repository and cross-repository tests, and record validation evidence in tasks/{ticket}/validation.md.
 argument-hint: <ticket-number> write|run
 ---
 

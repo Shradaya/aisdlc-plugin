@@ -1,6 +1,6 @@
 ---
 name: promote
-description: Open the pull request into a target branch (lf-develop, lf-qa, lf-uat) that the task branch cannot merge into cleanly - build the ticket's environment branch (<TICKET>-<env>), merge the target into it, resolve the conflicts, verify, push and open the PR from that branch. Use only when the developer runs /aisdlc-dev:promote, typically after /aisdlc-dev:create-pr reported conflicts.
+description: Open the pull request into a target branch (lf-develop, lf-qa, lf-uat) that the task branch cannot merge into cleanly - build the ticket's environment branch ({TICKET}-{env}), merge the target into it, resolve the conflicts, verify, push and open the PR from that branch. Use only when the developer runs /aisdlc-dev:promote, typically after /aisdlc-dev:create-pr reported conflicts.
 argument-hint: <ticket-number> [target-branches]
 disable-model-invocation: true
 ---

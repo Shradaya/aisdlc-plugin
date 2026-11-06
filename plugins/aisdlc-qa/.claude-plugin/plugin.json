@@ -1,6 +1,6 @@
 {
   "name": "aisdlc-qa",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "AI-SDLC QA plugin (QA side): turn a Jira ticket into QA-approved test scenarios, generate Playwright tests and run them in a visible browser, report defects on the ticket and wait for the fix, and attach signed-off evidence to Jira.",
   "author": { "name": "Evoke Medical Care" }
 }

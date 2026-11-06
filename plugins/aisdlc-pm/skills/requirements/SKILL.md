@@ -1,6 +1,6 @@
 ---
 name: requirements
-description: Draft tasks/<TICKET>/requirements.md for a ticket from its Jira issue or a pasted brief, asking the PM about every gap. Use when the PM runs /aisdlc-pm:requirements.
+description: Draft tasks/{TICKET}/requirements.md for a ticket from its Jira issue or a pasted brief, asking the PM about every gap. Use when the PM runs /aisdlc-pm:requirements.
 argument-hint: <TICKET>
 disable-model-invocation: true
 ---

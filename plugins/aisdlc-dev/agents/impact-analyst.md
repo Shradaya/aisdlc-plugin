@@ -1,6 +1,6 @@
 ---
 name: impact-analyst
-description: Analyzes a ticket's change surface across registered repositories and writes tasks/<ticket>/impact-analysis.md and knowledge-manifest.yaml. Task artifacts only; read-only on repositories.
+description: Analyzes a ticket's change surface across registered repositories and writes tasks/{ticket}/impact-analysis.md and knowledge-manifest.yaml. Task artifacts only; read-only on repositories.
 tools: Read, Grep, Glob, Write, Edit
 ---
 

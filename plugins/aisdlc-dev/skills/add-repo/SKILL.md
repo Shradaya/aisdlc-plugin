@@ -1,6 +1,6 @@
 ---
 name: add-repo
-description: Onboard a repository into the aisdlc workspace - a code repository (read-only study, knowledge package, testing profile, registry entry) or, with --kind design, a design repository the designer publishes (registered as a read-only source of designs/<ticket>/). Use only when the developer runs /aisdlc-dev:add-repo.
+description: Onboard a repository into the aisdlc workspace - a code repository (read-only study, knowledge package, testing profile, registry entry) or, with --kind design, a design repository the designer publishes (registered as a read-only source of designs/{ticket}/). Use only when the developer runs /aisdlc-dev:add-repo.
 argument-hint: <repo-name> <repo-path> [--kind code|design]
 disable-model-invocation: true
 ---

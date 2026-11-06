@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Commit an approved design to the design repository under designs/<DESIGN-TICKET>/ on branch <DESIGN-TICKET>, with the commit message '<DESIGN-TICKET>: <summary>', then guide the push so developers can consume it. Use when the designer runs /aisdlc-design:commit.
+description: "Commit an approved design to the design repository under designs/{DESIGN-TICKET}/ on branch {DESIGN-TICKET}, with the commit message '{DESIGN-TICKET}: {summary}', then guide the push so developers can consume it. Use when the designer runs /aisdlc-design:commit."
 argument-hint: <design-ticket-number>
 disable-model-invocation: true
 ---

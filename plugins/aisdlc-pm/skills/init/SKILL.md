@@ -1,7 +1,7 @@
 ---
 name: init
-description: Set up an aisdlc PM workspace in a folder - config/, tasks/, logs/, CLAUDE.md, claude.env.example and .claude/settings.json where the PM drafts requirements and acceptance criteria. Use only when the PM runs /aisdlc-pm:init.
-argument-hint: [target-folder] [--from-dev [dev-ws]] [--dry-run] [--force]
+description: "Set up an aisdlc PM workspace in a folder - config/, tasks/, logs/, CLAUDE.md, claude.env.example and .claude/settings.json where the PM drafts requirements and acceptance criteria. Use only when the PM runs /aisdlc-pm:init."
+argument-hint: "[target-folder] [--from-dev [dev-ws]] [--dry-run] [--force]"
 disable-model-invocation: true
 ---
 

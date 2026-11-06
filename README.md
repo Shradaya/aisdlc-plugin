@@ -57,6 +57,15 @@ claude plugin install aisdlc-<role>@aisdlc-marketplace --scope local       # thi
 
 Don't also start Claude Code with `--plugin-dir` pointing at this folder, or the plugin loads twice.
 
+### Claude Desktop and Claude on the web
+
+These plugins need Claude Code (hooks, the `node` CLIs and a workspace folder), so use the **Code** tab in Claude Desktop or claude.ai/code. Plain chat does not run hooks, so it can't enforce the approval gates.
+
+- **Package.** `node scripts/package-plugins.js` writes `dist/<plugin>-<version>.zip` for each plugin (git-tracked files only, plugin contents at the zip root). Hand the zip to teammates or an org admin to upload.
+- **Desktop, Code tab.** It runs the same Claude Code, so the install above applies unchanged: open your workspace folder, add the marketplace or install the plugin, then run `/aisdlc-<role>:init`.
+- **Web (cloud sessions).** The session runs in a cloud sandbox and sees only the repository it was started on. Commit a `.claude/settings.json` to the workspace repository that registers the marketplace and enables your role's plugin, and set the credentials from the table above as environment variables or secrets of the cloud environment. Node 20+ is needed for the hooks.
+- **Limits on the web.** There is no local machine: QA's visible Playwright browser, local design preview and repository paths on your PC are not available. Jira/Bitbucket work and spec, plan and scenario drafting do work.
+
 **Workspaces.**
 - Each plugin works in its own folder. A folder is a workspace when it contains `config/repositories.yaml`; the hooks and CLIs find it from the folder, any subfolder, or `AISDLC_ROOT`.
 - A workspace can declare its kind in `config/workspace.yaml` (`"kind": "dev" | "design" | "qa"`). A plugin's hooks stay out of a workspace of another kind, so having several plugins installed on one machine is safe.

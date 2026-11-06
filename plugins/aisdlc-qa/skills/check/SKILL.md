@@ -1,7 +1,7 @@
 ---
 name: check
-description: Quick ad-hoc check of the app without a Jira ticket - explore it black-box (never reading application source), write one Playwright spec under checks/, run it in a visible browser, and keep the proof locally in test-results/<check>/run-<time>/ (per-step screenshots, trace, HTML report, result.json). No Jira, no approval gates, never production. Offers to promote the check into a ticket's regression tests. Use only when the QA engineer runs /aisdlc-qa:check.
-argument-hint: "<what to check>" [--env <name>] [--headless] [--video] [--build <id>]
+description: Quick ad-hoc check of the app without a Jira ticket - explore it black-box (never reading application source), write one Playwright spec under checks/, run it in a visible browser, and keep the proof locally in test-results/{check}/run-{time}/ (per-step screenshots, trace, HTML report, result.json). No Jira, no approval gates, never production. Offers to promote the check into a ticket's regression tests. Use only when the QA engineer runs /aisdlc-qa:check.
+argument-hint: "\"<what to check>\" [--env <name>] [--headless] [--video] [--build <id>]"
 disable-model-invocation: true
 ---
 
