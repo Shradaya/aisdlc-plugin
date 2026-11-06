@@ -2,7 +2,11 @@
 // Bitbucket Cloud pull request helper (REST API). Credentials come from environment variables only
 // (names in config/integrations.yaml, git_hosting.credentials); values are never printed.
 //
-//   comment <repo-path> <pr-id> <file|-> <line> <text-file>         add a PR comment (inline when file is not "-")
+//   comment <repo-path> <pr-id> <file|-> <line> <text-file> [--parent <comment-id>]
+//                                                                   add a PR comment (inline when file is not "-");
+//                                                                   --parent posts it as a reply to that comment
+//   comments <repo-path> <pr-id>                                    read-only: all live comments (id, parent, author, file,
+//                                                                   line, text, resolved) as one JSON line
 //   create <repo-path> <source> <dest> <title> <description-file> [--draft]
 //                                                                   create a PR (or report the existing open one);
 //                                                                   --draft opens it as a draft pull request
@@ -100,7 +104,7 @@ const q = (s) => encodeURIComponent(s);
 async function main() {
   if (!email || !token) out({ ok: false, error: "BITBUCKET_EMAIL and BITBUCKET_API_TOKEN must both be set" }, 2);
   const [cmd, repoPath, ...rest] = process.argv.slice(2);
-  if (!cmd || !repoPath) out({ ok: false, error: "usage: create|status|find|comment <repo-path> ..." }, 1);
+  if (!cmd || !repoPath) out({ ok: false, error: "usage: create|status|find|comment|comments <repo-path> ..." }, 1);
   const slug = repoSlug(repoPath);
 
   if (cmd === "create") {
@@ -132,11 +136,35 @@ async function main() {
   } else if (cmd === "status") {
     const pr = await call("GET", `/repositories/${slug}/pullrequests/${q(rest[0])}?fields=id,state,draft,source.branch.name,destination.branch.name,links.html.href`);
     out({ ok: true, id: pr.id, state: pr.state, draft: Boolean(pr.draft), source: pr.source.branch.name, destination: pr.destination.branch.name, url: pr.links.html.href });
+  } else if (cmd === "comments") {
+    if (!rest[0]) out({ ok: false, error: "usage: comments <repo-path> <pr-id>" }, 1);
+    const fields = "next,values.id,values.parent.id,values.deleted,values.resolution,values.user.display_name,values.content.raw,values.inline.path,values.inline.to";
+    let url = `/repositories/${slug}/pullrequests/${q(rest[0])}/comments?pagelen=100&fields=${q(fields)}`;
+    const all = [];
+    for (let page = 0; url && page < 20; page++) {
+      const j = await call("GET", url);
+      all.push(...(j.values || []));
+      url = j.next ? j.next.replace(/^https?:\/\/[^/]+\/2\.0/, "").replace(/^https?:\/\/[^/]+/, "") : null;
+    }
+    const comments = all.filter((c) => !c.deleted).map((c) => ({
+      id: c.id,
+      parent: c.parent?.id ?? null,
+      author: c.user?.display_name || "unknown",
+      file: c.inline?.path ?? null,
+      line: c.inline?.to ?? null,
+      resolved: Boolean(c.resolution),
+      text: String(c.content?.raw || "").slice(0, 2000),
+    }));
+    out({ ok: true, count: comments.length, comments });
   } else if (cmd === "comment") {
-    const [prId, file, line, textFile] = rest;
+    const pi = rest.indexOf("--parent");
+    const parent = pi >= 0 ? rest[pi + 1] : null;
+    if (pi >= 0 && !/^\d+$/.test(parent || "")) out({ ok: false, error: "--parent needs a numeric comment id" }, 1);
+    const [prId, file, line, textFile] = pi >= 0 ? rest.filter((_, i) => i !== pi && i !== pi + 1) : rest;
     if (!prId || !file || !line || !textFile) out({ ok: false, error: "usage: comment <repo-path> <pr-id> <file|-> <line> <text-file>" }, 1);
     const body = { content: { raw: fs.readFileSync(textFile, "utf8") } };
     if (file !== "-") body.inline = { path: file, to: Number(line) };
+    if (parent) body.parent = { id: Number(parent) };
     const c = await call("POST", `/repositories/${slug}/pullrequests/${q(prId)}/comments`, body);
     out({ ok: true, id: c.id, inline: Boolean(body.inline), url: c.links?.html?.href });
   } else out({ ok: false, error: `unknown command ${cmd}` }, 1);

@@ -1,6 +1,6 @@
 {
   "name": "aisdlc-design",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "AI-SDLC design-authoring plugin (designer side): under a design ticket, author a UI/UX design, approve it, generate its front-end code (HTML/CSS or React), commit it to a design repository, and optionally publish a version to the Jira ticket as a comment.",
   "author": { "name": "Evoke Medical Care" }
 }

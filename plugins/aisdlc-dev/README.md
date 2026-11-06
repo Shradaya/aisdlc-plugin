@@ -57,6 +57,7 @@ Run the `--scope project` and `--scope local` forms from inside the workspace fo
 | `/aisdlc-dev:sync-main [repo ...] [targets]` | After a release: bring `main` back into `lf-develop`, `lf-qa` and `lf-uat` (one PR per repository and environment; a dated sync branch only where there are conflicts) |
 | `/aisdlc-dev:promote <TICKET> [targets]` | For a target `create-pr` found conflicts in: resolve them on the ticket's environment branch (`<TICKET>-<env>`) and open the PR from there |
 | `/aisdlc-dev:pr-review <repo> <pr>` | Review any pull request against its requirement and the repository's knowledge |
+| `/aisdlc-dev:pr-comments <TICKET> [repo]` | Read the review comments on the ticket's PR, triage them with you, fix the valid ones, push and reply |
 | `/aisdlc-dev:post-release <TICKET>` | After release: consolidate product knowledge into `system/product/` and clean up task artifacts |
 | `/aisdlc-dev:finish <TICKET>` | Final completion gate |
 | `/aisdlc-dev:resume <TICKET>` | Continue an interrupted task from its first incomplete safe state |
