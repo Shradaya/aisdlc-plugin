@@ -1,66 +1,46 @@
 #!/usr/bin/env node
-// PreToolUse enforcement hook (design plugin). Mirrors the dev hook's layered gate, scoped to the design lifecycle:
-// prototype files under designs/<DESIGN-TICKET>/prototype/ and generated code under designs/<DESIGN-TICKET>/code/ are
-// authored during drafting (DESIGN_BRIEF onward); the generated code is produced by /aisdlc-design:codify only after
-// approval, and once the design is approved both prototype/ and code/ are hash-pinned so any change after approval
-// requires reapproval (through COMMITTED);
-// commits must match '<DESIGN-TICKET>: <summary>' on branch <DESIGN-TICKET>, and the usual dangerous-op/secret blocks apply.
+// PreToolUse enforcement hook (design plugin). The design workspace has one job: /aisdlc-design:sync commits the
+// prototype under designs/prototype/. Rules enforced here:
+//   - commits must stage only designs/prototype/ and read 'design: baseline <summary>' (only on main),
+//     '<KEY>: <summary>' (only on branch <KEY>) or 'design: <summary>' (only on branch design/<slug>);
+//   - never commit to main except the baseline; no force push, history rewrite, or deleting main;
+//   - .git, credentials and key files are protected; credential values must not be printed.
 // Reads the hook event JSON on stdin; exits 2 with a reason on stderr to block. No-op outside a design workspace.
 const fs = require("fs");
 const path = require("path");
-const crypto = require("crypto");
 const { execSync } = require("child_process");
 
-const { resolveRoot, configPath } = require("../scripts/lib/root");
-const { readYaml } = require("../scripts/lib/yaml");
+const { resolveRoot, workspaceKind } = require("../scripts/lib/root");
 const ROOT = resolveRoot();
 if (!ROOT) process.exit(0);
-const KIND = require("../scripts/lib/root").workspaceKind(ROOT);
+const KIND = workspaceKind(ROOT);
 if (KIND && KIND !== "design") process.exit(0); // another aisdlc plugin's workspace (config/workspace.yaml "kind")
 
-const TYPES = readYaml(configPath(ROOT, "task-types.yaml"), {});
 const norm = (p) => path.resolve(p).replace(/\\/g, "/").toLowerCase();
-
 function block(reason) { process.stderr.write("BLOCKED\nReason: " + reason + "\n"); process.exit(2); }
 
-function activeTasks() {
-  const dir = path.join(ROOT, "tasks");
-  if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir)
-    .map((t) => readYaml(path.join(dir, t, "task.yaml"), null))
-    .filter((t) => t && !["COMPLETED", "CANCELLED"].includes(t.task.status));
-}
-
-function designHash(id) {
-  const f = path.join(ROOT, "tasks", id, "design.md");
-  return fs.existsSync(f) ? "sha256:" + crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex") : null;
-}
-
-// May design files for ticket <id> be written right now? `kind` is "prototype" or "code". The prototype is drafted
-// during DESIGN_BRIEF..DESIGN_DRAFTED (pre-approval) and hash-pinned after approval. Generated code is produced by
-// /aisdlc-design:codify only AFTER approval, so it is blocked until DESIGN_APPROVED with an unchanged design hash.
-// Returns a block reason or null.
-function designWriteReason(id, kind = "prototype") {
-  const t = activeTasks().find((x) => x.task.id === id);
-  if (!t) return `No active aisdlc design task for '${id}'.`;
-  const lc = TYPES[t.task.lifecycle || t.task.type] || TYPES.design;
-  const st = lc.states, i = st.indexOf(t.task.status);
-  if (i < st.indexOf(lc.source_edit_min_state) || i > st.indexOf(lc.source_edit_max_state))
-    return `Design task ${id} is in ${t.task.status}; ${kind} edits are not allowed in this state (allowed ${lc.source_edit_min_state}..${lc.source_edit_max_state}).`;
-  // Prototype authoring is allowed before approval; generated code is not.
-  if (kind !== "code" && i < st.indexOf("DESIGN_APPROVED")) return null;
-  if (kind === "code" && i < st.indexOf("DESIGN_APPROVED"))
-    return `Design ${id} is not approved; generated code under designs/${id}/code/ may only be written after approval (run /aisdlc-design:codify and approve the design first).`;
-  const a = t.approvals && t.approvals.design;
-  if (!a || a.status !== "approved") return "Design has not been approved.";
-  if (a.artifact_hash !== designHash(id)) return `Design for ${id} changed after approval; reapproval required.`;
-  return null;
-}
-
-// Extract the design ticket from a path under designs/<TICKET>/...
-function designTicketOf(n) {
-  const m = n.match(/\/designs\/([a-z][a-z0-9]*-\d+)(\/|$)/);
-  return m ? m[1].toUpperCase() : null;
+// Validate a git commit command. Blocks unless it is a valid prototype sync commit.
+function checkCommit(cmd, dir) {
+  const msgs = [...cmd.matchAll(/-m\s+(?:"((?:[^"\\]|\\.)*)"|'([^']*)')/g)].map((m) => m[1] ?? m[2]);
+  if (/\s(-[a-zA-Z]*a[a-zA-Z]*|--all)(\s|$)/.test(cmd.replace(/-m\s+(?:"(?:[^"\\]|\\.)*"|'[^']*')/g, "")))
+    block("Do not use 'git commit -a'; stage only designs/prototype/ and commit that.");
+  let staged = [], branch = "";
+  try {
+    staged = execSync("git diff --cached --name-only", { cwd: dir, encoding: "utf8" }).split("\n").map((s) => s.trim()).filter(Boolean);
+    branch = execSync("git rev-parse --abbrev-ref HEAD", { cwd: dir, encoding: "utf8" }).trim();
+  } catch { block("Could not inspect the git index; commit blocked."); }
+  if (!staged.length || !staged.every((f) => f.startsWith("designs/prototype/")))
+    block("Commits here must stage only designs/prototype/ (use /aisdlc-design:sync).");
+  if (msgs.length !== 1 || msgs[0].includes("\n")) block("Commit must have exactly one single-line -m message and no body.");
+  if (/^design: baseline \S/.test(msgs[0])) {
+    if (branch !== "main") block("Baseline prototype sync commits only on main.");
+    return;
+  }
+  const m = msgs[0].match(/^(design|([A-Z][A-Z0-9]*-\d+)): (\S.*)$/);
+  if (!m) block("Prototype sync commit must read 'design: baseline <summary>', '<KEY>: <summary>' or 'design: <summary>'.");
+  if (branch === "main" || branch === "master") block("Prototype changes go on a branch created from main; only the baseline sync may commit to main.");
+  if (m[2] && branch !== m[2]) block(`Ticket sync commit requires branch ${m[2]} (current: ${branch}).`);
+  if (!m[2] && !branch.startsWith("design/")) block(`Slug sync commit requires a branch named design/<slug> (current: ${branch}).`);
 }
 
 const raw = fs.readFileSync(0, "utf8");
@@ -69,19 +49,9 @@ const tool = ev.tool_name, input = ev.tool_input || {};
 const cwd = ev.cwd || process.cwd();
 
 if (["Write", "Edit", "NotebookEdit", "MultiEdit"].includes(tool)) {
-  const target = path.resolve(cwd, input.file_path || input.notebook_path || "");
-  const n = norm(target);
-  if (/\/tasks\/[^/]+\/task\.yaml$/.test(n)) block("task.yaml may only be changed through scripts/state/aisdlc-state.js.");
+  const n = norm(path.resolve(cwd, input.file_path || input.notebook_path || ""));
   if (/\/\.git\//.test(n + "/")) block(".git is protected.");
   if (/(^|\/)(credentials|secrets)\//.test(n) || /\.(pem|key)$/.test(n)) block("Protected path.");
-  // task.md artifacts (design.md, versions/*) are writable; prototype files under designs/<TICKET>/prototype/ and
-  // generated code under designs/<TICKET>/code/ follow the gate (code is generated only after approval).
-  const ticket = designTicketOf(n);
-  const folder = (n.match(/\/designs\/[a-z][a-z0-9]*-\d+\/(prototype|code)\//) || [])[1];
-  if (ticket && folder) {
-    const r = designWriteReason(ticket, folder);
-    if (r) block(r);
-  }
   process.exit(0);
 }
 
@@ -97,37 +67,9 @@ if (tool === "Bash" || tool === "PowerShell") {
   if (/\b(echo|write-output|write-host|printf|cat|type|out-file|set-content)\b[^|;&\n]*(BITBUCKET_API_TOKEN|JIRA_API_TOKEN)/i.test(cmd) || /^\s*\$env:(BITBUCKET_API_TOKEN|JIRA_API_TOKEN)\s*$/i.test(cmd))
     block("Integration credentials must not be printed or written; check only whether they are set.");
 
-  // task state integrity
-  if (/task\.yaml/.test(cmd) && /(>|sed\s+-i|set-content|out-file|add-content|tee\b|rm\b|remove-item|mv\b|move-item)/i.test(cmd) && !/aisdlc-state\.js/.test(cmd))
-    block("task.yaml may only be changed through scripts/state/aisdlc-state.js.");
-
-  // git commit policy: <DESIGN-TICKET>: <summary> on branch <DESIGN-TICKET>
   if (/git\s+(-C\s+\S+\s+)?commit\b/.test(cmd)) {
-    const msgs = [...cmd.matchAll(/-m\s+(?:"((?:[^"\\]|\\.)*)"|'([^']*)')/g)].map((m) => m[1] ?? m[2]);
-    const tasks = activeTasks();
-    if (!tasks.length) block("No active aisdlc design task; commits are not allowed.");
-    if (msgs.length !== 1 || msgs[0].includes("\n")) block("Commit must have exactly one single-line -m message and no body.");
-    const ids = tasks.map((t) => t.task.id);
-    const m = msgs[0].match(/^([A-Z][A-Z0-9]*-\d+): (\S.*)$/);
-    if (!m || !ids.includes(m[1])) block(`Commit message must match '<design-ticket>: <summary>' for an active design task (${ids.join(", ")}).`);
-    // The design must be approved before it can be committed.
-    const t = tasks.find((x) => x.task.id === m[1]);
-    if (!t.approvals || !t.approvals.design || t.approvals.design.status !== "approved") block(`Design ${m[1]} is not approved; cannot commit.`);
-    let branch = "";
     const dir = (cmd.match(/-C\s+("[^"]+"|\S+)/) || [])[1]?.replace(/"/g, "") || cwd;
-    try { branch = execSync("git rev-parse --abbrev-ref HEAD", { cwd: dir, encoding: "utf8" }).trim(); } catch {}
-    if (branch !== m[1]) block(`Active aisdlc design task requires branch ${m[1]} (current: ${branch || "unknown"}).`);
-  }
-
-  // shell writes into prototype or generated-code folders follow the same gate as Write/Edit.
-  const isStateTool = /aisdlc-state\.js/.test(cmd);
-  const writeish = /(>>?\s|sed\s+-i|set-content|add-content|out-file|\btee\b|new-item|copy-item|move-item|\bmv\b|\bcp\b)/i;
-  if (!isStateTool && writeish.test(cmd)) {
-    const lc = cmd.replace(/\\/g, "/");
-    for (const m of lc.matchAll(/designs\/([a-z][a-z0-9]*-\d+)\/(prototype|code)\//gi)) {
-      const r = designWriteReason(m[1].toUpperCase(), m[2].toLowerCase());
-      if (r) block(r);
-    }
+    checkCommit(cmd, dir);
   }
 }
 process.exit(0);

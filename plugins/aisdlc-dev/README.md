@@ -40,7 +40,7 @@ Run the `--scope project` and `--scope local` forms from inside the workspace fo
    ```
 
    Set `jira.base_url` in `config/integrations.yaml`. Tickets are read over the Jira REST API by `scripts/jira/jira-fetch.js`, so there is no MCP server to set up; `node <plugin>/scripts/jira/jira-fetch.js check` confirms the connection and prints the `route` it used. Both classic API tokens and tokens with scopes work: the helper switches to the Atlassian API gateway on its own when Jira refuses a scoped token on the site URL (see `jira.api_route`, `jira.cloud_id`). Behind Cloudflare WARP or Zscaler, set `NODE_EXTRA_CA_CERTS` to the corporate root certificate (WARP: `C:/ProgramData/Cloudflare/installed_cert.pem`). Token scopes are listed in `config/integrations.yaml` and in `web/docs/guide/getting-started.md`. Jira writes are off by default.
-4. Register each repository with `/aisdlc-dev:add-repo <name> <path>`. Add `--kind design` for a design repository published by `aisdlc-design`.
+4. Register each repository with `/aisdlc-dev:add-repo <name> <path>`. Add `--kind design` for the design repository the designer syncs to with `aisdlc-design`.
 5. Run `/aisdlc-dev:status` to see repositories, active tasks, integrations, and which credentials are `set` or `missing` (names only, never values). For the same in your browser, refreshing itself as work moves on, run `/aisdlc-dev:status-page`.
 
 ## Commands
@@ -133,5 +133,5 @@ node scripts/validation/cred-check.js      # run from a dev workspace
 
 ## Working with the other plugins
 
-- **From design.** A design repository registered with `--kind design` is read during `/aisdlc-dev:feature`. The `design-link` step snapshots `designs/<DESIGN-TICKET>/` into `system/designs/` and pins it in the specification.
+- **From design.** A design repository registered with `--kind design` is read during `/aisdlc-dev:feature`. The `design-link` step reads the ticket's pages from `designs/prototype/` (tagged in `pages.yaml`, on the ticket's branch or `main`), snapshots them into `system/designs/<TICKET>/` and pins the snapshot and the source commit sha in the specification.
 - **To QA.** After your PR reaches the QA environment, the QA engineer tests the ticket with `aisdlc-qa`. Defects come back to you as comments on the Jira ticket. The QA task waits until you reply that the fix is deployed.

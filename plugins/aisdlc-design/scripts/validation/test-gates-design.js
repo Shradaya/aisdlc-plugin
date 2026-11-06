@@ -1,76 +1,65 @@
 #!/usr/bin/env node
-// Deterministic acceptance tests for the design lifecycle gates. No model needed.
-// Mirrors the dev test-gates.js structure against the design plugin's hook, state engine and task-types.
+// Deterministic acceptance tests for the design workspace hook (prototype sync commits). No model needed.
 const fs = require("fs"), path = require("path"), os = require("os");
 const { spawnSync, execSync } = require("child_process");
 const SRC = path.resolve(__dirname, "..", "..");
 const W = fs.mkdtempSync(path.join(os.tmpdir(), "aisdlc-design-test-"));
-for (const d of ["hooks", "scripts/state", "scripts/lib", "config", "tasks", "logs", "designs"]) fs.mkdirSync(path.join(W, d), { recursive: true });
-for (const f of ["hooks/pre-tool-policy.js", "scripts/state/aisdlc-state.js", "scripts/lib/repo-paths.js", "scripts/lib/root.js", "scripts/lib/yaml.js"]) fs.copyFileSync(path.join(SRC, f), path.join(W, f));
-fs.copyFileSync(path.join(SRC, "config", "task-types.yaml"), path.join(W, "config", "task-types.yaml"));
-// A design workspace still needs config/repositories.yaml to be recognized as a workspace by resolveRoot.
+for (const d of ["hooks", "scripts/lib", "config", "designs/prototype"]) fs.mkdirSync(path.join(W, d), { recursive: true });
+fs.copyFileSync(path.join(SRC, "hooks/pre-tool-policy.js"), path.join(W, "hooks/pre-tool-policy.js"));
+fs.copyFileSync(path.join(SRC, "scripts/lib/root.js"), path.join(W, "scripts/lib/root.js"));
+// config/repositories.yaml is the marker that makes the folder a workspace.
 fs.writeFileSync(path.join(W, "config/repositories.yaml"), JSON.stringify({ repositories: {} }));
-// The design folder is itself a git repo (the designer commits designs/<TICKET>/ into it).
 execSync("git init -q -b main && git config user.email t@t && git config user.name t && git commit -q --allow-empty -m init", { cwd: W });
 
 const env = { ...process.env, AISDLC_ROOT: W };
-const state = (...a) => spawnSync("node", [path.join(W, "scripts/state/aisdlc-state.js"), ...a], { env, encoding: "utf8" });
 const hook = (ev) => { const r = spawnSync("node", [path.join(W, "hooks/pre-tool-policy.js")], { env, input: JSON.stringify(ev), encoding: "utf8" }); if (process.env.V) console.log("   ", (r.stderr || "").trim().split("\n").join(" ")); return r.status; };
 let fail = 0;
 const t = (name, got, want) => { const ok = got === want; if (!ok) fail++; console.log(`${ok ? "PASS" : "FAIL"} ${name} (got ${got}, want ${want})`); };
 const write = (f) => hook({ tool_name: "Write", tool_input: { file_path: f }, cwd: W });
 const bash = (c, cwd = W) => hook({ tool_name: "Bash", tool_input: { command: c }, cwd });
+const git = (c) => execSync("git " + c, { cwd: W, stdio: "pipe" });
+const stage = (f, body) => { const p = path.join(W, f); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, body); git("add -A " + JSON.stringify(path.dirname(f))); };
 
-const proto = path.join(W, "designs/DESIGN-1/prototype/index.html");
-fs.mkdirSync(path.dirname(proto), { recursive: true });
+// file writes
+t("prototype write allowed", write(path.join(W, "designs/prototype/home.dc.html")), 0);
+t(".git write blocked", write(path.join(W, ".git/config")), 2);
+t("key file write blocked", write(path.join(W, "designs/x.pem")), 2);
 
-t("no task: prototype edit blocked", write(proto), 2);
-state("init", "DESIGN-1", "design");
-// Before the brief exists, prototype authoring is blocked (CREATED/TICKET_READY are below source_edit_min_state).
-state("transition", "DESIGN-1", "TICKET_READY");
-t("prototype edit before brief blocked", write(proto), 2);
-// From DESIGN_BRIEF through DESIGN_DRAFTED the author drafts the prototype freely (pre-approval drafting).
-for (const s of ["DESIGN_BRIEF"]) state("transition", "DESIGN-1", s);
-t("prototype authoring allowed during brief/draft", write(proto), 0);
-for (const s of ["DESIGN_DRAFTED","AWAITING_DESIGN_APPROVAL"]) state("transition", "DESIGN-1", s);
-fs.writeFileSync(path.join(W, "tasks/DESIGN-1/design.md"), "design v1");
-t("prototype authoring still allowed awaiting approval", write(proto), 0);
-t("design.md (task artifact) write allowed", write(path.join(W, "tasks/DESIGN-1/design.md")), 0);
-t("direct task.yaml edit blocked", write(path.join(W, "tasks/DESIGN-1/task.yaml")), 2);
-t("illegal skip to COMMITTED blocked (no approval)", state("transition", "DESIGN-1", "COMMITTED").status, 2);
-state("approve", "DESIGN-1", "design");
-state("transition", "DESIGN-1", "DESIGN_APPROVED");
-t("prototype edit allowed after approval", write(proto), 0);
-fs.writeFileSync(path.join(W, "tasks/DESIGN-1/design.md"), "design v2 changed");
-t("prototype edit blocked after design changed", write(proto), 2);
-state("approve", "DESIGN-1", "design");
-t("prototype edit allowed after reapproval", write(proto), 0);
+// baseline on main
+stage("designs/prototype/home.dc.html", "<!doctype html><title>home</title>");
+t("baseline on main allowed", bash(`git commit -m "design: baseline Initial prototype"`), 0);
+t("old-style message on main blocked", bash(`git commit -m "DESIGN-1: x"`), 2);
+t("commit -a blocked", bash(`git commit -a -m "design: baseline x"`), 2);
+git(`commit -q -m "design: baseline Initial prototype"`);
 
-// generated-code gate: designs/<T>/code/ follows the same rule as prototype/ (codify writes it only after approval).
-const code = path.join(W, "designs/DESIGN-1/code/react/v1/App.jsx");
-fs.mkdirSync(path.dirname(code), { recursive: true });
-t("code write allowed after approval", write(code), 0);
-t("code shell write allowed after approval", bash(`echo x > designs/DESIGN-1/code/react/v1/App.jsx`, W), 0);
-fs.writeFileSync(path.join(W, "tasks/DESIGN-1/design.md"), "design v3 changed again");
-t("code write blocked after design changed", write(code), 2);
-// A fresh ticket that never reached approval must not be able to write code.
-state("init", "DESIGN-2", "design");
-for (const s of ["TICKET_READY", "DESIGN_BRIEF", "DESIGN_DRAFTED"]) state("transition", "DESIGN-2", s);
-const code2 = path.join(W, "designs/DESIGN-2/code/html/v1/index.html");
-fs.mkdirSync(path.dirname(code2), { recursive: true });
-t("code write blocked before approval", write(code2), 2);
-// Re-approve DESIGN-1 so the commit-gate section below operates on an approved, unchanged design.
-state("approve", "DESIGN-1", "design");
+// ticket branch
+git("checkout -q -b SYNC-7");
+stage("designs/prototype/checkout.dc.html", "<!doctype html><title>checkout</title>");
+t("ticket commit on its branch allowed", bash(`git commit -m "SYNC-7: Update checkout page"`), 0);
+t("ticket commit on wrong branch blocked", bash(`git commit -m "SYNC-8: Update checkout page"`), 2);
+t("baseline off main blocked", bash(`git commit -m "design: baseline again"`), 2);
+t("slug commit needs design/ branch", bash(`git commit -m "design: tweak"`), 2);
+t("multi-line message blocked", bash(`git commit -m "SYNC-7: a" -m "body"`), 2);
+t("invalid message blocked", bash(`git commit -m "add checkout page"`), 2);
+git(`commit -q -m "SYNC-7: Update checkout page"`);
 
-// commit gate
-execSync("git checkout -q -b DESIGN-1", { cwd: W });
-fs.writeFileSync(path.join(W, "designs/DESIGN-1/prototype/index.html"), "<!doctype html><title>x</title>");
-execSync("git add -A", { cwd: W });
-t("invalid commit message blocked", bash(`git commit -m "add login screen"`, W), 2);
-t("valid design commit allowed", bash(`git commit -m "DESIGN-1: Add login screen prototype"`, W), 0);
-execSync("git checkout -q main", { cwd: W });
-t("commit on main blocked", bash(`git commit --allow-empty -m "DESIGN-1: x"`, W), 2);
-t("force push blocked", bash("git push --force origin DESIGN-1", W), 2);
+// slug branch
+git("checkout -q main && git checkout -q -b design/tweak-colors");
+stage("designs/prototype/home.dc.html", "<!doctype html><title>home v2</title>");
+t("slug commit on design/ branch allowed", bash(`git commit -m "design: Tweak colors"`), 0);
+
+// staged paths
+fs.writeFileSync(path.join(W, "README.md"), "x");
+git("add README.md");
+t("commit staging files outside designs/prototype blocked", bash(`git commit -m "design: Tweak colors"`), 2);
+git("reset -q README.md");
+
+// dangerous operations
+t("commit on main (ticket message) blocked", (git("checkout -q main"), bash(`git commit -m "SYNC-7: x"`)), 2);
+t("force push blocked", bash("git push --force origin SYNC-7"), 2);
+t("history rewrite blocked", bash("git filter-branch --all"), 2);
+t("credential print blocked", bash("echo $JIRA_API_TOKEN"), 2);
+t("harmless command allowed", bash("git status"), 0);
 
 console.log(fail ? `\n${fail} FAILED` : "\nall passed");
 process.exit(fail ? 1 : 0);

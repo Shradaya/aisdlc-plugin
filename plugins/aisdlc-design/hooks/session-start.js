@@ -1,22 +1,15 @@
 #!/usr/bin/env node
-// SessionStart hook (design plugin). Read-only: reports active design tasks. Does nothing outside a design workspace.
+// SessionStart hook (design plugin). Read-only: reports the synced prototype. Does nothing outside a design workspace.
 const fs = require("fs");
 const path = require("path");
-const ROOT = require("../scripts/lib/root").resolveRoot();
+const { resolveRoot, workspaceKind } = require("../scripts/lib/root");
+const ROOT = resolveRoot();
 if (!ROOT) process.exit(0); // installed user-wide: do nothing outside an aisdlc workspace
-const KIND = require("../scripts/lib/root").workspaceKind(ROOT);
+const KIND = workspaceKind(ROOT);
 if (KIND && KIND !== "design") process.exit(0); // another aisdlc plugin's workspace (config/workspace.yaml "kind")
-const out = [];
-const td = path.join(ROOT, "tasks");
-const active = [];
-if (fs.existsSync(td)) for (const t of fs.readdirSync(td)) {
-  const f = path.join(td, t, "task.yaml");
-  if (!fs.existsSync(f)) continue;
-  try { const j = JSON.parse(fs.readFileSync(f, "utf8")); if (j.task.status !== "COMPLETED") active.push(`${j.task.id}: ${j.task.status}`); }
-  catch { out.push(`WARNING: corrupt task file ${f}`); }
-}
-let designs = 0;
-const dd = path.join(ROOT, "designs");
-if (fs.existsSync(dd)) designs = fs.readdirSync(dd, { withFileTypes: true }).filter((e) => e.isDirectory()).length;
-out.push(`aisdlc-design: ${designs} design(s), ${active.length} active design tasks${active.length ? " (" + active.join(", ") + ")" : ""}`);
-console.log(out.join("\n"));
+const dir = path.join(ROOT, "designs", "prototype");
+let pages = 0;
+try { pages = fs.readdirSync(dir).filter((f) => /\.html$/i.test(f) && f !== "viewer.html").length; } catch {}
+console.log(pages
+  ? `aisdlc-design: ${pages} prototype page(s) in designs/prototype. Update them with /aisdlc-design:sync.`
+  : "aisdlc-design: no prototype synced yet. Run /aisdlc-design:sync <artifact link> for the baseline.");

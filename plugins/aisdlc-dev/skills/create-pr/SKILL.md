@@ -71,7 +71,7 @@ Use exactly these headings and structure. Keep optional sections' headings; writ
 
 <UI change: leave a placeholder for the developer to attach the screenshot. Otherwise "N/A (no UI change)".>
 
-Design: <for a ticket with a pinned design (specification section 11 "Design references"): design ticket, pinned version and artifact URL, for example `EL-5500, v2, <url>`. Otherwise omit this line.>
+Design: <for a ticket with a pinned design (specification section 11 "Design references"): pinned version and source commit, for example `v2, <short sha>`. Otherwise omit this line.>
 
 ## Before
 

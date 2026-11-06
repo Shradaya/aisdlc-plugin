@@ -2,6 +2,13 @@
 
 What changed in aisdlc-design, newest first. Versions: **major** when people must act, **minor** for something new, **patch** for fixes. README, tests and docs-site changes need no version. Every behavior change to this plugin needs a bump here and in `.claude-plugin/plugin.json` (checked by `node scripts/version-check.js --base <ref>`).
 
+## 2.0.0 (2026-11-06)
+Breaking: the plugin is now just `init` and `sync`.
+- New `/aisdlc-design:sync`: syncs a Claude Design prototype (own artifact link, file or pasted HTML) into `designs/prototype/` and pushes it to git with no ticket needed, so a designer in another Claude organization can hand off without shared access. Syncs the whole prototype or only `--pages`. The first sync is a baseline commit on `main`; later changes go on a branch from `main` (`<KEY>` or `design/<slug>`).
+- Pages are stored as `.dc.html` by default (plain `.html` only when asked) with a local viewer: `support.js` (the Claude Design runtime, refreshed each sync) and `viewer.html`, so pages open from disk without Claude access.
+- Removed `codify`, `commit` and `comment`, the `design-writer` agent, the ticket state engine and approval gates, the Jira comment script, the preview app and the `design-system/` templates. `init` now scaffolds only the workspace.
+- The hook now enforces only: commits stage only `designs/prototype/`; `design: baseline ...` on `main`, `<KEY>: ...` on branch `<KEY>`, `design: ...` on `design/<slug>`; no force-push or history rewrite.
+
 ## 1.1.2 (2026-11-06)
 Skill and agent descriptions no longer contain angle brackets (uploads reject them as XML tags) and are valid strict YAML.
 

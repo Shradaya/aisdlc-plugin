@@ -8,7 +8,7 @@ disable-model-invocation: true
 # add-repo
 
 ## Purpose
-Register a repository. For a **code** repository (default), also generate its standardized knowledge package and testing profile (spec §12-14); onboarding is strictly read-only with respect to the code. For a **design** repository (`--kind design`), register it as a read-only source of authored designs (`designs/<DESIGN-TICKET>/` produced by the `aisdlc-design` plugin) that the feature flow's `design-link` step reads and pins; no study, knowledge package or testing profile is produced. It does not use `/init`.
+Register a repository. For a **code** repository (default), also generate its standardized knowledge package and testing profile (spec §12-14); onboarding is strictly read-only with respect to the code. For a **design** repository (`--kind design`), register it as a read-only source of authored designs (`designs/prototype/` synced by the `aisdlc-design` plugin) that the feature flow's `design-link` step reads and pins; no study, knowledge package or testing profile is produced. It does not use `/init`.
 
 ## Invocation conditions
 Only on explicit `/aisdlc-dev:add-repo <repo-name> <repo-path> [--kind code|design]`. `$ARGUMENTS` = `<repo-name> <repo-path> [--kind ...]`. Default kind is `code`.
@@ -21,13 +21,13 @@ Only on explicit `/aisdlc-dev:add-repo <repo-name> <repo-path> [--kind code|desi
 ## Prerequisites
 - Both positional arguments present. If either is missing, ask with AskUserQuestion; never guess.
 - Path exists and is a Git repository.
-- **Code repositories only:** a `main` branch exists (local or `origin/main`). `base_branch` for managed repositories MUST equal `main`; otherwise mark the repository non-compliant, report it, and do not register it as compliant. Design repositories have no branch/compliance requirement (they are read-only sources; the designer works on `<DESIGN-TICKET>` branches there).
+- **Code repositories only:** a `main` branch exists (local or `origin/main`). `base_branch` for managed repositories MUST equal `main`; otherwise mark the repository non-compliant, report it, and do not register it as compliant. Design repositories have no branch/compliance requirement (they are read-only sources; the designer works on ticket branches there).
 
 ## Design repository (--kind design)
 When `--kind design`, do only this and stop (skip the study procedure below):
 1. Resolve the canonical path and confirm it is a Git repository: `git -C <path> rev-parse --show-toplevel`. Record the remote URL (read-only git only; do not checkout, branch or edit anything).
 2. Register it in `config/repositories.yaml` with `kind: design`, a portable `path` (the clone's real location goes in `claude.env` as `AISDLC_REPO_<NAME>` or under `AISDLC_REPOS_ROOT`, resolved by `scripts/lib/repo-paths.js`; never an absolute machine path in the registry), `role: design-source`, and `remote` (the origin URL). Do not set `base_branch`, `domains`, `depends_on`, `provides`, `ui`, or a testing profile; a design repository is never a managed code repository and `session-start` must not flag it as non-compliant for lacking `main`.
-3. Do not create `repositories/<repo-name>/` knowledge, do not run Phase M, do not touch `system/`. Report the registry entry and how `design-link` will read `designs/<DESIGN-TICKET>/` from it. Never print secrets.
+3. Do not create `repositories/<repo-name>/` knowledge, do not run Phase M, do not touch `system/`. Report the registry entry and how `design-link` will read `designs/prototype/` from it. Never print secrets.
 
 ## Procedure
 1. Resolve the canonical absolute path and confirm it is a Git repository: `git -C <path> rev-parse --show-toplevel`.
