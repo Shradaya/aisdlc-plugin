@@ -514,6 +514,14 @@ if (tool === "Bash" || tool === "PowerShell") {
     for (const m of cmd.matchAll(
       /tasks[\\/]([A-Z][A-Z0-9]*-\d+)[\\/]?([\w.\-]*)/g,
     )) {
+      // in the shared repo the PM's documents are not dev's to delete, whatever the task state
+      if (
+        KIND === "aisdlc" &&
+        ["jira.md", "requirements.md", "acceptance-criteria.md"].includes(m[2])
+      )
+        block(
+          `${m[2]} belongs to the PM role in the shared repository and stays; the cleanup deletes only dev's own artifacts.`,
+        );
       if (
         (!m[2] || PROTECTED_ARTIFACTS.includes(m[2])) &&
         !deletionAllowed(m[1])

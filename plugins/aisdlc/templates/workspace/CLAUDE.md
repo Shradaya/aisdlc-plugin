@@ -16,7 +16,7 @@ PM drafts requirements and acceptance criteria, then hands off to Design and/or 
 ## Commands
 
 - `/aisdlc:pull`: get the latest and see what is waiting for your role.
-- `/aisdlc:push`: pulls first, then commits your workflow files as `<TICKET>: <summary>` and pushes (current branch, no ticket branches). A merge conflict is yours to resolve; aisdlc never resolves or aborts it.
+- `/aisdlc:push`: pulls first, then commits your workflow files as `<TICKET>: <summary>` and pushes the branch you are on after you confirm it (the team's branch, for example `S10`, made by hand; never `main`). A merge conflict is yours to resolve; aisdlc never resolves or aborts it.
 - `/aisdlc:handoff <TICKET> <role>`: you are done; the next role starts.
 - `/aisdlc:return <TICKET> <role> <reason>`: ask the previous role for changes.
 - `/aisdlc:status-page`: the flow of every ticket, PM to QA.

@@ -650,6 +650,16 @@
         color: var(--muted);
         cursor: pointer;
       }
+      .qa-pick {
+        margin: 0 0 10px;
+      }
+      .qa-head {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin-bottom: 8px;
+      }
       .seg button.on {
         background: var(--surface-2);
         color: var(--text);
@@ -783,6 +793,50 @@
       .gate.pending b {
         color: var(--muted);
         font-weight: 500;
+      }
+      .qa-h {
+        font-size: 13px;
+        margin: 14px 0 6px;
+      }
+      details.qa-run {
+        border-top: 1px solid var(--line);
+        padding: 8px 0;
+      }
+      details.qa-run > summary {
+        cursor: pointer;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      pre.qa-err {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font: 12px/1.45 var(--mono);
+        max-height: 160px;
+        overflow: auto;
+        background: var(--bad-soft);
+        color: var(--text);
+        padding: 6px 8px;
+        border-radius: 6px;
+      }
+      .qa-shots {
+        margin-top: 8px;
+        display: grid;
+        gap: 8px;
+      }
+      .shot-row {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      img.shot {
+        height: 84px;
+        width: auto;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        display: block;
       }
       .gate-line {
         display: flex;
@@ -954,6 +1008,7 @@
       const state = {
         filter: "active",
         docSource: false,
+        qaRun: {},
         lastDoc: null,
         me: null,
       };
@@ -1192,6 +1247,34 @@
         return `<p class="small muted">${done} of ${total} approved. Approvals are human decisions, recorded under the approver's git user.email, and pin the hash of the approved file.</p><div class="gates">${d.gates.map((g) => `<div class="gate-line"><span class="chip">${esc(g.role)}</span>${gateRow(g)}</div>`).join("")}</div>`;
       }
 
+      function qaCard(d) {
+        const q = d.qa,
+          id = d.summary.id;
+        const open = q.defects.filter((x) => x.status === "open").length;
+        const defects = q.defects.length
+          ? `<h3 class="qa-h">Defects <span class="chip ${open ? "bad" : "ok"}">${open} open of ${q.defects.length}</span></h3><ul class="plain">${q.defects.map((x) => `<li><b>${esc(x.id)}</b> <span class="chip ${x.status === "open" ? "bad" : "ok"}">${esc(x.status || "?")}</span> ${esc(x.title || x.summary || x.description || "")}${x.scenario ? ` <span class="small muted">· ${esc(x.scenario)}</span>` : ""}</li>`).join("")}</ul>`
+          : "";
+        const img = (p, alt) =>
+          `<a href="/api/tasks/${encodeURIComponent(id)}/doc?path=${encodeURIComponent(p)}" target="_blank" rel="noopener"><img class="shot" loading="lazy" alt="${esc(alt)}" title="${esc(alt)}" src="/api/tasks/${encodeURIComponent(id)}/doc?path=${encodeURIComponent(p)}" onerror="this.closest('a').remove()"></a>`;
+        const run = (r) => {
+          const t = r.totals;
+          const chips = t
+            ? `<span class="chip ${t.failed ? "bad" : "ok"}">${esc(t.passed ?? 0)} passed${t.failed ? " · " + esc(t.failed) + " failed" : ""}${t.flaky ? " · " + esc(t.flaky) + " flaky" : ""}</span>`
+            : `<span class="chip">no results recorded</span>`;
+          const rows = r.tests.length
+            ? `<div class="table-wrap"><table><thead><tr><th>Scenario</th><th>Test</th><th>Result</th><th>Error</th></tr></thead><tbody>${r.tests.map((x) => `<tr><td class="mono">${esc(x.scenario || "")}</td><td>${esc(x.title || "")}${x.acs.length ? `<div class="small muted">${x.acs.map(esc).join(", ")}</div>` : ""}</td><td><span class="chip ${x.status === "passed" ? "ok" : x.status === "failed" || x.status === "timedOut" ? "bad" : ""}">${esc(x.status || "?")}</span></td><td>${x.error ? `<pre class="qa-err">${esc(x.error)}</pre>` : ""}${x.failed_step ? `<div class="small">failed at: ${esc(x.failed_step)}</div>` : ""}${x.failed_screenshot ? img(x.failed_screenshot, "failure screenshot") : ""}</td></tr>`).join("")}</tbody></table></div>`
+            : "";
+          const shots = r.screenshots.filter((g) => g.shots.length);
+          return `<div class="qa-run"><div class="qa-head"><b>Run ${esc(r.run)}</b> ${chips}${r.environment ? ` <span class="small muted">${esc(r.environment)}</span>` : ""}${r.build ? ` <span class="small muted">build ${esc(r.build)}</span>` : ""} <span class="small muted">${esc(when(r.started_at))}</span></div>${r.setup_error ? `<div class="banner bad"><span class="lbl">Setup error</span>${esc(r.setup_error)}</div>` : ""}${r.uncovered_scenarios.length ? `<p class="small">Scenarios without a test: ${r.uncovered_scenarios.map(esc).join(", ")}</p>` : ""}${rows}${shots.length ? `<div class="qa-shots">${shots.map((g) => `<div><div class="small muted">${esc(g.scenario)}</div><div class="shot-row">${g.shots.map((x) => img(x.path, x.step)).join("")}</div></div>`).join("")}</div>` : r.local_evidence ? "" : `<p class="small muted">Screenshots stay on the QA's machine and are not pushed.</p>`}</div>`;
+        };
+        const sel = q.runs.find((r) => r.run === state.qaRun[id]) || q.runs[0];
+        const picker =
+          q.runs.length > 1
+            ? `<div class="seg qa-pick" role="tablist">${q.runs.map((r) => `<button data-qarun="${esc(r.run)}" class="${r === sel ? "on" : ""}" title="${esc(when(r.started_at))}">Run ${esc(r.run)}${r.totals ? (r.totals.failed ? " ✗" : " ✓") : ""}</button>`).join("")}</div>`
+            : "";
+        return `${q.runs.length ? picker + run(sel) : `<p class="empty">No test runs recorded.</p>`}${defects}<p class="small muted">Run records and defects are shared in task.qa.yaml; screenshots and run folders are local to the machine that ran the tests and are shown only where they exist.</p>`;
+      }
+
       function integrityBanner(d) {
         const logs = d.log_integrity || [];
         if (!logs.length) return "";
@@ -1362,6 +1445,8 @@
           d.audit.length,
           d.documents,
           docPath,
+          d.qa,
+          state.qaRun[s.id],
         ]);
         if (key === lastTaskKey && document.getElementById("viewer")) return; // nothing changed; keep scroll and the open document
         lastTaskKey = key;
@@ -1403,6 +1488,7 @@
         <section class="card"><h2>Change requests</h2>${changesCard(d)}</section>
         <section class="card"><h2>Approvals</h2>${approvalsCard(d)}</section>
         <section class="card" id="documents"><h2>Documents</h2>${docsCard(d, docPath)}</section>
+        ${d.qa ? `<section class="card" id="qa-runs"><h2>QA runs</h2>${qaCard(d)}</section>` : ""}
         <section class="card"><h2>History</h2>${historyCard(d)}</section>
       </div>
     </div>`;
@@ -1412,6 +1498,13 @@
             .getElementById("documents")
             .scrollIntoView({ block: "start" });
         loadDoc(d);
+        document.querySelectorAll("#qa-runs [data-qarun]").forEach(
+          (b) =>
+            (b.onclick = () => {
+              state.qaRun[s.id] = Number(b.dataset.qarun);
+              detail(d, docPath, false);
+            }),
+        );
       }
 
       // ---------- markdown (escape first, then a small safe subset) ----------

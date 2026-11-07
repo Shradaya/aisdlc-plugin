@@ -1,0 +1,19 @@
+{
+  "name": "qa-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "QA Playwright regression suite, managed with the aisdlc-qa Claude Code plugin.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1",
+    "@types/node": "22.20.5",
+    "pdfjs-dist": "6.4.299"
+  }
+}

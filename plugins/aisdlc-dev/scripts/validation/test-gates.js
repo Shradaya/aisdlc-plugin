@@ -120,8 +120,23 @@ fs.writeFileSync(
 t("edit blocked after spec changed", write(src), 2);
 state("approve", "FEAT-1", "specification");
 t("edit allowed after reapproval", write(src), 0);
-for (const s of ["PLAN_APPROVED", "IMPLEMENTING"])
-  state("transition", "FEAT-1", s);
+t(
+  "SPEC_APPROVED cannot skip to IMPLEMENTING",
+  state("transition", "FEAT-1", "IMPLEMENTING").status,
+  2,
+);
+state("transition", "FEAT-1", "PLAN_APPROVED");
+t(
+  "IMPLEMENTING is refused until the plan is approved",
+  state("transition", "FEAT-1", "IMPLEMENTING").status,
+  2,
+);
+state("approve", "FEAT-1", "plan");
+t(
+  "IMPLEMENTING allowed once the plan is approved",
+  state("transition", "FEAT-1", "IMPLEMENTING").status,
+  0,
+);
 execSync("git checkout -q -b FEAT-1", { cwd: repo });
 t(
   "F: invalid commit blocked",
@@ -244,6 +259,7 @@ for (const s of ["TICKET_READY", "UNDERSTOOD", "REPOSITORIES_PREPARED"])
   state("transition", "FEAT-2", s);
 fs.writeFileSync(path.join(W, "tasks/FEAT-2/specification.md"), "spec");
 state("approve", "FEAT-2", "specification");
+state("approve", "FEAT-2", "plan");
 for (const s of ["SPEC_APPROVED", "PLAN_APPROVED", "IMPLEMENTING", "COMMITTED"])
   state("transition", "FEAT-2", s);
 t(
@@ -256,12 +272,12 @@ const sh = (c) => execSync(c, { cwd: repo, stdio: "ignore" });
 sh("git checkout -q main");
 sh("git checkout -q -b lf-qa");
 fs.writeFileSync(path.join(repo, "conflict.txt"), "qa side\n");
-sh("git add -A && git commit -q -m 'qa change'");
+sh('git add -A && git commit -q -m "qa change"');
 sh("git update-ref refs/remotes/origin/lf-qa lf-qa"); // the repo has no remote; promote merges origin/<target>
 sh("git checkout -q main");
 sh("git checkout -q -b FEAT-2");
 fs.writeFileSync(path.join(repo, "conflict.txt"), "feature side\n");
-sh("git add -A && git commit -q -m 'FEAT-2: feature change'");
+sh('git add -A && git commit -q -m "FEAT-2: feature change"');
 const ticketBranchEdit = write(src);
 t(
   "PR_CREATED: a source edit on the ticket branch stays blocked",

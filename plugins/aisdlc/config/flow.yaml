@@ -3,9 +3,9 @@
 # (from tasks/<TICKET>/task.<role>.yaml) that put the role at that step. Design has no state file: it is "created" once
 # designs/<TICKET>/ holds a page. "ready" says when a role may hand off (a state in "states", plus the approved gates
 # in "gates", or for design a non-empty designs/<TICKET>/ folder). "gates" lists each role's approval gates for the status
-# page (gate name, label, the file it pins). A step with a "gate" turns green once that gate is approved; an "optional" gate
-# that is still pending once the role has reached a "skipped_from" state is shown as not required (the plan is only needed
-# for major features). A workspace config/flow.yaml replaces this file.
+# page (gate name, label, the file it pins). A step with a "gate" turns green once that gate is approved (specification and
+# plan are both required for a feature). "variants" replace steps, gates and readiness for a ticket whose dev task has that
+# type: a bug fix has no specification or plan, and PM and design are not needed. A workspace config/flow.yaml replaces this file.
 {
   "order": ["pm", "design", "dev", "qa"],
   "labels": { "pm": "PM", "design": "Design", "dev": "Dev", "qa": "QA" },
@@ -38,7 +38,7 @@
     "pm": [{ "gate": "acceptance_criteria", "label": "Acceptance criteria approved", "artifact": "acceptance-criteria.md" }],
     "dev": [
       { "gate": "specification", "label": "Specification approved", "artifact": "specification.md" },
-      { "gate": "plan", "label": "Plan approved", "artifact": "implementation-plan.md", "optional": false, "skipped_from": ["IMPLEMENTING", "COMMITTED", "PR_CREATED", "MERGED", "RELEASED", "KNOWLEDGE_CONSOLIDATED", "COMPLETED"] }
+      { "gate": "plan", "label": "Plan approved", "artifact": "implementation-plan.md" }
     ],
     "qa": [
       { "gate": "scenarios", "label": "Scenarios approved", "artifact": "scenarios.md" },
@@ -50,6 +50,18 @@
     "design": { "signal": "design_folder" },
     "dev": { "states": ["MERGED", "RELEASED", "KNOWLEDGE_CONSOLIDATED", "COMPLETED"] },
     "qa": { "states": ["RESULTS_SIGNED_OFF", "EVIDENCE_PUBLISHED", "COMMITTED", "COMPLETED"], "gates": ["signoff"] }
+  },
+  "variants": {
+    "bug": {
+      "steps": { "dev": [
+        { "label": "Investigate", "states": ["CREATED", "TICKET_READY", "UNDER_INVESTIGATION", "ROOT_CAUSE_CONFIRMED"] },
+        { "label": "Fix", "states": ["REPOSITORIES_PREPARED", "IMPLEMENTING", "COMMITTED"] },
+        { "label": "Pull request", "states": ["PR_CREATED"] },
+        { "label": "Merged", "states": ["COMPLETED"] }
+      ] },
+      "gates": { "dev": [] },
+      "ready": { "dev": { "states": ["COMPLETED"] } }
+    }
   },
   "failure_states": ["BLOCKED", "WAITING_FOR_INPUT", "WAITING_FOR_APPROVAL", "CONFLICTED", "FAILED", "CANCELLED"]
 }

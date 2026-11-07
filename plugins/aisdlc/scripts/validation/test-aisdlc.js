@@ -105,6 +105,17 @@ t(
   true,
 );
 
+t(
+  "the base branch is main by default",
+  wsJson.workspace.base_branch_policy,
+  "main",
+);
+// the clones below share work on main itself, so they use another base branch; the base-branch rules have their own section
+fs.writeFileSync(
+  path.join(seed, "config/workspace.yaml"),
+  ws.replace('"base_branch_policy": "main"', '"base_branch_policy": "trunk"'),
+);
+
 // ---- two clones of a bare remote ----------------------------------------------------------------------------------
 const remote = path.join(tmp, "remote.git");
 execSync(`git init -q --bare -b main "${remote}"`);
@@ -469,6 +480,320 @@ t(
   "hook: ordinary task documents can be written",
   write(A, `tasks/${T}/requirements.md`),
   0,
+);
+
+// ---- the team's branch (made by hand, for example S10): main is never committed or pushed to -------------------------------
+const seed2 = path.join(tmp, "seed2"),
+  remote2 = path.join(tmp, "remote2.git");
+fs.mkdirSync(seed2);
+node(
+  path.join(AISDLC, "scripts/init/aisdlc-init.js"),
+  [seed2, "--role", "pm"],
+  tmp,
+  { AISDLC_ROOT: "" },
+);
+execSync(`git init -q --bare -b main "${remote2}"`);
+g(seed2, "init -q -b main");
+for (const [k, v] of [
+  ["user.email", "p@x.io"],
+  ["user.name", "P"],
+])
+  g(seed2, `config ${k} ${v}`);
+g(
+  seed2,
+  "add -A -- config tasks designs system repositories CLAUDE.md .gitignore",
+);
+g(seed2, 'commit -q -m "EL-0: Scaffold shared repo"');
+g(seed2, `remote add origin "${remote2}"`);
+t(
+  "the very first push of a new repository may go to main",
+  gitJs(seed2, ["push"]).status,
+  0,
+);
+const NL = String.fromCharCode(10);
+fs.mkdirSync(path.join(seed2, "tasks/EL-300"), { recursive: true });
+fs.writeFileSync(
+  path.join(seed2, "tasks/EL-300/requirements.md"),
+  "- req" + NL,
+);
+r = gitJs(seed2, ["commit", "--message", "EL-300: Requirements"]);
+t(
+  "commit on main is refused and says to switch to the team's branch",
+  [r.status, json(r).on_base, /git switch/.test(json(r).error)],
+  [2, true, true],
+);
+t("and nothing was committed", g(seed2, "rev-list --count HEAD").trim(), "1");
+t(
+  "hook: raw git commit on main blocked",
+  (g(seed2, "add tasks"), bash(seed2, 'git commit -m "EL-300: Requirements"')),
+  2,
+);
+g(seed2, "reset -q");
+t("hook: raw git push on main blocked", bash(seed2, "git push"), 2);
+t("hook: git push origin main blocked", bash(seed2, "git push origin main"), 2);
+t("push on main refused by the script", gitJs(seed2, ["push"]).status, 2);
+t(
+  "a branch flag does not exist any more",
+  gitJs(seed2, [
+    "commit",
+    "--message",
+    "EL-300: Requirements",
+    "--branch",
+    "S10",
+  ]).status,
+  2,
+);
+t(
+  "there is no sprint command either (the branch is made by hand)",
+  gitJs(seed2, ["sprint", "S10"]).status,
+  2,
+);
+g(seed2, "switch -q -c S10"); // the team's branch, made by hand
+t(
+  "commit on the team's branch works",
+  gitJs(seed2, ["commit", "--message", "EL-300: Requirements"]).status,
+  0,
+);
+t("main did not move", g(seed2, "rev-list --count main").trim(), "1");
+t(
+  "hook: commit on the team's branch allowed",
+  (fs.writeFileSync(path.join(seed2, "tasks/EL-300/more.md"), "x"),
+  g(seed2, "add tasks"),
+  bash(seed2, 'git commit -m "EL-300: More"')),
+  0,
+);
+g(seed2, 'commit -q -m "EL-300: More"');
+t(
+  "hook: git push of the team's branch allowed",
+  bash(seed2, "git push -u origin S10"),
+  0,
+);
+t(
+  "hook: pushing HEAD:main from the branch blocked",
+  bash(seed2, "git push origin HEAD:main"),
+  2,
+);
+r = json(gitJs(seed2, ["push", "--dry-run"]));
+t(
+  "push dry run names the branch and changes nothing",
+  [r.dry_run, r.branch, g(seed2, "ls-remote --heads origin").includes("S10")],
+  [true, "S10", false],
+);
+t("status names the branch", json(gitJs(seed2, ["status"])).branch, "S10");
+t("push of the branch works", gitJs(seed2, ["push"]).status, 0);
+t(
+  "the remote has the branch and main is untouched",
+  [
+    g(seed2, "ls-remote --heads origin").includes("refs/heads/S10"),
+    g(remote2, "rev-list --count main").trim(),
+  ],
+  [true, "1"],
+);
+// unknown commands and flags do nothing
+t(
+  "an unknown flag is refused, not run",
+  gitJs(seed2, ["push", "--help"]).status,
+  2,
+);
+t(
+  "help prints usage and exits 0",
+  [
+    gitJs(seed2, ["--help"]).status,
+    /usage/.test(gitJs(seed2, ["--help"]).stdout),
+  ],
+  [0, true],
+);
+t("an unknown command is refused", gitJs(seed2, ["nuke"]).status, 2);
+// a teammate on the same branch stays in sync with every push and pull; main is not merged into it
+const D = path.join(tmp, "dclone");
+execSync(`git clone -q "${remote2}" "${D}"`);
+for (const [k, v] of [
+  ["user.email", "d@x.io"],
+  ["user.name", "D"],
+])
+  g(D, `config ${k} ${v}`);
+g(D, "switch -q S10");
+t(
+  "a teammate on S10 has the files",
+  fs.existsSync(path.join(D, "tasks/EL-300/requirements.md")),
+  true,
+);
+fs.mkdirSync(path.join(D, "tasks/EL-301"), { recursive: true });
+fs.writeFileSync(
+  path.join(D, "tasks/EL-301/requirements.md"),
+  "- from the teammate" + NL,
+);
+t(
+  "teammate commits and pushes on S10",
+  [
+    gitJs(D, ["commit", "--message", "EL-301: Requirements"]).status,
+    gitJs(D, ["push"]).status,
+  ],
+  [0, 0],
+);
+r = gitJs(seed2, ["pull"]);
+t(
+  "pull keeps the first person in sync",
+  [json(r).ok, fs.existsSync(path.join(seed2, "tasks/EL-301/requirements.md"))],
+  [true, true],
+);
+const E = path.join(tmp, "eclone");
+execSync(`git clone -q "${remote2}" "${E}"`);
+for (const [k, v] of [
+  ["user.email", "e@x.io"],
+  ["user.name", "E"],
+])
+  g(E, `config ${k} ${v}`);
+fs.mkdirSync(path.join(E, "tasks/EL-302"), { recursive: true });
+fs.writeFileSync(
+  path.join(E, "tasks/EL-302/requirements.md"),
+  "- on main" + NL,
+);
+g(E, "add tasks");
+g(E, 'commit -q -m "EL-302: On main"');
+g(E, "push -q origin main");
+gitJs(seed2, ["pull"]);
+t(
+  "pull does not merge main into the team's branch",
+  fs.existsSync(path.join(seed2, "tasks/EL-302/requirements.md")),
+  false,
+);
+
+// ---- a bug fix skips the documents: no PM, design, specification or plan; dev hands straight to QA -------------------------
+const BUG = "EL-310";
+writeJson(path.join(seed2, "tasks", BUG, "task.dev.yaml"), {
+  task: { id: BUG, type: "bug", status: "IMPLEMENTING" },
+  approvals: {},
+});
+let bd = json(flowJs(seed2, ["derive", BUG])).tickets[0];
+const bRole = (n) => bd.roles.find((x) => x.role === n);
+t("bug: derive reports the variant", bd.variant, "bug");
+t(
+  "bug: dev steps are Investigate, Fix, Pull request, Merged",
+  bRole("dev").steps,
+  ["Investigate", "Fix", "Pull request", "Merged"],
+);
+t(
+  "bug: PM and design are not needed",
+  [bRole("pm").status, bRole("design").status],
+  ["not needed", "not needed"],
+);
+t("bug: dev is on the Fix step", bRole("dev").step, 1);
+t(
+  "bug: dev cannot hand off before the fix is merged",
+  flowJs(seed2, ["handoff", BUG, "qa", "--from", "dev"]).status,
+  2,
+);
+writeJson(path.join(seed2, "tasks", BUG, "task.dev.yaml"), {
+  task: { id: BUG, type: "bug", status: "COMPLETED" },
+  approvals: {},
+});
+t(
+  "bug: dev hands straight to QA without any document",
+  flowJs(seed2, ["handoff", BUG, "qa", "--from", "dev"]).status,
+  0,
+);
+bd = json(flowJs(seed2, ["derive", BUG])).tickets[0];
+t(
+  "bug: QA is active, dev done",
+  [bRole("qa").status, bRole("dev").status],
+  ["active", "done"],
+);
+const featState = {
+  task: { id: "EL-311", type: "feature", status: "IMPLEMENTING" },
+  approvals: {},
+};
+writeJson(path.join(seed2, "tasks", "EL-311", "task.dev.yaml"), featState);
+t(
+  "feature: the default steps (with specification and plan) still apply",
+  json(flowJs(seed2, ["derive", "EL-311"]))
+    .tickets[0].roles.find((x) => x.role === "dev")
+    .steps.includes("Plan"),
+  true,
+);
+
+// dev's cleanup never deletes the PM's documents in the shared repo
+const devHook = (cwd, command) =>
+  spawnSync(
+    "node",
+    [path.join(PLUGINS, "aisdlc-dev/hooks/pre-tool-policy.js")],
+    {
+      cwd,
+      env: { ...process.env, AISDLC_ROOT: cwd },
+      input: JSON.stringify({
+        cwd,
+        tool_name: "Bash",
+        tool_input: { command },
+      }),
+      encoding: "utf8",
+    },
+  ).status;
+t(
+  "dev hook: deleting requirements.md in the shared repo is blocked",
+  devHook(seed2, "rm tasks/EL-300/requirements.md"),
+  2,
+);
+t(
+  "dev hook: deleting acceptance-criteria.md in the shared repo is blocked",
+  devHook(seed2, "rm tasks/EL-300/acceptance-criteria.md"),
+  2,
+);
+
+// ---- QA runs, errors and defects on the status page, only when the information exists ---------------------------------------
+const statusJson = (cwd, ticket) =>
+  JSON.parse(
+    spawnSync(
+      "node",
+      [path.join(AISDLC, "scripts/status/status-server.js"), "--json", ticket],
+      { cwd, env: { ...process.env, AISDLC_ROOT: cwd }, encoding: "utf8" },
+    ).stdout,
+  );
+t(
+  "no QA card data when there are no runs or defects",
+  statusJson(seed2, "EL-300").qa,
+  null,
+);
+const ev1 = path.join(seed2, "tasks/EL-312/evidence/run-1");
+fs.mkdirSync(path.join(ev1, "screenshots/EL-312-S1"), { recursive: true });
+fs.writeFileSync(path.join(ev1, "screenshots/EL-312-S1/01-open.png"), "png");
+writeJson(path.join(ev1, "summary.json"), {
+  totals: { tests: 2, passed: 1, failed: 1 },
+  tests: [
+    { scenario: "S1", title: "ok", status: "passed" },
+    {
+      scenario: "S2",
+      title: "bad",
+      status: "failed",
+      error: "boom",
+      failed_step: "submit",
+    },
+  ],
+});
+writeJson(path.join(seed2, "tasks/EL-312/task.qa.yaml"), {
+  task: { id: "EL-312", type: "qa", status: "AWAITING_DEV_FIX" },
+  approvals: {},
+  defects: { D1: { status: "open", title: "Wrong message" } },
+});
+const qd = statusJson(seed2, "EL-312").qa;
+t(
+  "QA runs: totals, the failing test with its error, and the defect",
+  [
+    qd.runs[0].totals.failed,
+    qd.runs[0].tests[1].error,
+    qd.defects[0].id,
+    qd.defects[0].status,
+  ],
+  [1, "boom", "D1", "open"],
+);
+t(
+  "QA runs: screenshots listed from the local evidence folder",
+  qd.runs[0].screenshots[0].shots[0].path,
+  "tasks/EL-312/evidence/run-1/screenshots/EL-312-S1/01-open.png",
+);
+t(
+  "evidence is gitignored (run records stay in task.qa.yaml)",
+  g(seed2, "check-ignore tasks/EL-312/evidence/run-1/summary.json").trim(),
+  "tasks/EL-312/evidence/run-1/summary.json",
 );
 
 // ---- role plugins keep per-role state files in a shared repo ----------------------------------------------------------

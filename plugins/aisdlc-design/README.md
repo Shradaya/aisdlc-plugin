@@ -86,7 +86,7 @@ designs/KEY/
 Each folder is self-contained, so two tickets can hold their own copy of the same page. `support.js` is about 190 KB per folder.
 
 ### Rules
-- **Scope.** No `--pages`: all pages go into the ticket folder. With `--pages`: only those. An unknown page name is listed back to you, never guessed.
+- **Scope.** No `--pages`: all pages go into the ticket folder. With `--pages`: only those, plus any page they embed with `<dc-import>` (a page that imports `Feed` brings `Feed.dc.html` along, so it still renders). An unknown page name is listed back to you, never guessed.
 - **Viewing without Claude.** Open `designs/KEY/viewer.html` (or any `.dc.html`) by double-click. No Claude account is needed. Google Fonts load from the network.
 - **Approval.** One explicit approval before every commit. The skill scans first for remote scripts, secrets and patient data and asks before stripping anything.
 - **Commits.** `KEY: <summary>`, one line, staging only `designs/KEY/` (one ticket per commit). The hook enforces this and blocks `git commit -a`, force-push and history rewrites.

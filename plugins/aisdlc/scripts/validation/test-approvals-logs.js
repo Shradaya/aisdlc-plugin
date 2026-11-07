@@ -512,7 +512,7 @@ const get = (p) =>
       total: 5,
     });
     t(
-      "the plan gate is listed for dev (optional, pending)",
+      "the plan gate is listed for dev (required, pending)",
       [g("dev", "plan").status],
       ["pending"],
     );
@@ -543,6 +543,9 @@ const get = (p) =>
         .replace(/^\s*#.*$/gm, ""),
     );
     base.gates.dev.find((x) => x.gate === "plan").optional = true;
+    base.gates.dev.find((x) => x.gate === "plan").skipped_from = [
+      "IMPLEMENTING",
+    ];
     fs.writeFileSync(path.join(W, "config/flow.yaml"), JSON.stringify(base));
     d = JSON.parse((await get("/api/tasks/EL-1")).body);
     t(

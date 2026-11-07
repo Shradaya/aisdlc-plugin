@@ -53,6 +53,17 @@ const CORE_CONSUMERS = [
   },
 ];
 
+// The QA files that /aisdlc:init scaffolds for every role are mirrored from the QA plugin's templates.
+const QA_MIRROR = [
+  "config/environments.yaml",
+  "fixtures/env.ts",
+  "fixtures/pdf.ts",
+  "fixtures/qa.ts",
+  "package.json",
+  "playwright.config.ts",
+  "tests/auth.setup.ts",
+  "tests/seed.spec.ts",
+];
 const check = process.argv.includes("--check");
 let drift = 0;
 
@@ -74,6 +85,33 @@ for (const { dest, files } of CORE_CONSUMERS) {
       fs.writeFileSync(out, want);
       console.log(`synced ${path.relative(REPO, out)}`);
     }
+  }
+}
+
+for (const rel of QA_MIRROR) {
+  const src = path.join(
+      REPO,
+      "plugins",
+      "aisdlc-qa",
+      "templates",
+      "workspace",
+      rel,
+    ),
+    out = path.join(REPO, "plugins", "aisdlc", "templates", "qa", rel);
+  if (
+    !fs.existsSync(src) ||
+    (fs.existsSync(out) && fs.readFileSync(src).equals(fs.readFileSync(out)))
+  )
+    continue;
+  if (check) {
+    console.error(
+      `DRIFT plugins/aisdlc/templates/qa/${rel} differs from the QA plugin template`,
+    );
+    drift++;
+  } else {
+    fs.mkdirSync(path.dirname(out), { recursive: true });
+    fs.copyFileSync(src, out);
+    console.log(`synced aisdlc qa template ${rel}`);
   }
 }
 

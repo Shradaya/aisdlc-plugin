@@ -10,7 +10,7 @@
 {
   "feature": {
     "states": ["CREATED","TICKET_READY","UNDERSTOOD","REPOSITORIES_PREPARED","SPEC_APPROVED","PLAN_APPROVED","IMPLEMENTING","COMMITTED","PR_CREATED","MERGED","RELEASED","KNOWLEDGE_CONSOLIDATED","COMPLETED"],
-    "skip": { "SPEC_APPROVED": ["IMPLEMENTING"], "PLAN_APPROVED": ["IMPLEMENTING"], "COMMITTED": ["IMPLEMENTING"], "PR_CREATED": ["IMPLEMENTING"] },
+    "skip": { "PLAN_APPROVED": ["IMPLEMENTING"], "COMMITTED": ["IMPLEMENTING"], "PR_CREATED": ["IMPLEMENTING"] },
     "source_edit_min_state": "SPEC_APPROVED",
     "source_edit_max_state": "COMMITTED"
   },
@@ -34,7 +34,7 @@
       "TICKET_READY": ["claude", "Summarize the requirement, acceptance criteria, constraints and unknowns; resolve unknowns that affect design."],
       "UNDERSTOOD": ["claude", "Run impact analysis, then confirm the affected repositories with you. You: confirm tasks/{T}/impact-analysis.md."],
       "REPOSITORIES_PREPARED": ["claude", "Draft the specification into tasks/{T}/specification.md, then request your approval."],
-      "SPEC_APPROVED": ["claude", "Draft the implementation plan. (Approve the spec with /aisdlc-dev:approve {T} specification; source edits stay blocked until approved.)"],
+      "SPEC_APPROVED": ["claude", "Draft the implementation plan, then request your approval: /aisdlc-dev:approve {T} plan. Implementation cannot start until the plan is approved."],
       "PLAN_APPROVED": ["claude", "Implement in small steps, running tests and review as you go (validation and review are sub-steps of implementation)."],
       "IMPLEMENTING": ["claude", "Implement, validate (test matrix -> validation.md) and run independent review. You: review progress; confirm the commit when ready."],
       "COMMITTED": ["you", "Create the pull request(s) with /aisdlc-dev:pr {T} (target the UAT branch for release)."],

@@ -31,10 +31,10 @@ Failure states (reachable from any state): BLOCKED, WAITING_FOR_INPUT, WAITING_F
 ## Gates
 
 - Source edits in registered repositories are allowed only from SPEC_APPROVED to COMMITTED and only while the approved specification hash matches (hook-enforced). Spec changes after approval require reapproval.
-- Specification approval is explicit human approval (`approve <ticket> specification`), folded into reaching SPEC_APPROVED. The state engine refuses IMPLEMENTING without it. When plan approval is not required, IMPLEMENTING may be reached directly from SPEC_APPROVED (skip edge).
+- Specification approval is explicit human approval (`approve <ticket> specification`), folded into reaching SPEC_APPROVED. The state engine refuses IMPLEMENTING without it.
 - The feature branch is created from the latest `origin/main` (repository-preparation fetches and branches off `origin/main`); knowledge freshness is measured against the latest `origin/main`.
 - UI features (an affected repository has `"ui": true`) pin the ticket's design folder `designs/<TICKET>/`, read read-only from the registered design repository (synced by the aisdlc-design plugin), together with the source commit sha, in the specification's "Design references" (`design-link`); the feature is built from the design. Approval of the specification approves the pin; changing the pin after approval changes the hash and requires reapproval. Design folders under `system/designs/` are durable and are not deleted by cleanup.
-- Plan approval (`approve <ticket> plan`) is required for cross-repository, database, API, security-sensitive and high-risk changes (`${CLAUDE_PLUGIN_ROOT}/config/policies.yaml`), folded into reaching PLAN_APPROVED; the state engine does not enforce it, the workflow does.
+- Plan approval (`approve <ticket> plan`) is required for every feature, folded into reaching PLAN_APPROVED. The state engine refuses IMPLEMENTING until the plan is approved, so SPEC_APPROVED never goes straight to IMPLEMENTING.
 - Ticket drift before implementation: JIRA_CHANGED -> SPEC_REVIEW_REQUIRED -> reapproval; implementation blocked meanwhile.
 - Validation and review are sub-steps of IMPLEMENTING: validation completion (spec §14.3) precedes the review sub-step, and both precede COMMITTED. Reviewers see only requirement, code and tests.
 - Tests are black-box, written by `test-writer` from the approved specification; the implementer must not edit them.

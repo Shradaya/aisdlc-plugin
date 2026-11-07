@@ -1,5 +1,5 @@
 // Commands that touch real systems, asked about before they run. Plugin-specific (not part of the vendored core);
-// shared by the Claude Code hook (hooks/pre-tool-policy.js) and the Kiro mirror.
+// used by the Claude Code hook (hooks/pre-tool-policy.js).
 //
 // config/workspace.yaml "real_systems": a list of
 //   { "command": "npm run seed*", "reason": "Seeds write to the database the secret points at.", "repo": "backend" }

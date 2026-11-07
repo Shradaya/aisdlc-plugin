@@ -83,7 +83,7 @@ Task documents (specification, impact analysis, plan, root cause, validation, tr
 
 The lifecycle contracts are in [`workflows/`](workflows/): `feature.md`, `bug.md`, `investigation.md`, plus one file for each specialised workflow. The feature path is:
 
-> ticket → understand → impact analysis → repositories prepared → **specification approval** (hash-pinned) → [plan approval] → implement → validate → review → commit → PR → CI → merge → release → knowledge consolidation → complete
+> ticket → understand → impact analysis → repositories prepared → **specification approval** (hash-pinned) → **plan approval** → implement → validate → review → commit → PR → CI → merge → release → knowledge consolidation → complete
 
 What is enforced, and where:
 
@@ -105,7 +105,7 @@ What is enforced, and where:
 
 - **`scripts/git-hosting/bitbucket-pr.js`** is the Bitbucket Cloud PR helper (`create`, `status`, `comment`).
 - **`data`** (in `config/workspace.yaml`) declares what the repositories handle: `sensitivity` (`none`, `pii`, `phi`, `financial`) and `data_files` (extensions that hold such data). Anything but `none` makes the security review mandatory and gives the reviewer that sensitivity's checklist (`config/sensitivity/<name>.md`; a same-named file in the workspace's `config/` overrides the plugin's), plus the data files a change adds. `scripts/review/sensitivity.js` resolves it for `code-review`.
-- **`on_edit`** (per repository, in `config/repositories.yaml`) lists checks that run right after Claude edits a file there: a formatter (`"fix": true`), a linter, the related test. `hooks/post-tool-edit.js` runs them without a shell and reports failures back to Claude so it fixes them; they run outside the permission prompts, so an edit that changes `on_edit` asks the developer to confirm. Claude Code only (Kiro's PostToolUse hook cannot return output to the model). See the FAQ's "Can aisdlc format and check each file Claude edits?".
+- **`on_edit`** (per repository, in `config/repositories.yaml`) lists checks that run right after Claude edits a file there: a formatter (`"fix": true`), a linter, the related test. `hooks/post-tool-edit.js` runs them without a shell and reports failures back to Claude so it fixes them; they run outside the permission prompts, so an edit that changes `on_edit` asks the developer to confirm. See the FAQ's "Can aisdlc format and check each file Claude edits?".
 - **`real_systems`** (in `config/workspace.yaml`) lists commands that touch real systems; `hooks/pre-tool-policy.js` asks the developer to confirm each one, with its reason, instead of running it (`scripts/lib/real-systems.js`). See the guide's "Commands that ask first".
 - **`scripts/git-hosting/check-targets.js`** is a read-only dry run of how a branch merges into each target branch: clean, already merged, or conflicts (with the files, and which targets share the same conflict), plus named imports the merge would leave dangling. It never checks anything out or writes a ref. `/aisdlc-dev:create-pr` runs it before opening any PR. Needs git 2.38+.
   - Credentials come from the environment only.

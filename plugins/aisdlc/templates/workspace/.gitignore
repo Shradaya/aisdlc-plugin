@@ -13,18 +13,23 @@ logs/sync-main/
 tasks/*/.lock*
 # changes.md is generated from the hand-off events after every pull (so concurrent returns never conflict)
 tasks/*/changes.md
+# QA run evidence (screenshots, reports) stays on the machine that ran the tests; run records are in task.qa.yaml
+tasks/*/evidence/
 
-# QA: tests and Playwright scaffolding stay local; only tasks/<TICKET>/ scenarios and results are shared
+# QA: tests and Playwright scaffolding stay local (root-anchored, so web/package.json stays tracked); only tasks/<TICKET>/ scenarios and results are shared
 tests/
 fixtures/
 specs/
-package.json
-package-lock.json
-playwright.config.ts
+/package.json
+/package-lock.json
+/playwright.config.ts
 .auth/
 test-results/
 playwright-report/
 checks/
+
+# Dev: PR review notes stay local
+reviews/
 
 # OS / editor cruft
 .DS_Store

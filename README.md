@@ -39,13 +39,14 @@ Hand off ───────────────► ───────�
 
 Hand-offs can also go back: any role can return a ticket to an earlier role with a reason, and it is tracked until the receiver resolves it. The status page (`/aisdlc:status-page`) shows each role as waiting, active, done, changes requested or not needed.
 
-1. **Set up once.** `/aisdlc:init` in the shared repository (it records your role), your role's plugin, `/aisdlc:pull` to get the latest. Every `/aisdlc:push` starts with a pull; a merge conflict is left for you to resolve. QA also runs `/aisdlc-qa:init` once for its local test scaffold.
+1. **Set up once.** `/aisdlc:init` in the shared repository (it records your role), your role's plugin, `/aisdlc:pull` to get the latest. Every `/aisdlc:push` starts with a pull; a merge conflict is left for you to resolve. It scaffolds every role's files at once, including the QA test scaffold (gitignored), so there is no separate QA init. The team works on one branch (for example the sprint's `S10`) that you create and check out by hand; `/aisdlc:push` shows the branch and asks you to confirm it, and never pushes to `main`.
 2. **PM → Design and Dev.** The PM drafts `/aisdlc-pm:requirements` and `/aisdlc-pm:acceptance-criteria`, approves the criteria, then `/aisdlc:push` and `/aisdlc:handoff <TICKET> dev` (and `design` for UI tickets). Writing them into Jira with `/aisdlc-pm:jira-sync` stays optional.
 3. **Design.** The designer runs `/aisdlc-design:sync <artifact> --ticket <TICKET>` (see the [design plugin README](plugins/aisdlc-design/README.md#design-flow)), then `/aisdlc:push` and `/aisdlc:handoff <TICKET> dev`. The design lives in `designs/<TICKET>/` of the same repository.
-4. **Development.** After `/aisdlc:pull`, the developer works from `tasks/<TICKET>/requirements.md` and `acceptance-criteria.md` and the design: `/aisdlc-dev:feature <TICKET>` reads them instead of Jira, and the `design-link` step pins a hashed snapshot of the design into the specification. Code and pull requests stay in the application repositories registered in `config/repositories.yaml`.
+4. **Development.** After `/aisdlc:pull`, the developer works from `tasks/<TICKET>/requirements.md` and `acceptance-criteria.md` and the design: `/aisdlc-dev:feature <TICKET>` reads them instead of Jira (the specification and the plan are both approved before implementation, for every feature), and the `design-link` step pins a hashed snapshot of the design into the specification. Code and pull requests stay in the application repositories registered in `config/repositories.yaml`.
 5. **QA.** After the change is merged and deployed to a QA environment, the QA engineer runs `/aisdlc-qa:test <TICKET>`; scenarios come from the PM's acceptance criteria. Tests stay local and are never committed; the scenarios, results and state are shared with `/aisdlc:push`. Defects go back with `/aisdlc:return <TICKET> dev <defect>` (and as comments on the Jira ticket when switched on); when the fix is deployed the QA re-verifies with `/aisdlc-qa:run <TICKET>` and hands off.
-6. **Review loop.** After a PR is open, the developer runs `/aisdlc-dev:pr-comments <TICKET>`: it reads the reviewers' comments, triages them with the developer, fixes the valid ones under the normal rules, asks before committing and pushing, then replies.
-7. **Changes requested.** `/aisdlc:return <TICKET> <role> <reason>` adds an open item to `tasks/<TICKET>/changes.md` (a local view generated from the shared hand-off events). The receiver sees it after `/aisdlc:pull`, fixes it with their role's usual commands, and resolves it with their next `/aisdlc:handoff`.
+6. **Bug fixes skip the documents.** A bug (`/aisdlc-dev:bug`) needs no PM requirements, design, specification or plan: the status page shows PM and Design as not needed, and after the fix is merged dev hands it straight to QA with `/aisdlc:handoff <TICKET> qa`.
+7. **Review loop.** After a PR is open, the developer runs `/aisdlc-dev:pr-comments <TICKET>`: it reads the reviewers' comments, triages them with the developer, fixes the valid ones under the normal rules, asks before committing and pushing, then replies.
+8. **Changes requested.** `/aisdlc:return <TICKET> <role> <reason>` adds an open item to `tasks/<TICKET>/changes.md` (a local view generated from the shared hand-off events). The receiver sees it after `/aisdlc:pull`, fixes it with their role's usual commands, and resolves it with their next `/aisdlc:handoff`.
 
 For the exact commands used from the PM role to the production release, in order, see the [command flow](doc/aisdlc-command-flow.html) (a walkthrough of a real run; download it and open it in a browser).
 
@@ -145,7 +146,6 @@ Never granted: approving or merging pull requests; the plugins never force-push.
 | `scripts/package-plugins.js` | Builds one installable zip per plugin into `dist/` |
 | `packages/aisdlc-core/` | Shared core: state engine, workspace and path resolution, config loaders. The source of truth, vendored into each plugin. |
 | `scripts/sync-core.js` | Copies the shared core into each plugin; `--check` verifies them |
-| `kiro/` | Port of the dev lifecycle as Kiro skills and hooks (the design port predates `/aisdlc-design:sync` and is outdated) ([kiro/README.md](kiro/README.md)). QA is not ported yet. |
 
 Each plugin has the same internal layout:
 - `.claude-plugin/plugin.json`: manifest.

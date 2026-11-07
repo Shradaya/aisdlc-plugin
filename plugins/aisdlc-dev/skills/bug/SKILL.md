@@ -33,6 +33,9 @@ Append audit events with `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.
 8. Commit and PR: ask the developer to confirm, follow the commit skill, `transition <TICKET> COMMITTED`; then the pull-request skill (targeting the UAT branch), `transition <TICKET> PR_CREATED` (this state covers CI validation).
 9. When CI passes and the PR is merged, the developer runs `/aisdlc-dev:finish <TICKET>` and the task becomes COMPLETED.
 
+## Shared repo (workspace kind aisdlc)
+A bug fix skips the documents of the feature flow: no PM requirements or acceptance criteria, no design, no specification or plan approval (a mini-plan only when the steps above require one). The status page shows PM and Design as not needed and dev as Investigate, Fix, Pull request, Merged. After the PR is merged and `/aisdlc-dev:finish <TICKET>` completes the task, hand it straight to QA: `/aisdlc:push`, then `/aisdlc:handoff <TICKET> qa`. QA works from the ticket and the black-box section of `root-cause.md`.
+
 ## Outputs
 `jira.md`, `impact-analysis.md`, `root-cause.md`, `validation.md` (plus `implementation-plan.md` for mini-plans, `code-review.md`, `documentation.md`); commits and PR(s).
 

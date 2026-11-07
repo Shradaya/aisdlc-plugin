@@ -13,7 +13,7 @@ const groups = [
     { name: 'AWAITING_SPEC_APPROVAL', gate: 'specification approval', note: 'no application source edits yet' },
     { name: 'SPEC_APPROVED', note: 'source edits become possible' },
     { name: 'PLAN_DRAFTED', note: 'implementation-plan.md written' },
-    { name: 'AWAITING_PLAN_APPROVAL', gate: 'plan approval', note: 'required for major, cross-repository, database, API or security-sensitive changes' },
+    { name: 'AWAITING_PLAN_APPROVAL', gate: 'plan approval', note: 'required for every feature' },
   ]},
   { title: 'Build and verify', steps: [
     { name: 'IMPLEMENTING', note: 'code changes on the ticket branch' },
@@ -54,7 +54,7 @@ The feature command does everything up to and including the specification, then 
 
 <StateFlow :groups="groups" :failure="failure" />
 
-Square markers are gates: the task cannot advance past them until a person acts or an external fact is verified. `PLAN_DRAFTED` may be skipped straight to `IMPLEMENTING` when the change is small enough that plan approval is not required.
+Square markers are gates: the task cannot advance past them until a person acts or an external fact is verified. The plan gate is never skipped: `IMPLEMENTING` is refused until the plan is approved.
 
 ::: details Plain-text diagram
 ```text
@@ -112,7 +112,7 @@ Next (Claude): Draft the implementation plan.
 | Specification | aisdlc | `tasks/FEAT-1234/specification.md`, the full structured feature specification. |
 | **Specification approval** | **You** | See [approval gates](/guide/approvals). Implementation is blocked until approved. |
 | Implementation plan | aisdlc | Per-repository changes, cross-repo sequencing, migration ordering, validation and rollback checkpoints. |
-| **Plan approval** | **You**, when required | Required for cross-repository, database, API, security-sensitive or high-risk changes. |
+| **Plan approval** | **You** | Required for every feature before implementation starts. |
 | Implement, test, review | aisdlc | Repository tests, integration and contract tests, cross-repo validation, then review agents. |
 | Commit | aisdlc | `FEAT-1234: <changes summary>` on branch `FEAT-1234`. |
 | PR, CI, merge | aisdlc, per configured policy | Pull request(s) from the generated description; CI is validated; merge follows policy. Reviewer comments are handled with `/aisdlc-dev:pr-comments` (fixes go back through IMPLEMENTING and are committed and pushed only after you confirm). |

@@ -82,7 +82,7 @@
   },
   "design": {
     "adapter": "git-design-repo",
-    "source": "designs/<TICKET>/ in the repository registered with kind design (synced by /aisdlc-design:sync)",
+    "source": "designs/<TICKET>/ in this repository (synced by /aisdlc-design:sync)",
     "access": "read-only",
     "operations": ["read_pages", "read_commit"],
     "storage": "system/designs/<TICKET>/"

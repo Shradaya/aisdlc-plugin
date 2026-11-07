@@ -305,6 +305,16 @@ if (cmd === "init") {
       task.approvals.specification.status !== "approved"
     )
       die("Feature specification has not been approved.");
+    // ... and an approved implementation plan: the plan is never skipped for a feature (bugs have no plan gate here).
+    if (
+      to === "IMPLEMENTING" &&
+      task.task.type !== "bug" &&
+      task.approvals.plan &&
+      task.approvals.plan.status !== "approved"
+    )
+      die(
+        "The implementation plan has not been approved (approve <ticket> plan).",
+      );
     // Design lifecycle: COMMITTED requires an approved design.
     if (
       to === "COMMITTED" &&

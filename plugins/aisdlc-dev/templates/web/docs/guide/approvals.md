@@ -56,14 +56,14 @@ Implementation stays blocked until you reapprove.
 
 ## Gate 2: plan approval
 
-The implementation plan is separate from the specification: the specification says *what* the system should do, the plan says *which exact changes* implement it. For cross-repository, database, API, security-sensitive or high-risk changes the plan requires your approval before implementation (`AWAITING_PLAN_APPROVAL`):
+The implementation plan is separate from the specification: the specification says *what* the system should do, the plan says *which exact changes* implement it. Every feature plan requires your approval before implementation, whatever the size of the change (`AWAITING_PLAN_APPROVAL`):
 
 ```text
 /aisdlc-dev:approve FEAT-1234 plan
 /aisdlc-dev:reject FEAT-1234 plan <reason>
 ```
 
-For small changes the plan gate is skipped and the task goes from `PLAN_DRAFTED` to `IMPLEMENTING`.
+The plan gate is never skipped: the state engine refuses `IMPLEMENTING` until the plan is approved. (Bug fixes have no plan gate unless they are large enough to need a mini-plan.)
 
 ## Rejecting
 

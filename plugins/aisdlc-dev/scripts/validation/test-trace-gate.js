@@ -89,20 +89,6 @@ const claude = (file) =>
     }),
     encoding: "utf8",
   });
-const kiro = (file) =>
-  spawnSync(
-    "node",
-    [path.join(REPO_ROOT, "kiro/hooks/dev-pre-tool-policy.js")],
-    {
-      env: { ...env, AI_SDLC_PLUGIN_HOME: REPO_ROOT },
-      input: JSON.stringify({
-        tool_name: "fs_write",
-        tool_input: { path: file },
-        cwd: W,
-      }),
-      encoding: "utf8",
-    },
-  );
 let fail = 0;
 const t = (name, got, want) => {
   const ok = got === want;
@@ -113,7 +99,6 @@ const t = (name, got, want) => {
 };
 const both = (name, file, want, extra) => {
   t(`${name}`, claude(file).status, want);
-  t(`${name} [kiro]`, kiro(file).status, want);
   return extra;
 };
 
@@ -233,11 +218,6 @@ const claudeInstalled = (file) =>
 t(
   "no policies.yaml in the workspace: the plugin's default (on) applies",
   claudeInstalled(path.join(api, "a.js")).status,
-  2,
-);
-t(
-  "no policies.yaml in the workspace: the plugin's default (on) applies [kiro]",
-  kiro(path.join(api, "a.js")).status,
   2,
 );
 t(

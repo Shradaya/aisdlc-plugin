@@ -3,6 +3,8 @@
 What changed in aisdlc-design, newest first. Versions: **major** when people must act, **minor** for something new, **patch** for fixes. README, tests and docs-site changes need no version. Every behavior change to this plugin needs a bump here and in `.claude-plugin/plugin.json` (checked by `node scripts/version-check.js --base <ref>`).
 
 ## 3.1.0 (2026-11-08)
+
+- `/aisdlc-design:sync --pages` also includes the pages the chosen pages import (`<dc-import>`), so a page that embeds another still renders.
 Works in the shared aisdlc repo: the hook accepts kind `aisdlc` and leaves root commits to the aisdlc plugin; `sync` then skips its own commit and tells the designer to run `/aisdlc:push` and `/aisdlc:handoff`. Standalone behaviour is unchanged.
 
 ## 3.0.0 (2026-11-07)

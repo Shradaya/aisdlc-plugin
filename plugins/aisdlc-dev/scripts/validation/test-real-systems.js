@@ -287,8 +287,12 @@ t(
 );
 t(
   "hook: a 'cd' into the repo in the command moves the scope",
-  decision(bash(`cd ${repoDir} && npm start`, otherDir)) &&
-    decision(bash(`cd ${repoDir} && npm start`, otherDir)).permissionDecision,
+  (() => {
+    const d = decision(
+      bash(`cd ${repoDir.split(path.sep).join("/")} && npm start`, otherDir),
+    );
+    return d && d.permissionDecision;
+  })(),
   "ask",
 );
 r = claude({
@@ -342,35 +346,6 @@ t(
 setConfig([]);
 t("hook: an empty list: nothing asked", bash("npm run seed").stdout.trim(), "");
 
-// the Kiro mirror: same decision, its own tool name (execute_pwsh)
-setConfig([
-  { command: "npm run seed*", reason: "Seeds write to the real database." },
-]);
-const kiro = runHook(
-  path.join(REPO_ROOT, "kiro/hooks/dev-pre-tool-policy.js"),
-  {
-    tool_name: "execute_pwsh",
-    tool_input: { command: "npm run seed" },
-    cwd: W,
-  },
-  { AI_SDLC_PLUGIN_HOME: REPO_ROOT },
-);
-t(
-  "kiro hook: a matched command asks, exit 0",
-  kiro.status === 0 &&
-    decision(kiro) &&
-    decision(kiro).permissionDecision === "ask",
-  true,
-);
-t(
-  "kiro hook: a non-matching command is silent",
-  runHook(
-    path.join(REPO_ROOT, "kiro/hooks/dev-pre-tool-policy.js"),
-    { tool_name: "execute_pwsh", tool_input: { command: "npm test" }, cwd: W },
-    { AI_SDLC_PLUGIN_HOME: REPO_ROOT },
-  ).stdout.trim(),
-  "",
-);
 fs.rmSync(W, { recursive: true, force: true });
 fs.rmSync(repoDir, { recursive: true, force: true });
 fs.rmSync(otherDir, { recursive: true, force: true });

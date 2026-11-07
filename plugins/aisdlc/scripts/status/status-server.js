@@ -166,7 +166,7 @@ function audit(id, order) {
 // decided. "changed" means the pinned file no longer matches what was approved.
 function gatesOf(id, f) {
   const out = [];
-  const cfg = f.gates || {};
+  const cfg = flow.flowFor(f, ROOT, id).gates || {};
   for (const r of f.order) {
     const st = readYaml(path.join(taskDir(id), `task.${r}.yaml`), null);
     const approvals = (st && st.approvals) || {};
@@ -284,6 +284,121 @@ function documents(id) {
   );
 }
 
+// QA runs, errors and defects. Shown only when the information exists: the run records and defects live in task.qa.yaml (shared);
+// the evidence folders (run.json, summary.json, step screenshots) are local to the QA's machine and are never pushed.
+const EVIDENCE_IMG =
+  /^evidence\/run-\d+\/screenshots\/[^/]+\/[^/]+\.(png|jpe?g|webp)$/i;
+const listDir = (dir) => {
+  try {
+    return fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+};
+function qaOf(id) {
+  const st = readYaml(path.join(taskDir(id), "task.qa.yaml"), null);
+  const ev = path.join(taskDir(id), "evidence");
+  const recorded =
+    (st && st.runs && typeof st.runs === "object" && st.runs) || {};
+  const nums = new Set(
+    Object.keys(recorded)
+      .map(Number)
+      .filter((n) => n > 0),
+  );
+  for (const e of listDir(ev)) {
+    const m = e.isDirectory() && e.name.match(/^run-(\d+)$/);
+    if (m) nums.add(Number(m[1]));
+  }
+  const defectsRaw =
+    (st && st.defects && typeof st.defects === "object" && st.defects) || {};
+  const defects = Object.entries(defectsRaw)
+    .map(([k, v]) => ({
+      id: (v && v.id) || k,
+      ...(v && typeof v === "object" ? v : {}),
+    }))
+    .sort((a, b) =>
+      String(a.id).localeCompare(String(b.id), undefined, { numeric: true }),
+    );
+  if (!nums.size && !defects.length) return null;
+  const runs = [...nums]
+    .sort((a, b) => b - a)
+    .map((n) => {
+      const dir = path.join(ev, "run-" + n);
+      const meta = readYaml(path.join(dir, "run.json"), null) || {};
+      const sum = readYaml(path.join(dir, "summary.json"), null) || {};
+      const rec = recorded[n] || recorded[String(n)] || {};
+      const rel = (p) => {
+        const x = String(p || "").replace(/\\/g, "/");
+        const i = x.indexOf("evidence/");
+        return i >= 0 ? x.slice(i) : null;
+      };
+      const tests = (Array.isArray(sum.tests) ? sum.tests : []).map((t) => ({
+        scenario: t.scenario || null,
+        title: t.title || null,
+        status: t.status || null,
+        acs: Array.isArray(t.acs) ? t.acs : [],
+        failed_step: t.failed_step || null,
+        error: t.error ? String(t.error).slice(0, 1500) : null,
+        failed_screenshot: EVIDENCE_IMG.test(rel(t.failed_screenshot) || "")
+          ? "tasks/" + id + "/" + rel(t.failed_screenshot)
+          : null,
+      }));
+      const screenshots = [];
+      for (const g of listDir(path.join(dir, "screenshots"))) {
+        if (!g.isDirectory()) continue;
+        const shots = listDir(path.join(dir, "screenshots", g.name))
+          .filter((x) => x.isFile() && /\.(png|jpe?g|webp)$/i.test(x.name))
+          .map((x) => x.name)
+          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        const m = g.name.match(/-(S\d+)$/);
+        screenshots.push({
+          scenario: m ? m[1] : g.name,
+          shots: shots.map((x) => ({
+            path:
+              "tasks/" +
+              id +
+              "/evidence/run-" +
+              n +
+              "/screenshots/" +
+              g.name +
+              "/" +
+              x,
+            step: x.replace(/\.[^.]+$/, ""),
+            failed: /-FAILED\.[^.]+$/.test(x),
+          })),
+        });
+      }
+      screenshots.sort((a, b) =>
+        a.scenario.localeCompare(b.scenario, undefined, { numeric: true }),
+      );
+      return {
+        run: n,
+        environment: meta.environment || rec.environment || null,
+        build: meta.build || rec.build || null,
+        mode: meta.mode || rec.mode || null,
+        started_at: meta.started_at || rec.started_at || null,
+        finished_at: rec.finished_at || null,
+        totals:
+          sum.totals ||
+          (rec.tests !== undefined
+            ? {
+                tests: rec.tests,
+                passed: rec.passed,
+                failed: rec.failed,
+                flaky: rec.flaky,
+                skipped: rec.skipped,
+              }
+            : null),
+        setup_error: sum.setup_error || rec.error || null,
+        uncovered_scenarios: sum.uncovered_scenarios || [],
+        tests,
+        screenshots,
+        local_evidence: fs.existsSync(dir),
+      };
+    });
+  return { runs, defects };
+}
+
 // Safe lookup of a document under tasks/<id>/ or designs/<id>/ (no traversal, no symlinks out, no secrets).
 function docFile(id, rel) {
   if (!TICKET_RE.test(id) || !rel || rel.includes("\0") || path.isAbsolute(rel))
@@ -298,6 +413,7 @@ function docFile(id, rel) {
     NOT_DOCS.test(m[3]) ||
     !(
       /\.(md|markdown)$/i.test(m[3]) ||
+      (m[1] === "tasks" && EVIDENCE_IMG.test(m[3])) ||
       (m[1] === "designs" && /\.html$/i.test(m[3]))
     )
   )
@@ -462,6 +578,7 @@ function detail(id) {
     log_integrity: integrityOf(id, f),
     documents: documents(id),
     design_pages: designPages(id),
+    qa: qaOf(id),
   };
 }
 

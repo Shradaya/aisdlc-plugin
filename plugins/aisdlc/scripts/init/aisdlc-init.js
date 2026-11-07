@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Scaffold the shared aisdlc repo that every role (pm, design, dev, qa) works in.
+// Scaffold the shared aisdlc repo that every role (pm, design, dev, qa) works in, with every role's files at once
+// (workspace, config, QA environments and Playwright scaffold).
 // Usage: node aisdlc-init.js [target-dir] [--role pm|design|dev|qa] [--dry-run] [--force] [--adopt]
 //   --role   write .aisdlc/role (local, gitignored) so hand-offs for this person are highlighted
 //   --adopt  convert an existing single-role workspace in place: workspace.kind becomes "aisdlc", each tasks/<T>/task.yaml
@@ -9,6 +10,11 @@ const fs = require("fs");
 const path = require("path");
 
 const TEMPLATES = path.resolve(__dirname, "..", "..", "templates", "workspace");
+// Everything every role needs, set up at once: the shared workspace plus the QA test scaffold (config/environments.yaml is
+// shared; the Playwright files are gitignored, so they stay on the machines that use them).
+const QA_TEMPLATES = path.resolve(__dirname, "..", "..", "templates", "qa");
+// The read-only docs site (VitePress) over repositories/ and system/.
+const WEB_TEMPLATES = path.resolve(__dirname, "..", "..", "templates", "web");
 const ROLES = ["pm", "design", "dev", "qa"];
 const SKIP = new Set(["node_modules"]);
 
@@ -67,8 +73,17 @@ function write(dest, content, bucket) {
 }
 
 // 1. scaffold
-for (const file of walk(TEMPLATES)) {
-  const rel = path.relative(TEMPLATES, file);
+const sources = [
+  { dir: TEMPLATES },
+  { dir: QA_TEMPLATES },
+  { dir: WEB_TEMPLATES, prefix: "web" },
+]
+  .filter((x) => fs.existsSync(x.dir))
+  .flatMap((x) =>
+    walk(x.dir).map((file) => ({ base: x.dir, file, prefix: x.prefix || "" })),
+  );
+for (const { base, file, prefix } of sources) {
+  const rel = path.join(prefix, path.relative(base, file));
   const dest = path.join(target, rel);
   const content = fs.readFileSync(file);
   if (!fs.existsSync(dest)) write(dest, content, "created");

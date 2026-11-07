@@ -4,12 +4,15 @@
 //   - a root commit stages only tasks/ designs/ system/ repositories/ config/ and reads '<TICKET>: <summary>';
 //     no 'git commit -a'; nothing from QA's local tests, env files or logs;
 //   - hand-off events and changes.md are written only by /aisdlc:handoff and /aisdlc:return (flow.js);
+//   - the base branch (main) is neither committed to nor pushed to: the team works on its own branch (for example S10), created by hand
+//     (git switch <branch>); only the very first commit and push of a new repository may use the base branch;
 //   - no force push, history rewrite or deleting main; .git, credentials and key files are protected.
 // Reads the hook event JSON on stdin; exits 2 with a reason on stderr to block.
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
 const { resolveRoot, workspaceKind } = require("../scripts/lib/root");
+const { baseBranch } = require("../scripts/lib/base");
 const ROOT = resolveRoot();
 if (!ROOT || workspaceKind(ROOT) !== "aisdlc") process.exit(0);
 
@@ -20,7 +23,42 @@ const block = (reason) => {
 };
 const ALLOWED = /^(tasks|designs|system|repositories|config)\//;
 
+const gitOut = (dir, ...a) => {
+  try {
+    return execSync("git " + a.join(" "), {
+      cwd: dir,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return null;
+  }
+};
+const BASE = baseBranch(ROOT);
+const BASE_MSG = (what) =>
+  `${what} to ${BASE}, the base branch, is not done here. The team works on its own branch (for example the sprint's S10): switch to it with git switch <branch>, then commit and push there.`;
+
+function checkPush(cmd, dir) {
+  const current = gitOut(dir, "rev-parse", "--abbrev-ref", "HEAD");
+  const esc = BASE.split("")
+    .map((c) => (/[A-Za-z0-9_-]/.test(c) ? c : "\\" + c))
+    .join("");
+  const names = new RegExp("(^|[\\s:/])" + esc + "(\\s|$)");
+  if (current !== BASE && !names.test(cmd)) return;
+  if (
+    gitOut(dir, "remote") &&
+    gitOut(dir, "ls-remote", "--heads", "origin", BASE) === ""
+  )
+    return; // first push of a new repository
+  block(BASE_MSG("Pushing"));
+}
+
 function checkCommit(cmd, dir) {
+  if (
+    gitOut(dir, "rev-parse", "--abbrev-ref", "HEAD") === BASE &&
+    gitOut(dir, "rev-parse", "--verify", "HEAD") !== null
+  )
+    block(BASE_MSG("Committing"));
   const msgs = [...cmd.matchAll(/-m\s+(?:"((?:[^"\\]|\\.)*)"|'([^']*)')/g)].map(
     (m) => m[1] ?? m[2],
   );
@@ -132,6 +170,11 @@ if (tool === "Bash" || tool === "PowerShell") {
     block(
       "Execution logs are written only by aisdlc-state.js (audit <ticket> <event> [json]); each line is hash-chained, so they cannot be edited by hand.",
     );
+  if (/git\s+(-C\s+\S+\s+)?push\b/.test(cmd)) {
+    const dir =
+      (cmd.match(/-C\s+("[^"]+"|\S+)/) || [])[1]?.replace(/"/g, "") || cwd;
+    if (norm(dir) === norm(ROOT)) checkPush(cmd, dir);
+  }
   if (/git\s+(-C\s+\S+\s+)?commit\b/.test(cmd)) {
     const dir =
       (cmd.match(/-C\s+("[^"]+"|\S+)/) || [])[1]?.replace(/"/g, "") || cwd;

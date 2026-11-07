@@ -104,6 +104,21 @@ function openReturns(evs, role) {
   );
 }
 
+// A ticket whose dev task is of a type listed in flow.variants (a bug fix) uses that variant's steps, gates and readiness
+// instead of the defaults: no specification or plan, and PM and design are simply not needed.
+function flowFor(flow, root, t) {
+  const dev = readState(root, t, "dev");
+  const v = dev && dev.task && (flow.variants || {})[dev.task.type];
+  if (!v) return flow;
+  return {
+    ...flow,
+    steps: { ...flow.steps, ...(v.steps || {}) },
+    gates: { ...flow.gates, ...(v.gates || {}) },
+    ready: { ...flow.ready, ...(v.ready || {}) },
+    variant: dev.task.type,
+  };
+}
+
 function stepIndex(flow, role, state, signalDone) {
   const steps = (flow.steps && flow.steps[role]) || [];
   if (state) {
@@ -115,7 +130,8 @@ function stepIndex(flow, role, state, signalDone) {
   return signalDone;
 }
 
-function derive(root, t, flow = loadFlow(root)) {
+function derive(root, t, base = loadFlow(root)) {
+  const flow = flowFor(base, root, t);
   const evs = events(root, t);
   const roles = {};
   const failure = new Set(flow.failure_states || []);
@@ -182,6 +198,7 @@ function derive(root, t, flow = loadFlow(root)) {
   });
   return {
     ticket: t,
+    variant: flow.variant || null,
     roles: order.map((r) => roles[r]),
     history: evs.map(({ id, from, to, type, note, resolves, at }) => ({
       id,
@@ -195,7 +212,8 @@ function derive(root, t, flow = loadFlow(root)) {
   };
 }
 
-function readiness(root, t, role, flow = loadFlow(root)) {
+function readiness(root, t, role, base = loadFlow(root)) {
+  const flow = flowFor(base, root, t);
   const rule = (flow.ready || {})[role];
   if (!rule) return { ok: true };
   if (rule.signal === "design_folder")
@@ -434,6 +452,7 @@ function cli(argv) {
 
 module.exports = {
   loadFlow,
+  flowFor,
   resolveRole,
   events,
   tickets,

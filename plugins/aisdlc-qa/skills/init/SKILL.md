@@ -13,6 +13,8 @@ Turn a folder into an aisdlc **QA** workspace: the folder where a QA engineer tu
 ## Invocation conditions
 Explicit `/aisdlc-qa:init [target-folder] [--only workspace|agents] [--dry-run] [--force]`. The target defaults to the current folder. `--only agents` skips the scaffold and only (re)generates the Playwright agents, which is needed after every Playwright upgrade.
 
+> Shared repo: `/aisdlc:init` already scaffolds the QA files too; this skill only adds the Playwright install and agents (`--only agents`).
+>
 > Shared repo: if `config/workspace.yaml` has `"kind": "aisdlc"`, the workspace is initialised by `/aisdlc:init`; do not scaffold it again. Run this skill anyway for the QA part: the script then adds only the local test scaffold and `config/environments.yaml`, and leaves the shared files alone.
 
 ## Procedure

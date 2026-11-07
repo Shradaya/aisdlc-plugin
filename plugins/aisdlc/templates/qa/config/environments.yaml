@@ -1,0 +1,36 @@
+# Target environments for QA test runs. JSON-compatible YAML; '#' comments only on their own lines.
+# Automation runs only where "allow_automation" is true, and never against production: list your production hosts in
+# "blocked_hosts". "example.com" blocks that host and all its subdomains; "=example.com" blocks only that exact host
+# (use it when production is the bare domain and QA is a subdomain, e.g. "=emc-portal.com" next to qa.emc-portal.com).
+# Hosts that look like production (prod, production, live) are refused as well. Data must be synthetic: screenshots of
+# these environments go to Jira. Add or change entries with /aisdlc-qa:add-env.
+# test_id_attribute: the attribute getByTestId() reads (data-testid by default).
+# login.mode:
+#   "form"   the setup project signs in with QA_USERNAME / QA_PASSWORD (environment variables, or .env in this folder;
+#            never claude.env), using the visible field labels and button text below, matched exactly.
+#            username_selector / password_selector / submit_selector (optional Playwright selectors such as "#email",
+#            "[name=password]", "button[type=submit]") take precedence over the labels; never use generated class
+#            names. success_url (a glob, e.g. "**/dashboard") is awaited after submit: set it, or a failed login that
+#            only shows an error message can still pass
+#   "manual" capture a session once by hand: npx playwright codegen --save-storage=.auth/<env>.json <base_url>
+#            (for SSO / MFA logins; repeat when it expires)
+#   "none"   the app needs no login
+{
+  "default": "qa",
+  "environments": {
+    "qa": {
+      "base_url": "",
+      "allow_automation": true,
+      "data": "synthetic",
+      "test_id_attribute": "data-testid",
+      "login": { "mode": "form", "path": "/login", "username_label": "Email", "password_label": "Password", "submit_name": "Sign in", "success_url": "" }
+    },
+    "uat": {
+      "base_url": "",
+      "allow_automation": false,
+      "data": "synthetic",
+      "login": { "mode": "manual" }
+    }
+  },
+  "blocked_hosts": []
+}

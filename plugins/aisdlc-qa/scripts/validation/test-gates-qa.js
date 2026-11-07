@@ -1059,7 +1059,7 @@ t(
   /checks/.test(
     fs.readFileSync(path.join(QA, "playwright.config.ts"), "utf8"),
   ) &&
-    /QA_VIDEO === '1'/.test(
+    /QA_VIDEO === ["']1["']/.test(
       fs.readFileSync(path.join(QA, "playwright.config.ts"), "utf8"),
     ),
   true,

@@ -230,8 +230,9 @@
       <p>
         57 steps. Every role starts with <code>/aisdlc:pull</code> and ends with
         <code>/aisdlc:push</code> and a hand-off;
-        <code>/aisdlc:push</code> always pulls first and leaves merge conflicts
-        to you.
+        <code>/aisdlc:push</code> always pulls first, leaves merge conflicts to
+        you, asks you to confirm the branch before pushing (the team's branch,
+        for example S10, made by hand) and never pushes to <code>main</code>.
       </p>
     </header>
     <main>
@@ -306,17 +307,18 @@
                 </td>
                 <td class="who">Everyone</td>
                 <td>
-                  Scaffold config, tasks, designs, system; record your role
-                  locally. <span class="tag once">Once</span>
+                  Scaffold everything for every role at once (config, tasks,
+                  designs, system, docs site, QA test scaffold); record your
+                  role locally. <span class="tag once">Once</span>
                 </td>
               </tr>
               <tr class="">
                 <td class="n">3</td>
-                <td><code>/aisdlc-qa:init</code></td>
-                <td class="who">QA</td>
+                <td><code>cp claude.env.example claude.env</code></td>
+                <td class="who">Dev</td>
                 <td>
-                  Local test scaffold only (tests, fixtures, Playwright config;
-                  gitignored). <span class="tag once">Once</span>
+                  Set AISDLC_REPOS_ROOT to the folder holding your clones (never
+                  secrets). <span class="tag once">Once</span>
                 </td>
               </tr>
               <tr class="">
@@ -391,15 +393,6 @@
                 </td>
               </tr>
               <tr class="">
-                <td class="n">10</td>
-                <td><code>/aisdlc-pm:handoff EL-0000 design|dev</code></td>
-                <td class="who">PM</td>
-                <td>
-                  PM state moves to HANDED_OFF_TO_*; refused unless approved and
-                  unchanged.
-                </td>
-              </tr>
-              <tr class="">
                 <td class="n">11</td>
                 <td><code>/aisdlc:push</code></td>
                 <td class="who">PM</td>
@@ -467,16 +460,16 @@
                 </td>
               </tr>
               <tr class="">
-                <td class="n">17</td>
-                <td><code>/aisdlc:push</code></td>
-                <td class="who">Designer</td>
-                <td>Pull first, then commit and push the design folder.</td>
-              </tr>
-              <tr class="">
                 <td class="n">18</td>
                 <td><code>/aisdlc:handoff EL-0000 dev</code></td>
                 <td class="who">Designer</td>
                 <td>Design is done; Dev has the design.</td>
+              </tr>
+              <tr class="">
+                <td class="n">17</td>
+                <td><code>/aisdlc:push</code></td>
+                <td class="who">Designer</td>
+                <td>Pull first, then commit and push the design folder.</td>
               </tr>
             </tbody>
           </table>
@@ -619,16 +612,16 @@
                 </td>
               </tr>
               <tr class="">
-                <td class="n">30</td>
-                <td><code>/aisdlc:push</code></td>
-                <td class="who">Developer</td>
-                <td>Share spec, design snapshot, validation, state.</td>
-              </tr>
-              <tr class="">
                 <td class="n">31</td>
                 <td><code>/aisdlc:handoff EL-0000 qa</code></td>
                 <td class="who">Developer</td>
                 <td>QA becomes active (after the merge).</td>
+              </tr>
+              <tr class="">
+                <td class="n">30</td>
+                <td><code>/aisdlc:push</code></td>
+                <td class="who">Developer</td>
+                <td>Share spec, design snapshot, validation, state.</td>
               </tr>
             </tbody>
           </table>
@@ -717,6 +710,12 @@
                 </td>
               </tr>
               <tr class="">
+                <td class="n">40</td>
+                <td><code>/aisdlc:handoff EL-0000 dev</code></td>
+                <td class="who">QA</td>
+                <td>Dev (release) becomes active again.</td>
+              </tr>
+              <tr class="">
                 <td class="n">39</td>
                 <td><code>/aisdlc:push</code></td>
                 <td class="who">QA</td>
@@ -724,12 +723,6 @@
                   Share scenarios, spec, results, state. tests/ is never
                   committed.
                 </td>
-              </tr>
-              <tr class="">
-                <td class="n">40</td>
-                <td><code>/aisdlc:handoff EL-0000 dev</code></td>
-                <td class="who">QA</td>
-                <td>Dev (release) becomes active again.</td>
               </tr>
             </tbody>
           </table>
@@ -919,20 +912,24 @@
             &quot;done&quot;; a role whose task is COMPLETED now shows done.
           </li>
           <li>
-            <span class="tag openi">Open</span> /aisdlc-design:sync --pages must
-            also include the pages a page imports (Main.dc.html imports Feed),
-            so a login-only ticket still needs the feed page.
+            <span class="tag fixed">Fixed</span> /aisdlc-design:sync --pages now
+            also includes the pages a page imports (Main.dc.html imports Feed).
           </li>
           <li>
-            <span class="tag openi">Open</span> /aisdlc-qa:test creates a ticket
-            branch; in the shared repo it should stay on main (no ticket
-            branches).
+            <span class="tag fixed">Fixed</span> /aisdlc-qa:test no longer
+            creates a ticket branch in the shared repo.
           </li>
           <li>
-            <span class="tag openi">Open</span> Dev's post-release cleanup
-            deletes protected artifacts including PM's jira.md and
-            requirements.md; in the shared repo it must delete only dev-owned
-            files (done by hand in this run).
+            <span class="tag fixed">Fixed</span> Dev's post-release cleanup in
+            the shared repo deletes only dev's own files; the hook blocks
+            deleting the PM's jira.md, requirements.md and
+            acceptance-criteria.md.
+          </li>
+          <li>
+            <span class="tag fixed">Changed</span> The plan is approved for
+            every feature (the engine refuses IMPLEMENTING without it), and a
+            bug fix skips PM, design, specification and plan and goes straight
+            from dev to QA.
           </li>
         </ul>
       </section>
