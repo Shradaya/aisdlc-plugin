@@ -1,8 +1,15 @@
 {
   "name": "aisdlc-marketplace",
-  "owner": { "name": "Evoke Medical Care" },
-  "description": "AI-SDLC lifecycle plugins: aisdlc-dev for developers, aisdlc-design for UI/UX designers, aisdlc-qa for QA engineers and aisdlc-pm for project managers.",
+  "owner": {
+    "name": "Evoke Medical Care"
+  },
+  "description": "AI-SDLC lifecycle plugins: aisdlc (the shared repo, hand-offs and status page every role uses), aisdlc-pm for project managers, aisdlc-design for UI/UX designers, aisdlc-dev for developers and aisdlc-qa for QA engineers.",
   "plugins": [
+    {
+      "name": "aisdlc",
+      "source": "./plugins/aisdlc",
+      "description": "AI-SDLC shared workflow plugin: one repository for every role with init, push, pull, hand-off, return and a status page."
+    },
     {
       "name": "aisdlc-dev",
       "source": "./plugins/aisdlc-dev",

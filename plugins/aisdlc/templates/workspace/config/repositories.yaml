@@ -1,0 +1,12 @@
+# Registered repositories (managed by /aisdlc-dev:add-repo). JSON-compatible YAML.
+# Required per repo: path, role, base_branch (must be "main"), domains, depends_on, provides.
+# Optional per repo: "on_edit", checks that run after every edit Claude makes in that repository, for example
+#   "on_edit": [
+#     { "files": "*.js,*.ts", "run": "node_modules/.bin/prettier --write {file}", "fix": true },
+#     { "files": "*.js,*.ts", "run": "node_modules/.bin/eslint --quiet {file}" },
+#     { "files": "src/*.js", "run": "node_modules/.bin/mocha {test}", "test": "test/{name}.spec.js" }
+#   ]
+# They run without a shell, outside Claude's permission prompts, so changing them asks you to confirm first.
+{
+  "repositories": {}
+}

@@ -1,0 +1,35 @@
+# Per-person local settings and secrets
+.env
+.env.*
+claude.env
+.aisdlc/
+.mcp.json
+.claude/settings.local.json
+node_modules/
+
+# Audit logs and locks stay local (task state and documents are shared)
+logs/*.jsonl
+logs/sync-main/
+tasks/*/.lock*
+# changes.md is generated from the hand-off events after every pull (so concurrent returns never conflict)
+tasks/*/changes.md
+
+# QA: tests and Playwright scaffolding stay local; only tasks/<TICKET>/ scenarios and results are shared
+tests/
+fixtures/
+specs/
+package.json
+package-lock.json
+playwright.config.ts
+.auth/
+test-results/
+playwright-report/
+checks/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.swp

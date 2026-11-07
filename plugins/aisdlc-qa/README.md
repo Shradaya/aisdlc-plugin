@@ -158,3 +158,7 @@ node scripts/validation/test-status-page-qa.js
 ## Working with the other plugins
 
 The developer (`aisdlc-dev`) delivers the ticket to the QA environment. QA defects reach the developer as comments on the Jira ticket, and the QA task waits until the fix is deployed.
+
+## Shared repo (aisdlc)
+
+In the shared aisdlc repo your state is `tasks/<TICKET>/task.qa.yaml`. Run `/aisdlc-qa:init` once for the local test scaffold: tests, fixtures and Playwright files stay local and gitignored, and only `tasks/<TICKET>/` (scenarios, results, state) is shared with `/aisdlc:push`. Scenarios come from the PM's `acceptance-criteria.md`. Send a defect back with `/aisdlc:return <TICKET> dev <defect>`; hand off with `/aisdlc:handoff` after sign-off.

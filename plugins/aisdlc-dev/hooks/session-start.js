@@ -3,9 +3,10 @@
 const fs = require("fs");
 const path = require("path");
 const ROOT = require("../scripts/lib/root").resolveRoot();
+const { state: STATE_FILE, log: LOG_FILE } = require("../scripts/lib/root").taskNames(ROOT); // task.yaml, or task.<role>.yaml in a shared aisdlc workspace
 if (!ROOT) process.exit(0); // installed user-wide: do nothing outside an aisdlc workspace
 const KIND = require("../scripts/lib/root").workspaceKind(ROOT);
-if (KIND && KIND !== "dev") process.exit(0); // another aisdlc plugin's workspace (config/workspace.yaml "kind")
+if (KIND && KIND !== "dev" && KIND !== "aisdlc") process.exit(0); // another aisdlc plugin's workspace (config/workspace.yaml "kind")
 const out = [];
 const { resolveRepoPath } = require("../scripts/lib/repo-paths");
 const parse = (f) => JSON.parse(fs.readFileSync(f, "utf8").replace(/^\s*#.*$/gm, ""));
@@ -24,7 +25,7 @@ for (const [n, r] of Object.entries(repos)) {
 const td = path.join(ROOT, "tasks");
 const active = [];
 if (fs.existsSync(td)) for (const t of fs.readdirSync(td)) {
-  const f = path.join(td, t, "task.yaml");
+  const f = path.join(td, t, STATE_FILE);
   if (!fs.existsSync(f)) continue;
   try { const j = JSON.parse(fs.readFileSync(f, "utf8")); if (j.task.status !== "COMPLETED") active.push(`${j.task.id}: ${j.task.status}`); }
   catch { out.push(`WARNING: corrupt task file ${f}`); }

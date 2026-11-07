@@ -18,6 +18,9 @@ Explicit `/aisdlc-pm:handoff <TICKET> dev|design`.
 2. Transition locally: `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js transition <TICKET> HANDED_OFF_TO_DEV` (or `HANDED_OFF_TO_DESIGN`). The state engine refuses this transition unless the `acceptance_criteria` gate is approved and `acceptance-criteria.md` is unchanged since approval. If it refuses with "has not been approved", approve the gate first; if it refuses with "changed after ... approval", the file was edited after approval, so re-approve before handing off.
 3. Report the new state. The designer or developer now owns the ticket and reads the requirements and acceptance criteria from the Jira ticket (the source of truth).
 
+## Shared repo
+In a shared aisdlc repo (`"kind": "aisdlc"` in `config/workspace.yaml`), after this transition run `/aisdlc:handoff <TICKET> dev` (and/or `design`) so the other role sees it, then `/aisdlc:push`. If change requests are open for pm, `/aisdlc:handoff` asks which are resolved.
+
 ## Safety restrictions
 - Never approves the `acceptance_criteria` gate; that is a human decision (`/aisdlc-pm:approve`).
 - Surfaces the state engine's refusal verbatim rather than retrying or forcing the move.

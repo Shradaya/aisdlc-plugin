@@ -7,9 +7,21 @@ const crypto = require("crypto");
 const { execSync, execFileSync } = require("child_process");
 
 const ROOT = require("../scripts/lib/root").resolveRoot();
+const { state: STATE_FILE, log: LOG_FILE } = require("../scripts/lib/root").taskNames(ROOT); // task.yaml, or task.<role>.yaml in a shared aisdlc workspace
+
+// A task whose state file fails its seal (edited outside the state CLI, or out of step with its audit log) is ignored, so a
+// hand-edited approval cannot unlock anything.
+const trustedState = (t) => {
+  if (!t || !t.task) return t;
+  try {
+    const al = require("../scripts/lib/auditlog");
+    const log = path.join(ROOT, "tasks", t.task.id, LOG_FILE);
+    return al.verifyState(t, al.headOf(log, t.task.id), undefined, al.hasChain(log)).ok ? t : null;
+  } catch { return t; }
+};
 if (!ROOT) process.exit(0); // installed user-wide: do nothing outside an aisdlc workspace
 const KIND = require("../scripts/lib/root").workspaceKind(ROOT);
-if (KIND && KIND !== "dev") process.exit(0); // another aisdlc plugin's workspace (config/workspace.yaml "kind")
+if (KIND && KIND !== "dev" && KIND !== "aisdlc") process.exit(0); // another aisdlc plugin's workspace (config/workspace.yaml "kind")
 const readJson = (f, d) => {
   try { return JSON.parse(fs.readFileSync(f, "utf8").replace(/^\s*#.*$/gm, "")); } catch { return d; }
 };
@@ -19,6 +31,14 @@ const POLICIES = readJson(require("../scripts/lib/root").configPath(ROOT, "polic
 
 const { resolveRepoPath } = require("../scripts/lib/repo-paths");
 const norm = (p) => path.resolve(p).replace(/\\/g, "/").toLowerCase();
+
+// In a shared aisdlc workspace the aisdlc plugin's hook owns commits made at the workspace root (the workflow repo);
+// this plugin's commit rules still apply to commits in other repositories.
+const rootCommit = (cmd, cwd) => {
+  if (KIND !== "aisdlc") return false;
+  const d = (cmd.match(/-Cs+("[^"]+"|S+)/) || [])[1]?.replace(/"/g, "") || cwd;
+  return norm(d) === norm(ROOT);
+};
 const repoRoots = Object.entries(REPOS)
   .map(([name, r]) => ({ name, loc: resolveRepoPath(name, r, ROOT) }))
   .filter((r) => r.loc)
@@ -36,7 +56,7 @@ function activeTasks() {
   const dir = path.join(ROOT, "tasks");
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir)
-    .map((t) => readJson(path.join(dir, t, "task.yaml"), null))
+    .map((t) => trustedState(readJson(path.join(dir, t, STATE_FILE), null)))
     .filter((t) => t && !["COMPLETED", "CANCELLED"].includes(t.task.status));
 }
 
@@ -171,9 +191,26 @@ const ON_EDIT_ASK = (what) => `${what}. on_edit commands run automatically after
 const PROTECTED_ARTIFACTS = ["jira.md","requirements.md","impact-analysis.md","knowledge-manifest.yaml","specification.md","implementation-plan.md","validation.md","code-review.md","documentation.md","trace.md","repository-preparation.yaml","knowledge-consolidation.yaml","release.yaml"];
 
 function deletionAllowed(ticket) {
-  const t = readJson(path.join(ROOT, "tasks", ticket, "task.yaml"), null);
+  const t = trustedState(readJson(path.join(ROOT, "tasks", ticket, STATE_FILE), null));
   const k = t && t.knowledge_consolidation;
   return !!(t && t.task.status === "KNOWLEDGE_CONSOLIDATED" && k && k.consolidation_commit && k.validated === true && (k.unresolved_reconciliation || 0) === 0);
+}
+
+
+// Approvals and rejections are human decisions: Claude Code asks the person before the state CLI records one (the hook
+// answers "ask", which the harness always turns into a prompt), so nobody can approve without being asked.
+function askApproval(cmd, cwd) {
+  const m = cmd.match(/aisdlc-state\.js["']?\s+(approve|reject|seal)\s+([A-Z][A-Z0-9]*-\d+)(?:\s+([a-z_]+))?/);
+  if (!m) return;
+  let email = "unknown";
+  try { email = require("child_process").execSync("git config user.email", { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() || "unknown"; } catch { /* unset */ }
+  const reason = m[1] === "seal"
+    ? "Seal the state of " + m[2] + "? This is a human decision: it accepts the current content of the state file (approvals, approvers, state) as genuine, so check it with git diff first. Recorded under git user.email " + email + "."
+    : m[1] === "approve"
+    ? "Approve '" + m[3] + "' for " + m[2] + "? This is a human decision: it is recorded under git user.email " + email + " and pins the current file hash, so any later edit needs approval again."
+    : "Record a rejection of '" + m[3] + "' for " + m[2] + "? This is a human decision, recorded under git user.email " + email + ".";
+  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "ask", permissionDecisionReason: reason } }) + "\n");
+  process.exit(0);
 }
 
 const raw = fs.readFileSync(0, "utf8");
@@ -184,7 +221,7 @@ const cwd = ev.cwd || process.cwd();
 if (["Write", "Edit", "NotebookEdit", "MultiEdit"].includes(tool)) {
   const target = path.resolve(cwd, input.file_path || input.notebook_path || "");
   const n = norm(target);
-  if (/\/tasks\/[^/]+\/task\.yaml$/.test(n)) block("task.yaml may only be changed through scripts/state/aisdlc-state.js.");
+  if (/\/tasks\/[^/]+\/(?:task(?:\.[a-z]+)?\.yaml|execution-log(?:\.[a-z]+)?\.jsonl)$/.test(n)) block("task.yaml and execution logs may only be changed through scripts/state/aisdlc-state.js (audit lines: aisdlc-state.js audit <ticket> <event> [json]; they are hash-chained).");
   if (/\/\.git\//.test(n + "/") ) block(".git is protected.");
   if (/(^|\/)(credentials|secrets)\//.test(n) || /\.(pem|key)$/.test(n)) block("Protected path.");
   const repo = repoOf(target);
@@ -196,6 +233,7 @@ if (["Write", "Edit", "NotebookEdit", "MultiEdit"].includes(tool)) {
 
 if (tool === "Bash" || tool === "PowerShell") {
   const cmd = String(input.command || "");
+  askApproval(cmd, cwd);
   const lc = cmd.toLowerCase();
 
   // dangerous operations (§30.5)
@@ -214,8 +252,8 @@ if (tool === "Bash" || tool === "PowerShell") {
     block("Call Jira through scripts/jira/jira-fetch.js, not ad-hoc HTTP.");
 
   // task state integrity
-  if (/task\.yaml/.test(cmd) && /(>|sed\s+-i|set-content|out-file|add-content|tee\b|rm\b|remove-item|mv\b|move-item)/i.test(cmd) && !/aisdlc-state\.js/.test(cmd))
-    block("task.yaml may only be changed through scripts/state/aisdlc-state.js.");
+  if (/(?:task(?:\.[a-z]+)?\.yaml|execution-log(?:\.[a-z]+)?\.jsonl)/.test(cmd) && /(>|sed\s+-i|set-content|out-file|add-content|tee\b|rm\b|remove-item|mv\b|move-item)/i.test(cmd) && !/aisdlc-state\.js/.test(cmd))
+    block("task.yaml and execution logs may only be changed through scripts/state/aisdlc-state.js (audit lines: aisdlc-state.js audit <ticket> <event> [json]; they are hash-chained).");
 
   // temporary-artifact deletion (§42.11)
   if (/(\brm\b|remove-item|\bdel\b|git\s+rm)/i.test(cmd)) {
@@ -226,7 +264,7 @@ if (tool === "Bash" || tool === "PowerShell") {
   }
 
   // git commit policy (§29.3, §30.4)
-  if (/git\s+(-C\s+\S+\s+)?commit\b/.test(cmd)) {
+  if (/git\s+(-C\s+\S+\s+)?commit\b/.test(cmd) && !rootCommit(cmd, cwd)) {
     const msgs = [...cmd.matchAll(/-m\s+(?:"((?:[^"\\]|\\.)*)"|'([^']*)')/g)].map((m) => m[1] ?? m[2]);
     let branch = "";
     const dir = (cmd.match(/-C\s+("[^"]+"|\S+)/) || [])[1]?.replace(/"/g, "") || cwd;

@@ -27,6 +27,7 @@ const { resolveRoot, configPath, NOT_WORKSPACE } = require("../lib/root");
 const { stripComments } = require("../lib/yaml");
 
 const ROOT = resolveRoot();
+const { state: STATE_FILE, log: LOG_FILE } = require("../lib/root").taskNames(ROOT); // task.yaml, or task.<role>.yaml in a shared aisdlc workspace
 if (!ROOT) {
   console.error(NOT_WORKSPACE);
   process.exit(1);
@@ -61,7 +62,7 @@ const lifecycleName = (T, type) => (T[type] && T[type].states ? type : T.other_t
 const taskDir = (id) => path.join(ROOT, "tasks", id);
 
 function loadTask(id) {
-  const t = readJsonYaml(path.join(taskDir(id), "task.yaml"));
+  const t = readJsonYaml(path.join(taskDir(id), STATE_FILE));
   return t && t.task ? t : null;
 }
 
@@ -90,7 +91,7 @@ function title(id) {
 function history(id) {
   let text = "";
   try {
-    text = fs.readFileSync(path.join(taskDir(id), "execution-log.jsonl"), "utf8");
+    text = fs.readFileSync(path.join(taskDir(id), LOG_FILE), "utf8");
   } catch {
     return [];
   }
@@ -223,7 +224,7 @@ function status() {
     if (!d.isDirectory() || !TICKET_RE.test(d.name)) continue;
     const task = loadTask(d.name);
     if (task) tasks.push(summary(T, d.name, task));
-    else if (fs.existsSync(path.join(taskDir(d.name), "task.yaml"))) tasks.push({ id: d.name, status: "(unreadable)", unreadable: true });
+    else if (fs.existsSync(path.join(taskDir(d.name), STATE_FILE))) tasks.push({ id: d.name, status: "(unreadable)", unreadable: true });
   }
   tasks.sort((a, b) => (b.updated_at || "").localeCompare(a.updated_at || ""));
   const active = tasks.filter((t) => !["COMPLETED", "CANCELLED"].includes(t.status));

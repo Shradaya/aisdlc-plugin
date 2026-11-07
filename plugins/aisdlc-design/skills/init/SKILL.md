@@ -13,6 +13,8 @@ Turn a folder into an aisdlc **design** workspace: the design git repository whe
 ## Invocation conditions
 Explicit `/aisdlc-design:init [target-folder] [--dry-run] [--force]`. `$ARGUMENTS` = those options. The target defaults to the current folder.
 
+> Shared repo: if `config/workspace.yaml` has `"kind": "aisdlc"`, the workspace is initialised by `/aisdlc:init`; do not scaffold it again. Nothing else to do here.
+
 ## Procedure
 1. Run a preview: `node ${CLAUDE_PLUGIN_ROOT}/scripts/init/aisdlc-design-init.js $ARGUMENTS --dry-run`.
 2. Show what would be created, merged and skipped. If `--force` would overwrite files, confirm with AskUserQuestion first.

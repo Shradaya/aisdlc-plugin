@@ -2,6 +2,8 @@
 
 This folder is an aisdlc **PM** (project-manager) workspace, managed by the `aisdlc-pm` plugin. A project manager drafts the requirements and acceptance criteria for a ticket here, pushes them to the AISDLC server, and optionally writes them into the Jira description.
 
+> In a shared aisdlc repo, share your files with `/aisdlc:push` and hand a ticket off with `/aisdlc:handoff` (there is no `/aisdlc-pm:push`).
+
 ## Navigation
 
 - `tasks/<TICKET>/` — one folder per ticket: `requirements.md` and `acceptance-criteria.md` (the two files the PM authors and pushes), plus pulled context (`brief.md`, `design.md`, `specification.md`, `results.md`) and local-only state. State CLI: `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js`. Never edit `task.yaml` by hand.

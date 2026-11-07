@@ -103,3 +103,7 @@ node scripts/validation/test-gates-pm.js
 ## Working with the other plugins
 
 The PM writes `requirements.md` and `acceptance-criteria.md` into the Jira ticket; the designer (`aisdlc-design`) and developer (`aisdlc-dev`) read them from Jira as the source of truth for the brief, specification and QA scenarios. QA numbers its scenarios from the PM's stable `AC1..ACn`. If the work comes back, `/aisdlc-pm:refine` revises the files and `/aisdlc-pm:jira-sync` rewrites them into Jira.
+
+## Shared repo (aisdlc)
+
+In the shared aisdlc repo your state is `tasks/<TICKET>/task.pm.yaml`. After the PM hand-off, run `/aisdlc:push` and `/aisdlc:handoff <TICKET> dev` (and `design`); a change request from dev or QA appears after `/aisdlc:pull` and is resolved with your next `/aisdlc:handoff`. Your `jira.md`, `requirements.md` and `acceptance-criteria.md` are what the other roles read.

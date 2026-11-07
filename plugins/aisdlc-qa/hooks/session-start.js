@@ -5,12 +5,13 @@ const fs = require("fs");
 const path = require("path");
 const { resolveRoot, workspaceKind } = require("../scripts/lib/root");
 const ROOT = resolveRoot();
-if (!ROOT || workspaceKind(ROOT) !== "qa") process.exit(0); // not a QA workspace
+const { state: STATE_FILE, log: LOG_FILE } = require("../scripts/lib/root").taskNames(ROOT); // task.yaml, or task.<role>.yaml in a shared aisdlc workspace
+if (!ROOT || !["qa", "aisdlc"].includes(workspaceKind(ROOT))) process.exit(0); // not a QA workspace
 const out = [];
 const td = path.join(ROOT, "tasks");
 const active = [], waiting = [];
 if (fs.existsSync(td)) for (const t of fs.readdirSync(td)) {
-  const f = path.join(td, t, "task.yaml");
+  const f = path.join(td, t, STATE_FILE);
   if (!fs.existsSync(f)) continue;
   try {
     const j = JSON.parse(fs.readFileSync(f, "utf8"));

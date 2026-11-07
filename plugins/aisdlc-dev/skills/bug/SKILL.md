@@ -20,7 +20,7 @@ Ticket matching `^[A-Z][A-Z0-9]*-\d+$`; `${CLAUDE_PLUGIN_ROOT}/config/policies.y
 Valid ticket; no existing task (`node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js get <TICKET>` fails) - otherwise direct to `/aisdlc-dev:resume`. Stage skills marked `disable-model-invocation` (repository-preparation, commit, pull-request) are performed by reading their `SKILL.md` after developer confirmation, as in the feature skill.
 
 ## Procedure
-Append audit events to `tasks/<TICKET>/execution-log.jsonl` as stages complete.
+Append audit events with `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js audit <TICKET> <event> '<details as JSON>'` (the log is hash-chained; never edit it by hand) as stages complete.
 1. Retrieve the ticket (jira-ticket phase 1, bug fields; fallback via questions, never guess). `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js init <TICKET> bug`; jira-ticket phase 2; `transition <TICKET> TICKET_READY`.
 2. `transition <TICKET> UNDER_INVESTIGATION`. Reproduce or understand the symptom, trace the execution path (read-only), form root-cause hypotheses, and validate them with evidence. Ask the developer for missing facts.
 3. Write `tasks/<TICKET>/root-cause.md` (short and precise: terse bullets, no narrative): symptom, trace, hypotheses and their validation, confirmed root cause with evidence, and a section `## Expected vs Actual Behavior (black-box)` that contains observable behavior only (no file or function names), used later for the regression test. `transition <TICKET> ROOT_CAUSE_CONFIRMED` only when validated.

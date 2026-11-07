@@ -18,7 +18,7 @@ const W = mktmp("aisdlc-pm-test-");
 for (const d of ["hooks", "scripts/state", "scripts/lib", "config", "tasks", "logs"]) fs.mkdirSync(path.join(W, d), { recursive: true });
 for (const f of [
   "hooks/pre-tool-policy.js", "scripts/state/aisdlc-state.js",
-  "scripts/lib/repo-paths.js", "scripts/lib/root.js", "scripts/lib/yaml.js",
+  "scripts/lib/repo-paths.js", "scripts/lib/root.js", "scripts/lib/yaml.js", "scripts/lib/auditlog.js",
   "scripts/lib/design-config.js", "scripts/lib/jira.js",
 ]) fs.copyFileSync(path.join(SRC, f), path.join(W, f));
 fs.copyFileSync(path.join(SRC, "config", "task-types.yaml"), path.join(W, "config", "task-types.yaml"));

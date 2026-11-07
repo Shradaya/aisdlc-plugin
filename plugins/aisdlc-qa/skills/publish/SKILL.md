@@ -31,6 +31,9 @@ Explicit `/aisdlc-qa:publish <TICKET> [--with-media]`. The task is at RESULTS_SI
 8. If `jira.write.status_transitions.verified` is configured, move the ticket with `node ${CLAUDE_PLUGIN_ROOT}/scripts/jira/jira-attach.js transition <TICKET> verified` (exactly the configured transition; if it is refused, report the `available` list and never pick another); otherwise never change the ticket status.
 9. `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js transition <TICKET> EVIDENCE_PUBLISHED` (skip when already there). Append audit `evidence-published` (files, comment id). Next: `/aisdlc-qa:commit <TICKET>`.
 
+## Shared repo
+In a shared aisdlc repo, after publishing run `/aisdlc:push`; then `/aisdlc:handoff <TICKET> dev` when the ticket is signed off, or `/aisdlc:return <TICKET> dev <defect summary>` when a defect waits for a fix.
+
 ## Outputs
 Jira attachments and one results comment on `<TICKET>`; `jira.attachments` / `jira.comments` in task state; state EVIDENCE_PUBLISHED.
 

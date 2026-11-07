@@ -5,12 +5,13 @@ const fs = require("fs");
 const path = require("path");
 const { resolveRoot, workspaceKind, configPath } = require("../scripts/lib/root");
 const ROOT = resolveRoot();
-if (!ROOT || workspaceKind(ROOT) !== "pm") process.exit(0); // not a PM workspace (config/workspace.yaml "kind": "pm")
+const { state: STATE_FILE, log: LOG_FILE } = require("../scripts/lib/root").taskNames(ROOT); // task.yaml, or task.<role>.yaml in a shared aisdlc workspace
+if (!ROOT || !["pm", "aisdlc"].includes(workspaceKind(ROOT))) process.exit(0); // not a PM workspace (config/workspace.yaml "kind": "pm")
 const out = [];
 const td = path.join(ROOT, "tasks");
 const active = [];
 if (fs.existsSync(td)) for (const t of fs.readdirSync(td)) {
-  const f = path.join(td, t, "task.yaml");
+  const f = path.join(td, t, STATE_FILE);
   if (!fs.existsSync(f)) continue;
   try {
     const j = JSON.parse(fs.readFileSync(f, "utf8"));

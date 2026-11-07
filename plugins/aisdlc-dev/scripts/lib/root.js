@@ -61,4 +61,25 @@ function workspaceKind(root) {
   }
 }
 
-module.exports = { resolveRoot, isWorkspace, configPath, workspaceKind, NOT_WORKSPACE, pluginRoot, get PLUGIN_ROOT() { return pluginRoot(); } };
+// Shared workspace: when config/workspace.yaml says kind "aisdlc", pm, design, dev and qa all work in one repository,
+// so each role keeps its own task state next to the shared ticket documents. Each plugin declares its role in
+// scripts/lib/role.js (module.exports = "dev"). In a standalone role workspace the file names are unchanged.
+let ROLE = null;
+try { ROLE = require("./role"); } catch { ROLE = null; }
+const isShared = (root) => workspaceKind(root) === "aisdlc";
+const suffix = (root) => (isShared(root) && ROLE ? "." + ROLE : "");
+// Files of one ticket's task: state (task.yaml / task.<role>.yaml), audit log, lock.
+const taskNames = (root) => ({
+  state: `task${suffix(root)}.yaml`,
+  log: `execution-log${suffix(root)}.jsonl`,
+  lock: `.lock${suffix(root)}`,
+});
+const taskDirOf = (root, ticket) => path.join(root, "tasks", ticket);
+const taskFileOf = (root, ticket) => path.join(taskDirOf(root, ticket), taskNames(root).state);
+// Matches any role's state file name in a path (task.yaml, task.pm.yaml, ...), for hook protection rules.
+const TASK_STATE_RE = /\/tasks\/[^/]+\/task(\.[a-z]+)?\.yaml$/;
+
+module.exports = {
+  resolveRoot, isWorkspace, configPath, workspaceKind, NOT_WORKSPACE, pluginRoot, get PLUGIN_ROOT() { return pluginRoot(); },
+  isShared, taskNames, taskDirOf, taskFileOf, TASK_STATE_RE, ROLE,
+};

@@ -21,6 +21,7 @@ const { summarize } = require("./summarize-results");
 
 const RUNNABLE = ["TESTS_GENERATED", "TESTS_EXECUTED", "AWAITING_DEV_FIX", "AWAITING_RESULTS_SIGNOFF"];
 const ROOT = resolveRoot();
+const { state: STATE_FILE, log: LOG_FILE } = require("../lib/root").taskNames(ROOT); // task.yaml, or task.<role>.yaml in a shared aisdlc workspace
 const args = process.argv.slice(2);
 const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
 const ticket = args[0];
@@ -33,7 +34,7 @@ function done(payload, code) {
 if (!ROOT) done({ ok: false, error: NOT_WORKSPACE }, 2);
 if (!/^[A-Z][A-Z0-9]*-\d+$/.test(ticket || "")) done({ ok: false, error: "usage: run-tests.js <TICKET> [--watch|--headless|--ui] [--env <name>] [--build <id>] [--only S1,S3]" }, 1);
 
-const taskFile = path.join(ROOT, "tasks", ticket, "task.yaml");
+const taskFile = path.join(ROOT, "tasks", ticket, STATE_FILE);
 if (!fs.existsSync(taskFile)) done({ ok: false, error: `no QA task for ${ticket}; start it with /aisdlc-qa:test ${ticket}` }, 1);
 const task = JSON.parse(fs.readFileSync(taskFile, "utf8"));
 const loginCheck = args.includes("--login-check");

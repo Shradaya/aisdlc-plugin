@@ -1,0 +1,6 @@
+# Approvals pin the hash of a file's bytes, so line endings must not change between machines: on Windows, core.autocrlf
+# would otherwise rewrite these files on checkout and show every approved file as "changed since approval".
+tasks/** text eol=lf
+designs/** text eol=lf
+system/** text eol=lf
+config/** text eol=lf

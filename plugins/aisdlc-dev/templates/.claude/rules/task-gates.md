@@ -2,7 +2,7 @@
 
 - Every task has a ticket number matching `^[A-Z][A-Z0-9]*-\d+$` and a directory `tasks/<ticket>/`.
 - `tasks/<ticket>/task.yaml` is changed only through `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js` (`init`, `get`, `transition`, `approve`, `reject`, `set`). Never edit it by hand, with a shell redirect, or with Write/Edit.
-- Append audit events to `tasks/<ticket>/execution-log.jsonl` (one JSON object per line: timestamp, task, event, details; append only; no secrets).
+- Append audit events with `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js audit <TICKET> <event> '<details as JSON>'` (the log is hash-chained; never edit it by hand) (one JSON object per line: timestamp, task, event, details; append only; no secrets).
 - Source edits in registered repositories are blocked before SPEC_APPROVED (bug: before REPOSITORIES_PREPARED), after COMMITTED, for investigation tasks, and whenever the approved specification hash no longer matches. Before approval only task artifacts, `system/` and `repositories/<repo>/` knowledge may be written.
 - A task that spans two or more repositories, or changes a shared contract (a field, collection, endpoint, queue or event payload, shared constant), needs `tasks/<ticket>/trace.md` from the `cross-repo-trace` skill before any source edit; the hook blocks until it is written and `workflow.trace` is `completed` (`policies.yaml` `require_trace_for_cross_repo`). Run it after the repositories are confirmed and before repository preparation, since it may add repositories.
 - A feature needs an approved specification before implementation, and plan approval for cross-repository, database, API, security-sensitive or high-risk changes. Approval is an explicit human choice; never infer it.

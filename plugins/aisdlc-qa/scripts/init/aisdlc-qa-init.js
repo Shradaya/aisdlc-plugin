@@ -243,12 +243,19 @@ function write(dest, content, bucket) {
   fs.writeFileSync(dest, content);
 }
 
+// In the shared aisdlc repo (config/workspace.yaml kind "aisdlc") the workspace files belong to /aisdlc:init. QA adds only
+// its test scaffold and environments.yaml; the QA tests stay local (the shared .gitignore already ignores them).
+let sharedRepo = false;
+try { sharedRepo = (JSON.parse(fs.readFileSync(path.join(target, "config", "workspace.yaml"), "utf8").replace(/^\s*#.*$/gm, "")).workspace || {}).kind === "aisdlc"; } catch { /* not a shared repo */ }
+const SHARED_OWNS = new Set([".gitignore", "CLAUDE.md", ".claude/settings.json", "config/workspace.yaml", "config/repositories.yaml", "config/integrations.yaml", "logs/.gitkeep", "tasks/.gitkeep"]);
+
 for (const [name, dir] of Object.entries(PARTS)) {
   if (only && only !== name) continue;
   const root = path.join(TEMPLATES, dir);
   if (!fs.existsSync(root)) continue;
   for (const file of walk(root)) {
     const rel = path.relative(root, file);
+    if (sharedRepo && SHARED_OWNS.has(rel.replace(/\\/g, "/"))) { report.skipped.push(`${rel} (owned by /aisdlc:init in the shared repo)`); continue; }
     const dest = path.join(target, rel);
     const content = fs.readFileSync(file);
     if (!fs.existsSync(dest)) {

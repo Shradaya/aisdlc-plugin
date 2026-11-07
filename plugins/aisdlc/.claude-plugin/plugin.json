@@ -1,0 +1,6 @@
+{
+  "name": "aisdlc",
+  "version": "1.0.0",
+  "description": "AI-SDLC shared workflow plugin: one repository for every role (pm, design, dev, qa) with init, push, pull, hand-off and return between roles, and a status page showing each ticket's flow.",
+  "author": { "name": "Evoke Medical Care" }
+}

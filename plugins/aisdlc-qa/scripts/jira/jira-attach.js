@@ -50,6 +50,7 @@ async function finish(payload, code) {
 }
 
 const ROOT = resolveRoot();
+const { state: STATE_FILE, log: LOG_FILE } = require("../lib/root").taskNames(ROOT); // task.yaml, or task.<role>.yaml in a shared aisdlc workspace
 const argv = process.argv.slice(2);
 const dryRun = argv.includes("--dry-run");
 const withComments = argv.includes("--comments");
@@ -65,7 +66,7 @@ const mention = argv.includes("--mention-assignee") || write.mention_assignee ==
 const call = (method, urlPath, opts) => jira.request(J, method, urlPath, opts);
 
 const sha = (buf) => crypto.createHash("sha256").update(buf).digest("hex");
-const taskFile = () => path.join(ROOT, "tasks", ticket, "task.yaml");
+const taskFile = () => path.join(ROOT, "tasks", ticket, STATE_FILE);
 const loadTask = () => (fs.existsSync(taskFile()) ? JSON.parse(fs.readFileSync(taskFile(), "utf8")) : null);
 function record(dotted, value) {
   if (dryRun) return;

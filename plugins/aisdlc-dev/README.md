@@ -135,3 +135,7 @@ node scripts/validation/cred-check.js      # run from a dev workspace
 
 - **From design.** A design repository registered with `--kind design` is read during `/aisdlc-dev:feature`. The `design-link` step reads `designs/<TICKET>/` (synced by the designer, on `main`), snapshots it into `system/designs/<TICKET>/` and pins the snapshot and the source commit sha in the specification.
 - **To QA.** After your PR reaches the QA environment, the QA engineer tests the ticket with `aisdlc-qa`. Defects come back to you as comments on the Jira ticket. The QA task waits until you reply that the fix is deployed.
+
+## Shared repo (aisdlc)
+
+In the shared aisdlc repo your state is `tasks/<TICKET>/task.dev.yaml`. `/aisdlc-dev:feature` reads the PM's `requirements.md` and `acceptance-criteria.md` after `/aisdlc:pull` (no Jira fetch needed) and `design-link` reads `designs/<TICKET>/` from the same repository. Code is still committed in the application repositories under the dev commit rules; the shared repo's own commits go through `/aisdlc:push`. Hand off to QA with `/aisdlc:handoff <TICKET> qa` after the merge, or send questions back with `/aisdlc:return`.

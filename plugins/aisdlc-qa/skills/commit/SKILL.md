@@ -13,6 +13,9 @@ Turn a ticket's verified tests into permanent regression tests: commit them on b
 ## Invocation conditions
 Explicit `/aisdlc-qa:commit <TICKET>`. The task is at EVIDENCE_PUBLISHED, or at RESULTS_SIGNED_OFF when publishing was skipped (`jira.publish` = `"skipped"`), or at COMMITTED to mark it complete. Run inside the QA workspace.
 
+## Shared repo (workspace kind aisdlc)
+Tests are never committed there: `tests/`, `fixtures/` and the Playwright files are local and gitignored. Only `tasks/<TICKET>/` (scenarios, results, state) is shared. Skip this skill and run `/aisdlc:push`, then `/aisdlc:handoff <TICKET> dev` (or `/aisdlc:return` for a defect).
+
 ## Prerequisites
 - `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js get <TICKET>` shows `approvals.signoff.status` = `approved`. If not, stop and point to `/aisdlc-qa:test <TICKET>`.
 - The QA workspace is a git repository with a `main` branch.

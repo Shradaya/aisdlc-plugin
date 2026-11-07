@@ -13,6 +13,8 @@ Turn a folder into an aisdlc **QA** workspace: the folder where a QA engineer tu
 ## Invocation conditions
 Explicit `/aisdlc-qa:init [target-folder] [--only workspace|agents] [--dry-run] [--force]`. The target defaults to the current folder. `--only agents` skips the scaffold and only (re)generates the Playwright agents, which is needed after every Playwright upgrade.
 
+> Shared repo: if `config/workspace.yaml` has `"kind": "aisdlc"`, the workspace is initialised by `/aisdlc:init`; do not scaffold it again. Run this skill anyway for the QA part: the script then adds only the local test scaffold and `config/environments.yaml`, and leaves the shared files alone.
+
 ## Procedure
 1. Unless `--only agents`: preview with `node ${CLAUDE_PLUGIN_ROOT}/scripts/init/aisdlc-qa-init.js $ARGUMENTS --dry-run`. Show what would be created, merged and skipped. If `--force` would overwrite files, confirm with AskUserQuestion first. Then run the same command without `--dry-run`.
 2. Environments: add the first environment the way `${CLAUDE_PLUGIN_ROOT}/skills/add-env/SKILL.md` does (name, base URL, login method, synthetic data confirmed; `node ${CLAUDE_PLUGIN_ROOT}/scripts/qa/add-env.js <name> --base-url <url> --login <mode> ... --default --force`, since the template already has a placeholder `qa` entry).

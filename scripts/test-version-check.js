@@ -16,7 +16,7 @@ const commit = (m) => { g("add", "-A"); g("commit", "-q", "-m", m); };
 t("cmp lower", cmp("1.0.0", "1.0.1"), -1);
 t("cmp numeric not lexical", cmp("1.10.0", "1.9.0"), 1);
 t("cmp equal", cmp("2.0.0", "2.0.0"), 0);
-t("changelog top heading", changelogTop(path.join(__dirname, "..", "plugins", "aisdlc-dev", "CHANGELOG.md")), "1.0.0");
+t("changelog top heading", changelogTop(path.join(__dirname, "..", "plugins", "aisdlc-dev", "CHANGELOG.md")), require("../plugins/aisdlc-dev/.claude-plugin/plugin.json").version);
 
 g("init", "-q", "-b", "main");
 setVersion("a", "1.0.0"); setVersion("b", "2.1.0");

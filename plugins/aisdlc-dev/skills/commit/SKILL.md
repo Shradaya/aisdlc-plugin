@@ -30,7 +30,7 @@ For each repository to commit (use `git -C <path>`):
 6. `git -C <path> diff --cached --check`; fix whitespace errors; re-inspect `git -C <path> diff --cached`.
 7. Write a concise one-line summary from the actual diff. Validate: starts with `<TICKET>`, then exactly `: `, non-empty summary, one line, <= 120 characters, describes the real changes.
 8. Commit with a single `-m`: `git -C <path> commit -m "<TICKET>: <summary>"`. No body, no extra `-m`, no `--amend`, no `--no-verify`.
-9. Record the hash: `git -C <path> rev-parse HEAD`, then `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js set <TICKET> commits.<repo> '"<hash>"'`. Append audit `commit-created` (repo, hash) to `tasks/<TICKET>/execution-log.jsonl`.
+9. Record the hash: `git -C <path> rev-parse HEAD`, then `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js set <TICKET> commits.<repo> '"<hash>"'`. Append audit `commit-created` (repo, hash) with `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js audit <TICKET> <event> '<details as JSON>'` (the log is hash-chained; never edit it by hand).
 10. After all repositories are committed, the workflow runs `node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js transition <TICKET> COMMITTED`.
 
 Workspace (control-plane) commits, used by consolidation and finish, follow the same steps with `<path>` = the workspace root. The git hook requires the workspace's current branch to equal the ticket number; if it does not, stop and ask the developer how to proceed (the spec does not define a workspace branch policy).

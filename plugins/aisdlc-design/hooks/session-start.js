@@ -6,7 +6,7 @@ const { resolveRoot, workspaceKind } = require("../scripts/lib/root");
 const ROOT = resolveRoot();
 if (!ROOT) process.exit(0); // installed user-wide: do nothing outside an aisdlc workspace
 const KIND = workspaceKind(ROOT);
-if (KIND && KIND !== "design") process.exit(0); // another aisdlc plugin's workspace (config/workspace.yaml "kind")
+if (KIND && KIND !== "design" && KIND !== "aisdlc") process.exit(0); // another aisdlc plugin's workspace (config/workspace.yaml "kind")
 const dir = path.join(ROOT, "designs");
 let tickets = [];
 try { tickets = fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory() && /^[A-Z][A-Z0-9]*-\d+$/.test(e.name)).map((e) => e.name); } catch {}

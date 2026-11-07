@@ -1,0 +1,12 @@
+# Changelog
+
+What changed in aisdlc, newest first. Versions: **major** when people must act, **minor** for something new, **patch** for fixes. README, tests and docs-site changes need no version. Every behavior change to this plugin needs a bump here and in `.claude-plugin/plugin.json` (checked by `node scripts/version-check.js --base <ref>`).
+
+## 1.0.0 (2026-11-08)
+Initial release: the shared repository every role (pm, design, dev, qa) works in.
+- `/aisdlc:init`: scaffolds the shared repo and records your role; `--adopt` converts an existing single-role workspace.
+- `/aisdlc:pull` and `/aisdlc:push`: pull is `git pull --rebase --autostash` (uncommitted workflow files are kept) and shows what is waiting for your role. Push always pulls first, then commits the workflow folders as `<TICKET>: <summary>` and pushes. A merge conflict is never resolved or aborted by aisdlc: it stops and the person resolves it. No ticket branches.
+- `/aisdlc:handoff` and `/aisdlc:return`: hand a ticket to the next role, or send it back with a reason. Events are small unique files under `tasks/<TICKET>/handoffs/`, so they never conflict; `changes.md` is a generated local view of the open change requests.
+- `/aisdlc:status-page`: the same look as the role status pages. Overview of every ticket (PM, Design, Dev, QA each waiting, active, done, changes requested or not needed); per ticket the flow, open change requests, approvals, history and a document viewer for the markdown documents and the design pages (live preview in a sandbox). Read-only, localhost only; `--json` and `--export` (with `--with-docs`).
+- Approvals are held for your confirmation by the role plugins' hooks (approve and reject are always asked), and need a git user.email. Audit logs are hash-chained, state files are sealed, with an optional HMAC key; the status page shows each approval as a checkbox (green once approved, the step itself turns green) and whether every log and state is intact. Plan approval is listed as its own checkbox. `aisdlc-state.js seal` migrates a state file written before sealing (asked by the hook, recorded in the log); unsealed states and failed checks show as banners; `/aisdlc:init` adds a `.gitattributes` keeping approved files on LF.
+- A hook that owns commits at the repo root (workflow folders only, one-line `<TICKET>: <summary>`, no `-a`, no force-push).

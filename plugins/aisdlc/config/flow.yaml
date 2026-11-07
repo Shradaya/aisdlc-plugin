@@ -1,0 +1,55 @@
+# Ticket flow across roles. JSON-compatible YAML; '#' comments only on their own lines.
+# "order" is the display order. "steps" are what the status page shows per role: each step lists the role-state values
+# (from tasks/<TICKET>/task.<role>.yaml) that put the role at that step. Design has no state file: it is "created" once
+# designs/<TICKET>/ holds a page. "ready" says when a role may hand off (a state in "states", plus the approved gates
+# in "gates", or for design a non-empty designs/<TICKET>/ folder). "gates" lists each role's approval gates for the status
+# page (gate name, label, the file it pins). A step with a "gate" turns green once that gate is approved; an "optional" gate
+# that is still pending once the role has reached a "skipped_from" state is shown as not required (the plan is only needed
+# for major features). A workspace config/flow.yaml replaces this file.
+{
+  "order": ["pm", "design", "dev", "qa"],
+  "labels": { "pm": "PM", "design": "Design", "dev": "Dev", "qa": "QA" },
+  "steps": {
+    "pm": [
+      { "label": "Requirement gathering", "states": ["CREATED", "REQUIREMENT_GATHERING"] },
+      { "label": "Acceptance criteria", "states": ["ACCEPTANCE_CRITERIA_DEFINED"], "gate": "acceptance_criteria" },
+      { "label": "Hand off", "states": ["HANDED_OFF_TO_DESIGN", "HANDED_OFF_TO_DEV", "COMPLETED"] }
+    ],
+    "design": [
+      { "label": "Created", "signal": "design_folder" },
+      { "label": "Hand off", "signal": "handoff" }
+    ],
+    "dev": [
+      { "label": "Understand", "states": ["CREATED", "TICKET_READY", "UNDERSTOOD", "REPOSITORIES_PREPARED", "UNDER_INVESTIGATION", "ROOT_CAUSE_CONFIRMED"] },
+      { "label": "Specification", "states": ["SPEC_APPROVED"], "gate": "specification" },
+      { "label": "Plan", "states": ["PLAN_APPROVED"], "gate": "plan" },
+      { "label": "Implement", "states": ["IMPLEMENTING", "COMMITTED"] },
+      { "label": "Pull request", "states": ["PR_CREATED"] },
+      { "label": "Merged", "states": ["MERGED", "RELEASED", "KNOWLEDGE_CONSOLIDATED", "COMPLETED"] }
+    ],
+    "qa": [
+      { "label": "Scenarios", "states": ["CREATED", "TICKET_READY", "ENVIRONMENT_READY", "SCENARIOS_DRAFTED", "AWAITING_SCENARIO_APPROVAL", "SCENARIOS_APPROVED"], "gate": "scenarios" },
+      { "label": "Tests", "states": ["TESTS_GENERATED", "TESTS_EXECUTED", "AWAITING_DEV_FIX"] },
+      { "label": "Results", "states": ["AWAITING_RESULTS_SIGNOFF"] },
+      { "label": "Sign-off", "states": ["RESULTS_SIGNED_OFF", "EVIDENCE_PUBLISHED", "COMMITTED", "COMPLETED"], "gate": "signoff" }
+    ]
+  },
+  "gates": {
+    "pm": [{ "gate": "acceptance_criteria", "label": "Acceptance criteria approved", "artifact": "acceptance-criteria.md" }],
+    "dev": [
+      { "gate": "specification", "label": "Specification approved", "artifact": "specification.md" },
+      { "gate": "plan", "label": "Plan approved", "artifact": "implementation-plan.md", "optional": false, "skipped_from": ["IMPLEMENTING", "COMMITTED", "PR_CREATED", "MERGED", "RELEASED", "KNOWLEDGE_CONSOLIDATED", "COMPLETED"] }
+    ],
+    "qa": [
+      { "gate": "scenarios", "label": "Scenarios approved", "artifact": "scenarios.md" },
+      { "gate": "signoff", "label": "Results signed off", "artifact": "results.md" }
+    ]
+  },
+  "ready": {
+    "pm": { "states": ["ACCEPTANCE_CRITERIA_DEFINED", "HANDED_OFF_TO_DESIGN", "HANDED_OFF_TO_DEV", "COMPLETED"], "gates": ["acceptance_criteria"] },
+    "design": { "signal": "design_folder" },
+    "dev": { "states": ["MERGED", "RELEASED", "KNOWLEDGE_CONSOLIDATED", "COMPLETED"] },
+    "qa": { "states": ["RESULTS_SIGNED_OFF", "EVIDENCE_PUBLISHED", "COMMITTED", "COMPLETED"], "gates": ["signoff"] }
+  },
+  "failure_states": ["BLOCKED", "WAITING_FOR_INPUT", "WAITING_FOR_APPROVAL", "CONFLICTED", "FAILED", "CANCELLED"]
+}

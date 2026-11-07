@@ -7,7 +7,7 @@ const SRC = path.resolve(__dirname, "..", "..");
 const REPO = path.resolve(SRC, "..", "..");
 const W = fs.mkdtempSync(path.join(os.tmpdir(), "aisdlc-qa-test-"));
 for (const d of ["hooks", "scripts/state", "scripts/lib", "scripts/qa", "config", "tasks", "logs", "tests", "specs"]) fs.mkdirSync(path.join(W, d), { recursive: true });
-for (const f of ["hooks/pre-tool-policy.js", "scripts/state/aisdlc-state.js", "scripts/lib/repo-paths.js", "scripts/lib/root.js", "scripts/lib/yaml.js", "scripts/qa/env.js"])
+for (const f of ["hooks/pre-tool-policy.js", "scripts/state/aisdlc-state.js", "scripts/lib/repo-paths.js", "scripts/lib/root.js", "scripts/lib/yaml.js", "scripts/lib/auditlog.js", "scripts/qa/env.js"])
   fs.copyFileSync(path.join(SRC, f), path.join(W, f));
 for (const f of ["task-types.yaml", "qa-policy.yaml"]) fs.copyFileSync(path.join(SRC, "config", f), path.join(W, "config", f));
 const json = (f, o) => fs.writeFileSync(path.join(W, f), JSON.stringify(o, null, 2));

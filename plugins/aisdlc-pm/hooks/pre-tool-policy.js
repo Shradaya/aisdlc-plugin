@@ -22,7 +22,19 @@ const path = require("path");
 const { resolveRoot, configPath, workspaceKind } = require("../scripts/lib/root");
 const { readYaml } = require("../scripts/lib/yaml");
 const ROOT = resolveRoot();
-if (!ROOT || workspaceKind(ROOT) !== "pm") process.exit(0);
+const { state: STATE_FILE, log: LOG_FILE } = require("../scripts/lib/root").taskNames(ROOT); // task.yaml, or task.<role>.yaml in a shared aisdlc workspace
+
+// A task whose state file fails its seal (edited outside the state CLI, or out of step with its audit log) is ignored, so a
+// hand-edited approval cannot unlock anything.
+const trustedState = (t) => {
+  if (!t || !t.task) return t;
+  try {
+    const al = require("../scripts/lib/auditlog");
+    const log = path.join(ROOT, "tasks", t.task.id, LOG_FILE);
+    return al.verifyState(t, al.headOf(log, t.task.id), undefined, al.hasChain(log)).ok ? t : null;
+  } catch { return t; }
+};
+if (!ROOT || !["pm", "aisdlc"].includes(workspaceKind(ROOT))) process.exit(0);
 
 const TYPES = readYaml(configPath(ROOT, "task-types.yaml"), {});
 const LC = TYPES.pm || {};
@@ -40,7 +52,7 @@ function activeTasks() {
   const dir = path.join(ROOT, "tasks");
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir)
-    .map((t) => readYaml(path.join(dir, t, "task.yaml"), null))
+    .map((t) => trustedState(readYaml(path.join(dir, t, STATE_FILE), null)))
     .filter((t) => t && t.task && !["COMPLETED", "CANCELLED"].includes(t.task.status));
 }
 const taskOf = (id) => activeTasks().find((x) => x.task.id === id);
@@ -148,7 +160,24 @@ const isSecretReadPath = (n) => /\/\.env(\.(?!example$)[\w.-]+)?$/.test(n) || /\
 const EXEC_EXT = /\.(js|mjs|cjs|ps1|sh|cmd|bat)$/i;
 
 function run() {
-  const raw = fs.readFileSync(0, "utf8");
+  
+// Approvals and rejections are human decisions: Claude Code asks the person before the state CLI records one (the hook
+// answers "ask", which the harness always turns into a prompt), so nobody can approve without being asked.
+function askApproval(cmd, cwd) {
+  const m = cmd.match(/aisdlc-state\.js["']?\s+(approve|reject|seal)\s+([A-Z][A-Z0-9]*-\d+)(?:\s+([a-z_]+))?/);
+  if (!m) return;
+  let email = "unknown";
+  try { email = require("child_process").execSync("git config user.email", { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() || "unknown"; } catch { /* unset */ }
+  const reason = m[1] === "seal"
+    ? "Seal the state of " + m[2] + "? This is a human decision: it accepts the current content of the state file (approvals, approvers, state) as genuine, so check it with git diff first. Recorded under git user.email " + email + "."
+    : m[1] === "approve"
+    ? "Approve '" + m[3] + "' for " + m[2] + "? This is a human decision: it is recorded under git user.email " + email + " and pins the current file hash, so any later edit needs approval again."
+    : "Record a rejection of '" + m[3] + "' for " + m[2] + "? This is a human decision, recorded under git user.email " + email + ".";
+  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "ask", permissionDecisionReason: reason } }) + "\n");
+  process.exit(0);
+}
+
+const raw = fs.readFileSync(0, "utf8");
   let ev;
   try { ev = JSON.parse(raw); }
   catch {
@@ -172,7 +201,7 @@ function run() {
     const target = path.resolve(cwd, input.file_path || input.notebook_path || "");
     const n = norm(target);
     if (/\/\.env(\.(?!example$)[\w.-]+)?$/.test(n)) block(".env holds credentials; it is edited by hand, outside the agent.");
-    if (/\/tasks\/[^/]+\/task\.yaml$/.test(n)) block("task.yaml may only be changed through scripts/state/aisdlc-state.js.");
+    if (/\/tasks\/[^/]+\/(?:task(?:\.[a-z]+)?\.yaml|execution-log(?:\.[a-z]+)?\.jsonl)$/.test(n)) block("task.yaml and execution logs may only be changed through scripts/state/aisdlc-state.js (audit lines: aisdlc-state.js audit <ticket> <event> [json]; they are hash-chained).");
     if (/\/\.git\//.test(n + "/")) block(".git is protected.");
     if (/(^|\/)(credentials|secrets)\//.test(n) || /(^|\/)aisdlc\/credentials\.json$/.test(n) || /\.(pem|key)$/.test(n)) block("Protected path.");
     // Content scan (executable files only): a script that would run a jira-pm apply must not be written to dodge the
@@ -189,6 +218,7 @@ function run() {
   // ---- 6.1-6.4 shell ----------------------------------------------------------------------------------------------
   if (tool === "Bash" || tool === "PowerShell") {
     const cmd = String(input.command || "");
+  askApproval(cmd, cwd);
 
     // 6.3 dangerous operations
     if (/git\s+push\b.*(--force\b|--force-with-lease|\s-f\b|\s\+\S+)/.test(cmd)) block("Force push is disabled.");
@@ -226,9 +256,9 @@ function run() {
 
     // 6.3 task.yaml only via the state CLI (redirects and writing commands naming it).
     if (!/aisdlc-state\.js/.test(cmd) && (
-      />>?\s*["']?[^\s|;&>"']*task\.yaml/i.test(cmd) ||
-      /(^|[|;&(]\s*|\s)(sed\s+-i|tee|set-content|add-content|out-file|clear-content|rm|del|remove-item|ri|mv|move-item|cp|copy-item|truncate|vi|vim|nano|notepad|code)\b[^|;&\n]*task\.yaml/i.test(cmd)))
-      block("task.yaml may only be changed through scripts/state/aisdlc-state.js.");
+      />>?\s*["']?[^\s|;&>"']*(?:task(?:\.[a-z]+)?\.yaml|execution-log(?:\.[a-z]+)?\.jsonl)/i.test(cmd) ||
+      /(^|[|;&(]\s*|\s)(sed\s+-i|tee|set-content|add-content|out-file|clear-content|rm|del|remove-item|ri|mv|move-item|cp|copy-item|truncate|vi|vim|nano|notepad|code)\b[^|;&\n]*(?:task(?:\.[a-z]+)?\.yaml|execution-log(?:\.[a-z]+)?\.jsonl)/i.test(cmd)))
+      block("task.yaml and execution logs may only be changed through scripts/state/aisdlc-state.js (audit lines: aisdlc-state.js audit <ticket> <event> [json]; they are hash-chained).");
 
     // Jira apply: valid local plan + user confirmation (also blocks node -e jira-pm). Decides and exits when it applies.
     // The local acceptance_criteria gate is enforced by the state engine on the hand-off transition, not here.

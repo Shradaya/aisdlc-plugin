@@ -14,7 +14,7 @@ const { resolveRoot, workspaceKind } = require("../scripts/lib/root");
 const ROOT = resolveRoot();
 if (!ROOT) process.exit(0);
 const KIND = workspaceKind(ROOT);
-if (KIND && KIND !== "design") process.exit(0); // another aisdlc plugin's workspace (config/workspace.yaml "kind")
+if (KIND && KIND !== "design" && KIND !== "aisdlc") process.exit(0); // another aisdlc plugin's workspace (config/workspace.yaml "kind")
 
 const norm = (p) => path.resolve(p).replace(/\\/g, "/").toLowerCase();
 function block(reason) { process.stderr.write("BLOCKED\nReason: " + reason + "\n"); process.exit(2); }
@@ -64,6 +64,7 @@ if (tool === "Bash" || tool === "PowerShell") {
 
   if (/git\s+(-C\s+\S+\s+)?commit\b/.test(cmd)) {
     const dir = (cmd.match(/-C\s+("[^"]+"|\S+)/) || [])[1]?.replace(/"/g, "") || cwd;
+    if (KIND === "aisdlc" && norm(dir) === norm(ROOT)) process.exit(0); // the aisdlc plugin's hook owns commits at the workspace root
     checkCommit(cmd, dir);
   }
 }

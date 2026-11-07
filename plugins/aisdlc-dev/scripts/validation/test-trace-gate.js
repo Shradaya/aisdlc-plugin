@@ -9,7 +9,7 @@ const REPO_ROOT = path.resolve(SRC, "..", "..");
 
 const W = fs.mkdtempSync(path.join(os.tmpdir(), "aisdlc-trace-"));
 for (const d of ["hooks", "scripts/state", "scripts/lib", "config", "tasks", "logs"]) fs.mkdirSync(path.join(W, d), { recursive: true });
-for (const f of ["hooks/pre-tool-policy.js", "scripts/state/aisdlc-state.js", "scripts/lib/repo-paths.js", "scripts/lib/root.js", "scripts/lib/yaml.js", "scripts/lib/env-branches.js", "scripts/lib/real-systems.js"])
+for (const f of ["hooks/pre-tool-policy.js", "scripts/state/aisdlc-state.js", "scripts/lib/repo-paths.js", "scripts/lib/root.js", "scripts/lib/yaml.js", "scripts/lib/auditlog.js", "scripts/lib/env-branches.js", "scripts/lib/real-systems.js"])
   fs.copyFileSync(path.join(SRC, f), path.join(W, f));
 fs.copyFileSync(path.join(SRC, "config", "task-types.yaml"), path.join(W, "config", "task-types.yaml"));
 const mk = (n) => { const d = path.join(W, "..", path.basename(W) + "-" + n); fs.mkdirSync(d, { recursive: true }); return d; };
@@ -21,7 +21,9 @@ const setPolicy = (feature, bug) => fs.writeFileSync(path.join(W, "config/polici
 setPolicy(true, true);
 
 const env = { ...process.env, AISDLC_ROOT: W };
-const state = (...a) => spawnSync("node", [path.join(W, "scripts/state/aisdlc-state.js"), ...a], { env, encoding: "utf8" });
+// approvals are recorded under git's user.email and refused without one, so the test gives the engine an identity
+const GIT_ID = { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "user.email", GIT_CONFIG_VALUE_0: "tester@example.com" };
+const state = (...a) => spawnSync("node", [path.join(W, "scripts/state/aisdlc-state.js"), ...a], { env: { ...env, ...GIT_ID }, encoding: "utf8" });
 const claude = (file) => spawnSync("node", [path.join(W, "hooks/pre-tool-policy.js")], { env, input: JSON.stringify({ tool_name: "Write", tool_input: { file_path: file }, cwd: W }), encoding: "utf8" });
 const kiro = (file) => spawnSync("node", [path.join(REPO_ROOT, "kiro/hooks/dev-pre-tool-policy.js")], { env: { ...env, AI_SDLC_PLUGIN_HOME: REPO_ROOT }, input: JSON.stringify({ tool_name: "fs_write", tool_input: { path: file }, cwd: W }), encoding: "utf8" });
 let fail = 0;

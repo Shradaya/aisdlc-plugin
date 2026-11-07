@@ -9,6 +9,9 @@
 //   node aisdlc-state.js approve <ticket> <gate>   (records approver + artifact hash)
 //   node aisdlc-state.js reject  <ticket> <gate> <reason>
 //   node aisdlc-state.js set <ticket> <dotted.path> <json-value>
+//   node aisdlc-state.js audit <ticket> <event> ['{"k":"v"}']   (the only way to add an audit line; hash-chained)
+//   node aisdlc-state.js seal <ticket>                            (one-time: seal a state file written before sealing existed)
+//   node aisdlc-state.js verify <ticket>                          (check the audit log chain and the state seal; exit 1 when broken)
 // Gates: specification|plan (feature family) and design (design lifecycle) are built in. A lifecycle in
 // task-types.yaml may instead declare its own gates (see "Config-driven gates" below).
 const fs = require("fs");
@@ -18,6 +21,7 @@ const { execSync } = require("child_process");
 
 const { resolveRoot, configPath, NOT_WORKSPACE } = require("../lib/root");
 const { stripComments } = require("../lib/yaml");
+const auditlog = require("../lib/auditlog");
 const ROOT = resolveRoot();
 if (!ROOT) {
   console.error(NOT_WORKSPACE);
@@ -45,7 +49,8 @@ const gateArtifact = (task, gate) => {
 };
 
 const taskDir = (t) => path.join(ROOT, "tasks", t);
-const taskFile = (t) => path.join(taskDir(t), "task.yaml");
+const NAMES = require("../lib/root").taskNames(ROOT); // task.yaml standalone, task.<role>.yaml in a shared aisdlc workspace
+const taskFile = (t) => path.join(taskDir(t), NAMES.state);
 const now = () => new Date().toISOString();
 
 let heldLock = null;
@@ -63,16 +68,26 @@ function lifecycleFor(type) {
   return TYPES[type] ? type : TYPES.other_types_use;
 }
 
-function load(ticket) {
+const logPath = (ticket) => path.join(taskDir(ticket), NAMES.log);
+// A sealed state file that fails its seal was changed outside this CLI (or is out of step with the audit log): refuse to
+// work from it. `get` and `verify` still show it (strict = false).
+function load(ticket, strict = true) {
   if (!TICKET_RE.test(ticket)) die(`invalid ticket number '${ticket}'`);
   if (!fs.existsSync(taskFile(ticket))) die(`no task record for ${ticket}`);
-  return JSON.parse(fs.readFileSync(taskFile(ticket), "utf8"));
+  const task = JSON.parse(fs.readFileSync(taskFile(ticket), "utf8"));
+  const v = auditlog.verifyState(task, auditlog.headOf(logPath(ticket), ticket), undefined, auditlog.hasChain(logPath(ticket)));
+  if (!v.ok) {
+    const msg = `the task state for ${ticket} failed its integrity check: ${v.reason}. Restore it from git (git checkout -- tasks/${ticket}) or ask its owner; nothing was changed.`;
+    if (strict) die(msg);
+    console.error("WARNING: " + msg);
+  }
+  return task;
 }
 
 // Exclusive lock via O_EXCL lockfile; stale locks (>30s) are reclaimed.
 function withLock(ticket, fn) {
   fs.mkdirSync(taskDir(ticket), { recursive: true });
-  const lock = path.join(taskDir(ticket), ".lock");
+  const lock = path.join(taskDir(ticket), NAMES.lock);
   const deadline = Date.now() + 10000;
   for (;;) {
     try {
@@ -103,22 +118,16 @@ function withLock(ticket, fn) {
 function save(ticket, task) {
   task.task.updated_at = now();
   task.task.state_version = (task.task.state_version || 0) + 1;
+  task.integrity = auditlog.sealOf(task, auditlog.headOf(logPath(ticket), ticket)); // bound to the audit log's current head
   const tmp = taskFile(ticket) + ".tmp";
   fs.writeFileSync(tmp, JSON.stringify(task, null, 2) + "\n");
   fs.renameSync(tmp, taskFile(ticket));
 }
 
+// Every audit line is hash-chained (and MAC-signed when AISDLC_LOG_KEY is set), see lib/auditlog.js.
 function audit(ticket, event, extra = {}) {
-  const line = JSON.stringify({
-    timestamp: now(),
-    task: ticket,
-    event,
-    ...extra,
-  });
-  fs.appendFileSync(
-    path.join(taskDir(ticket), "execution-log.jsonl"),
-    line + "\n",
-  );
+  auditlog.append(logPath(ticket), ticket, { timestamp: now(), task: ticket, event, ...extra });
+  auditlog.resealFile(taskFile(ticket), logPath(ticket), ticket); // keep the state's seal pointing at the new log head
 }
 
 // Hash of the artifact a gate approves (e.g. specification.md, design.md). Null if absent or the gate has none.
@@ -148,7 +157,7 @@ function checkConfiguredGuards(ticket, task, lc, to) {
 
 function gitUser() {
   try {
-    return execSync("git config user.email", { encoding: "utf8" }).trim();
+    return execSync("git config user.email", { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() || "unknown";
   } catch {
     return "unknown";
   }
@@ -242,7 +251,7 @@ if (cmd === "init") {
 } else if (cmd === "next") {
   console.log(nextHint(load(ticket)) || "No suggestion for this state.");
 } else if (cmd === "get") {
-  console.log(JSON.stringify(load(ticket), null, 2));
+  console.log(JSON.stringify(load(ticket, false), null, 2));
 } else if (cmd === "transition") {
   const to = rest[0];
   const ri = rest.indexOf("--reason");
@@ -313,6 +322,8 @@ if (cmd === "init") {
     if (!task.approvals[gate]) die(`this task has no ${gate} gate`);
     const a = task.approvals[gate];
     if (cmd === "approve") {
+      // The approval is attributed to git's user.email; without one there is nobody to record it under.
+      if (gitUser() === "unknown") die("git user.email is not set, so the approval cannot be attributed. Set it first: git config user.email you@company.com");
       // Hash-pinned gates (those with an artifact) record its hash so later edits force reapproval.
       const file = gateArtifact(task, gate);
       if (file) {
@@ -354,6 +365,35 @@ if (cmd === "init") {
     console.log(
       `Next (You): tell Claude what to change, then re-approve with /approve ${ticket} ${gate}.`,
     );
+} else if (cmd === "audit") {
+  // The only way a skill adds an audit line: node aisdlc-state.js audit <ticket> <event> ['{"key":"value"}']
+  const [event, json] = rest;
+  if (!/^[a-z][a-z0-9-]*$/.test(event || "")) die("audit needs an event name like 'commit-created' (lowercase letters, digits, hyphens)");
+  let extra = {};
+  if (json) { try { extra = JSON.parse(json); } catch { die("audit details must be a JSON object"); } if (!extra || typeof extra !== "object" || Array.isArray(extra)) die("audit details must be a JSON object"); }
+  for (const k of ["timestamp", "task", "event", "prev", "hash", "mac"]) if (k in extra) die(`audit details may not set '${k}'`);
+  if (!fs.existsSync(taskFile(ticket))) die(`no task for ${ticket}`);
+  withLock(ticket, () => audit(ticket, event, extra));
+  console.log(`${ticket}: audit ${event} recorded`);
+} else if (cmd === "seal") {
+  // One-time migration: seal a state file written before sealing existed. It accepts the file as it is now (check it with
+  // git diff first), so the hooks ask the person; the act is recorded in the audit log with git's user.email.
+  withLock(ticket, () => {
+    if (!fs.existsSync(taskFile(ticket))) die(`no task record for ${ticket}`);
+    const task = JSON.parse(fs.readFileSync(taskFile(ticket), "utf8"));
+    if (task.integrity && task.integrity.seal) die(`the state of ${ticket} is already sealed; nothing to do`);
+    if (auditlog.hasChain(logPath(ticket))) die(`the audit log of ${ticket} is hash-chained, so its state file should be sealed: the seal was removed. Restore the file from git (git checkout -- tasks/${ticket}) instead of sealing it`);
+    if (gitUser() === "unknown") die("git user.email is not set, so the seal cannot be attributed. Set it first: git config user.email you@company.com");
+    audit(ticket, "state-sealed", { by: gitUser(), note: "existing state accepted as it was" }); // audit() seals the state file
+  });
+  console.log(`${ticket}: state sealed`);
+} else if (cmd === "verify") {
+  // Check the hash chain of this task's execution log and the seal of its state file. Exit 1 when either is broken.
+  const log = auditlog.verify(logPath(ticket), ticket);
+  const state = auditlog.verifyStateFile(taskFile(ticket), logPath(ticket), ticket);
+  const ok = log.ok && state.ok;
+  console.log(JSON.stringify({ ok, log, state }));
+  process.exit(ok ? 0 : 1);
 } else if (cmd === "set") {
   const [dotted, value] = rest;
   withLock(ticket, () => {
@@ -371,7 +411,7 @@ if (cmd === "init") {
   });
 } else {
   die(
-    "usage: aisdlc-state.js init|get|next|transition|approve|reject|set <ticket> ...",
+    "usage: aisdlc-state.js init|get|next|transition|approve|reject|set|audit|verify|seal <ticket> ...",
   );
 }
 

@@ -112,3 +112,7 @@ node scripts/validation/test-gates-design.js
 
 1. The developer registers the design repository with `/aisdlc-dev:add-repo <name> <path> --kind design`.
 2. During `/aisdlc-dev:feature`, the `design-link` step reads `designs/<TICKET>/` from the design repository and pins the source commit sha in the feature specification.
+
+## Shared repo (aisdlc)
+
+In the shared aisdlc repo `sync` writes `designs/<TICKET>/` and stops before committing: run `/aisdlc:push`, then `/aisdlc:handoff <TICKET> dev`. Design keeps no state file; its stage on the status page comes from the folder and the hand-offs.

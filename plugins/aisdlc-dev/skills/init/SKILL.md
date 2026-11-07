@@ -13,6 +13,8 @@ Turn a folder into the single aisdlc workspace the plugin uses to store its know
 ## Invocation conditions
 Explicit `/aisdlc-dev:init [target-folder] [--only claude|web|workspace] [--dry-run] [--force]`. `$ARGUMENTS` = those options. The target defaults to the current folder.
 
+> Shared repo: if `config/workspace.yaml` has `"kind": "aisdlc"`, the workspace is initialised by `/aisdlc:init`; do not scaffold it again. Only the optional `web` docs site and `.claude` rules of this plugin apply.
+
 ## Procedure
 1. Run a preview: `node ${CLAUDE_PLUGIN_ROOT}/scripts/init/aisdlc-init.js $ARGUMENTS --dry-run`.
 2. Show what would be created, merged and skipped. If `--force` would overwrite files, confirm with AskUserQuestion first.
