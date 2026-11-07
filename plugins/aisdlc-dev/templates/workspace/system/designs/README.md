@@ -1,6 +1,6 @@
 # UI designs
 
-One folder per **feature ticket** that has frontend changes: `system/designs/<TICKET>/`. The design is the living prototype in the **design repository** (`designs/prototype/`, synced by the `aisdlc-design` plugin). Created here by `/aisdlc-dev:design-link`, which only **reads** the ticket's pages from the registered design repository (read-only git); it never creates or edits the design.
+One folder per **feature ticket** that has frontend changes: `system/designs/<TICKET>/`. The design is the living prototype in the **design repository** (`designs/<TICKET>/`, synced by the `aisdlc-design` plugin). Created here by `/aisdlc-dev:design-link`, which only **reads** the ticket's pages from the registered design repository (read-only git); it never creates or edits the design.
 
 ```
 system/designs/<TICKET>/

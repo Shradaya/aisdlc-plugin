@@ -2,6 +2,9 @@
 
 What changed in aisdlc-dev, newest first. Versions: **major** when people must act, **minor** for something new, **patch** for fixes. README, tests and docs-site changes need no version. Every behavior change to this plugin needs a bump here and in `.claude-plugin/plugin.json` (checked by `node scripts/version-check.js --base <ref>`).
 
+## 3.0.0 (2026-11-07)
+Breaking: `design-link` reads the ticket's `designs/<TICKET>/` folder (synced by `/aisdlc-design:sync`) at `origin/main` or a ref the developer names, instead of tagged pages of `designs/prototype/` on a ticket branch, and pins the source commit sha. Nothing used 2.0.0.
+
 ## 2.0.0 (2026-11-06)
 Breaking: `design-link` now reads the living prototype that `/aisdlc-design:sync` keeps in `designs/prototype/` of the design repository. It reads the ticket's pages (tagged in `pages.yaml`) at the ticket's branch, else `main`, and pins the snapshot and the source commit sha. The design key is the feature ticket itself, so `feature` no longer asks for a separate design ticket number, and the old `designs/<DESIGN-TICKET>/` layout is no longer read.
 

@@ -7,9 +7,9 @@ const ROOT = resolveRoot();
 if (!ROOT) process.exit(0); // installed user-wide: do nothing outside an aisdlc workspace
 const KIND = workspaceKind(ROOT);
 if (KIND && KIND !== "design") process.exit(0); // another aisdlc plugin's workspace (config/workspace.yaml "kind")
-const dir = path.join(ROOT, "designs", "prototype");
-let pages = 0;
-try { pages = fs.readdirSync(dir).filter((f) => /\.html$/i.test(f) && f !== "viewer.html").length; } catch {}
-console.log(pages
-  ? `aisdlc-design: ${pages} prototype page(s) in designs/prototype. Update them with /aisdlc-design:sync.`
-  : "aisdlc-design: no prototype synced yet. Run /aisdlc-design:sync <artifact link> for the baseline.");
+const dir = path.join(ROOT, "designs");
+let tickets = [];
+try { tickets = fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory() && /^[A-Z][A-Z0-9]*-\d+$/.test(e.name)).map((e) => e.name); } catch {}
+console.log(tickets.length
+  ? `aisdlc-design: ${tickets.length} ticket design(s) in designs/ (${tickets.slice(-5).join(", ")}). Add or update one with /aisdlc-design:sync --ticket KEY.`
+  : "aisdlc-design: no designs synced yet. Run /aisdlc-design:sync <artifact link> --ticket KEY.");

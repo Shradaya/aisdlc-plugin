@@ -62,4 +62,4 @@ for (const [name, dir] of Object.entries(PARTS)) {
 
 console.log(`${dryRun ? "[dry run] " : ""}aisdlc-design init -> ${target}`);
 for (const [k, v] of Object.entries(report)) if (v.length) console.log(`${k} (${v.length}):\n  ${v.join("\n  ")}`);
-console.log("\nNext: make sure this folder is the design git repository (clone it, or git init and add the remote), then run /aisdlc-design:sync <artifact link> from Claude Code in this folder for the baseline.");
+console.log("\nNext: make sure this folder is the design git repository (clone it, or git init and add the remote), then run /aisdlc-design:sync <artifact link> --ticket KEY from Claude Code in this folder.");

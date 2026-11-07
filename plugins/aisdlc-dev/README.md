@@ -133,5 +133,5 @@ node scripts/validation/cred-check.js      # run from a dev workspace
 
 ## Working with the other plugins
 
-- **From design.** A design repository registered with `--kind design` is read during `/aisdlc-dev:feature`. The `design-link` step reads the ticket's pages from `designs/prototype/` (tagged in `pages.yaml`, on the ticket's branch or `main`), snapshots them into `system/designs/<TICKET>/` and pins the snapshot and the source commit sha in the specification.
+- **From design.** A design repository registered with `--kind design` is read during `/aisdlc-dev:feature`. The `design-link` step reads `designs/<TICKET>/` (synced by the designer, on `main`), snapshots it into `system/designs/<TICKET>/` and pins the snapshot and the source commit sha in the specification.
 - **To QA.** After your PR reaches the QA environment, the QA engineer tests the ticket with `aisdlc-qa`. Defects come back to you as comments on the Jira ticket. The QA task waits until you reply that the fix is deployed.

@@ -22,7 +22,7 @@ Each one creates a task directory `tasks/<ticket-number>/` and follows its own w
 | `/aisdlc-dev:feature <ticket-number>` | New or changed product behavior. The primary workflow. See [feature lifecycle](/guide/feature-lifecycle). |
 | `/aisdlc-dev:bug <ticket-number>` | A defect. Root cause first, minimal fix, regression test. See [bug lifecycle](/guide/bug-lifecycle). |
 | `/aisdlc-dev:post-release <ticket-number \| * \| PREFIX-*>` | After production release: consolidate knowledge into `system/product/` and clean up temporary artifacts, for one ticket or for all eligible tickets (`*`, `FEAT-*`) in one run. See [post-release](/guide/post-release-and-finish). |
-| `/aisdlc-dev:design-link <ticket-number>` | UI features only. Reads this ticket's pages of the designer's prototype from the registered design repository (read-only), records them in `system/designs/<TICKET>/` and pins that version and the source commit in the specification. `/aisdlc-dev:feature` runs it for you before specification approval. |
+| `/aisdlc-dev:design-link <ticket-number>` | UI features only. Reads this ticket's design folder (`designs/<TICKET>/`) from the registered design repository (read-only), records them in `system/designs/<TICKET>/` and pins that version and the source commit in the specification. `/aisdlc-dev:feature` runs it for you before specification approval. |
 | `/aisdlc-dev:refactor <ticket-number>` | Restructure code while preserving documented behavior. |
 | `/aisdlc-dev:investigate <ticket-number>` | Read-only investigation that produces findings. It does not modify source unless explicitly converted into an implementation task. |
 | `/aisdlc-dev:database-change <ticket-number>` | Schema and data changes, with migration ordering and rollback. |

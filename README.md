@@ -29,7 +29,7 @@ then hand-off to design or development
 Designer (aisdlc-design)          Developer (aisdlc-dev)                  QA (aisdlc-qa)
 Claude Design prototype ─►        feature ticket ─► spec pins the     ─►  same ticket ─► scenarios approved
 synced to the design repo         design ─► implement ─► PR to             ─► tests run ─► defect comment on
-(branch per ticket, pushed)       lf-develop / lf-qa / lf-uat              Jira ◄──────── developer fixes,
+(folder per ticket, pushed)       lf-develop / lf-qa / lf-uat              Jira ◄──────── developer fixes,
                                                                            re-verified ─► sign-off ─► evidence
                                                                            on Jira, tests into regression suite
 ```

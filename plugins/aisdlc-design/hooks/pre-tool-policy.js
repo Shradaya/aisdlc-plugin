@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// PreToolUse enforcement hook (design plugin). The design workspace has one job: /aisdlc-design:sync commits the
-// prototype under designs/prototype/. Rules enforced here:
-//   - commits must stage only designs/prototype/ and read 'design: baseline <summary>' (only on main),
-//     '<KEY>: <summary>' (only on branch <KEY>) or 'design: <summary>' (only on branch design/<slug>);
-//   - never commit to main except the baseline; no force push, history rewrite, or deleting main;
+// PreToolUse enforcement hook (design plugin). The design workspace has one job: /aisdlc-design:sync commits a ticket's
+// design under designs/<KEY>/. Rules enforced here:
+//   - a commit must stage only files under one designs/<KEY>/ folder and read '<KEY>: <summary>' with the same KEY;
+//   - no 'git commit -a'; no force push, history rewrite, or deleting main;
 //   - .git, credentials and key files are protected; credential values must not be printed.
+// There is no branch rule: commits go to the current branch (normally main).
 // Reads the hook event JSON on stdin; exits 2 with a reason on stderr to block. No-op outside a design workspace.
 const fs = require("fs");
 const path = require("path");
@@ -19,28 +19,23 @@ if (KIND && KIND !== "design") process.exit(0); // another aisdlc plugin's works
 const norm = (p) => path.resolve(p).replace(/\\/g, "/").toLowerCase();
 function block(reason) { process.stderr.write("BLOCKED\nReason: " + reason + "\n"); process.exit(2); }
 
-// Validate a git commit command. Blocks unless it is a valid prototype sync commit.
+// Validate a git commit command. Blocks unless it is a valid design sync commit.
 function checkCommit(cmd, dir) {
   const msgs = [...cmd.matchAll(/-m\s+(?:"((?:[^"\\]|\\.)*)"|'([^']*)')/g)].map((m) => m[1] ?? m[2]);
   if (/\s(-[a-zA-Z]*a[a-zA-Z]*|--all)(\s|$)/.test(cmd.replace(/-m\s+(?:"(?:[^"\\]|\\.)*"|'[^']*')/g, "")))
-    block("Do not use 'git commit -a'; stage only designs/prototype/ and commit that.");
-  let staged = [], branch = "";
+    block("Do not use 'git commit -a'; stage only designs/<KEY>/ and commit that.");
+  let staged = [];
   try {
     staged = execSync("git diff --cached --name-only", { cwd: dir, encoding: "utf8" }).split("\n").map((s) => s.trim()).filter(Boolean);
-    branch = execSync("git rev-parse --abbrev-ref HEAD", { cwd: dir, encoding: "utf8" }).trim();
   } catch { block("Could not inspect the git index; commit blocked."); }
-  if (!staged.length || !staged.every((f) => f.startsWith("designs/prototype/")))
-    block("Commits here must stage only designs/prototype/ (use /aisdlc-design:sync).");
+  const keys = new Set(staged.map((f) => (f.match(/^designs\/([A-Z][A-Z0-9]*-\d+)\//) || [])[1]));
+  if (!staged.length || keys.has(undefined)) block("Commits here must stage only files under designs/<KEY>/ (use /aisdlc-design:sync).");
+  if (keys.size !== 1) block("A commit may stage only one ticket folder (designs/<KEY>/); sync one ticket at a time.");
   if (msgs.length !== 1 || msgs[0].includes("\n")) block("Commit must have exactly one single-line -m message and no body.");
-  if (/^design: baseline \S/.test(msgs[0])) {
-    if (branch !== "main") block("Baseline prototype sync commits only on main.");
-    return;
-  }
-  const m = msgs[0].match(/^(design|([A-Z][A-Z0-9]*-\d+)): (\S.*)$/);
-  if (!m) block("Prototype sync commit must read 'design: baseline <summary>', '<KEY>: <summary>' or 'design: <summary>'.");
-  if (branch === "main" || branch === "master") block("Prototype changes go on a branch created from main; only the baseline sync may commit to main.");
-  if (m[2] && branch !== m[2]) block(`Ticket sync commit requires branch ${m[2]} (current: ${branch}).`);
-  if (!m[2] && !branch.startsWith("design/")) block(`Slug sync commit requires a branch named design/<slug> (current: ${branch}).`);
+  const key = [...keys][0];
+  const m = msgs[0].match(/^([A-Z][A-Z0-9]*-\d+): (\S.*)$/);
+  if (!m) block("Design commit must read '<KEY>: <summary>'.");
+  if (m[1] !== key) block(`Commit message ticket ${m[1]} does not match the staged folder designs/${key}/.`);
 }
 
 const raw = fs.readFileSync(0, "utf8");

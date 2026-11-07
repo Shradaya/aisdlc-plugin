@@ -17,7 +17,7 @@ Explicit `/aisdlc-design:init [target-folder] [--dry-run] [--force]`. `$ARGUMENT
 1. Run a preview: `node ${CLAUDE_PLUGIN_ROOT}/scripts/init/aisdlc-design-init.js $ARGUMENTS --dry-run`.
 2. Show what would be created, merged and skipped. If `--force` would overwrite files, confirm with AskUserQuestion first.
 3. Run the same command without `--dry-run`.
-4. Report the result and the next steps: make sure the folder is the design git repository (clone the existing one, or `git init` and add the remote), restart Claude Code in it so the hooks load, then run `/aisdlc-design:sync <artifact link>` for the baseline. The hook only allows commits that stage `designs/prototype/`, so commit the scaffolding itself (`config/`, `CLAUDE.md`, `.gitignore`) from a normal terminal, not through Claude.
+4. Report the result and the next steps: make sure the folder is the design git repository (clone the existing one, or `git init` and add the remote), restart Claude Code in it so the hooks load, then run `/aisdlc-design:sync <artifact link> --ticket KEY` for your first ticket. The hook only allows commits that stage `designs/<KEY>/`, so commit the scaffolding itself (`config/`, `CLAUDE.md`, `.gitignore`) from a normal terminal, not through Claude.
 
 ## What it creates
 `config/repositories.yaml` (the marker that makes it a workspace), `designs/`, `logs/`, `CLAUDE.md`, `.gitignore`.

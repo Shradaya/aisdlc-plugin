@@ -1,6 +1,6 @@
 {
   "name": "aisdlc-design",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "AI-SDLC design plugin (designer side): sync a Claude Design prototype into a git design repository as .dc.html pages with a local viewer, no ticket required, so developers can read it without access to the designer's Claude organization.",
   "author": {
     "name": "Evoke Medical Care"

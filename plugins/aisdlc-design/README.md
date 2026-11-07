@@ -25,7 +25,7 @@ Run the `--scope project` and `--scope local` forms from inside the workspace fo
 ## Set up a workspace
 
 1. Clone the design repository, or make a new folder and run `git init` plus `git remote add origin <url>`.
-2. Run `/aisdlc-design:init [folder]`. It scaffolds `config/repositories.yaml` (the workspace marker), `designs/`, `logs/`, `CLAUDE.md` and `.gitignore`. Commit that scaffolding from a normal terminal: the hook only allows Claude to commit `designs/prototype/`.
+2. Run `/aisdlc-design:init [folder]`. It scaffolds `config/repositories.yaml` (the workspace marker), `designs/`, `logs/`, `CLAUDE.md` and `.gitignore`. Commit that scaffolding from a normal terminal: the hook only allows Claude to commit `designs/<KEY>/`.
 3. Restart Claude Code in the folder so the hooks load.
 4. Make sure you can push to the design repository (or fork it and open pull requests).
 
@@ -38,65 +38,58 @@ No tokens are needed. `sync` uses your own git credentials to push, and never ca
 | Command | What it does |
 |---|---|
 | `/aisdlc-design:init [folder]` | Scaffold the design workspace |
-| `/aisdlc-design:sync <artifact-link-or-file> [--ticket KEY] [--pages a,b]` | Sync the Claude Design prototype into `designs/prototype/` and commit it, no ticket required. First sync goes to `main`; later changes go on a branch from `main` |
+| `/aisdlc-design:sync <artifact-link-or-file> --ticket KEY [--pages a,b]` | Sync the Claude Design prototype into `designs/KEY/` and commit it as `KEY: <summary>` |
 
 `design.md` is short and precise by rule: terse one-line entries, no prose paragraphs, `None` for empty sections.
 
 ## Design flow
 
-Use this when the designer works in Claude Design, including when their Claude organization blocks outside access. Nothing is shared out of that organization: the designer's own Claude reads their own artifact and git carries it.
+Use this when the designer works in Claude Design, including when their Claude organization blocks outside access. Nothing is shared out of that organization: the designer's own Claude reads their own artifact and git carries it. Each ticket gets its own folder, and there are no branches: sync commits straight to `main`.
 
 ```
-/aisdlc-design:sync <artifact link | this artifact | file> [--ticket KEY] [--pages home,checkout]
+/aisdlc-design:sync <artifact link | this artifact | file> --ticket KEY [--pages home,checkout]
 ```
 
-### Flow
-
 ```
-Designer (Claude Design)                      Design repo (git)                     Developer
-────────────────────────                      ────────────────                      ─────────
-1. Build the prototype in Claude Design
+Designer (Claude Design)                      Design repo (main)                    Developer
+────────────────────────                      ──────────────────                    ─────────
+1. Build or change the prototype
+   in Claude Design
 2. /aisdlc-design:sync <artifact>
-   (no --pages = whole prototype)    ──►  baseline commit on main
-                                          designs/prototype/*.dc.html
-                                          + support.js, viewer.html, pages.yaml
-3. New ticket needs a change
-4. Edit in Claude Design
-5. /aisdlc-design:sync <artifact>
-   --ticket KEY --pages checkout     ──►  branch KEY from main
-                                          commit "KEY: <summary>"
-                                          (only the checkout page changes)
-6. git push -u origin KEY
-                                                                          7. /aisdlc-dev:add-repo <name> <path> --kind design
-                                                                          8. /aisdlc-dev:design-link <KEY>
-                                                                             reads KEY's pages, pins the commit sha
-                                                                          9. Implement; the design PR merges to main
+   --ticket EL-101 --pages checkout  ──►  designs/EL-101/
+                                            checkout.dc.html
+                                            support.js, viewer.html, design.md
+                                          commit "EL-101: <summary>"
+3. git push
+                                                                          4. /aisdlc-dev:add-repo <name> <path> --kind design
+                                                                          5. /aisdlc-dev:design-link EL-101
+                                                                             reads designs/EL-101/, pins the commit sha
+6. Design changes again: repeat step 2 for the same ticket (the folder is replaced; git history keeps the old version)
 ```
 
 1. **Build** the prototype in Claude Design, as usual.
-2. **Baseline.** Run `/aisdlc-design:sync <artifact>` once with no `--pages`. The whole prototype is written to `designs/prototype/` and committed on `main` after your explicit approval.
-3. **Per ticket.** Edit the prototype in Claude Design, then run `/aisdlc-design:sync <artifact> --ticket KEY --pages <page,...>`. The skill creates a branch from the latest `main` (`KEY`, or `design/<slug>` without a ticket), updates only the named pages, shows what changed, asks for your approval, and commits `KEY: <summary>`.
-4. **Push** the branch (`git push -u origin KEY`). The skill never pushes for you and never force-pushes.
-5. **Hand-off.** The developer runs `/aisdlc-dev:design-link <KEY>`. It reads the pages tagged for that ticket in `pages.yaml` at the ticket's branch (else `main`) and pins the source commit sha in the specification.
-6. **Merge.** After development completes, the branch is merged to `main` by pull request, so `main` always holds the current prototype.
+2. **Sync per ticket.** Run `/aisdlc-design:sync <artifact> --ticket KEY`. Without `--pages` every page goes into the ticket folder; with `--pages` only the named ones do. The skill pulls the latest `main`, writes `designs/KEY/`, shows what changed, asks for your approval, and commits `KEY: <summary>`. It never creates branches.
+3. **Push** with `git push`. The skill never pushes for you and never force-pushes.
+4. **Hand-off.** The developer runs `/aisdlc-dev:design-link KEY`. It reads `designs/KEY/` and pins the source commit sha in the specification.
+5. **Change.** Sync the same ticket again. The folder is replaced and a new commit is made; the developer re-runs `design-link` to pick up the new version.
 
-### What is in the repository
+### What is in a ticket folder
 ```
-designs/prototype/
+designs/KEY/
   <page>.dc.html   one file per page; .dc.html is the default format (plain .html only if you ask for it)
-  support.js       the Claude Design runtime, copied from the artifact on every sync
-  viewer.html      static page that links to every page
+  support.js       the Claude Design runtime, copied from the artifact so pages render offline
+  viewer.html      static page that links to every page in the folder
   canvas.json      Claude Design canvas index (page names and sizes), for context
-  pages.yaml       page -> file and the tickets that touched it
   design.md        short per-page summary: states, copy, interactions, open questions
   shared/          other assets (images, fonts, CSS) if any
 ```
+Each folder is self-contained, so two tickets can hold their own copy of the same page. `support.js` is about 190 KB per folder.
 
 ### Rules
-- **Scope.** No `--pages`: the whole prototype syncs. With `--pages`: only those pages change, so a ticket's branch diff is just its pages. An unknown page name is listed back to you, never guessed.
-- **Viewing without Claude.** Open `designs/prototype/viewer.html` (or any `.dc.html`) by double-click. No Claude account is needed. Google Fonts load from the network.
+- **Scope.** No `--pages`: all pages go into the ticket folder. With `--pages`: only those. An unknown page name is listed back to you, never guessed.
+- **Viewing without Claude.** Open `designs/KEY/viewer.html` (or any `.dc.html`) by double-click. No Claude account is needed. Google Fonts load from the network.
 - **Approval.** One explicit approval before every commit. The skill scans first for remote scripts, secrets and patient data and asks before stripping anything.
-- **Commits.** `design: baseline <summary>` only on `main`; `<KEY>: <summary>` only on branch `<KEY>`; `design: <summary>` only on `design/<slug>`. The commit stages only `designs/prototype/`. The hook enforces these.
+- **Commits.** `KEY: <summary>`, one line, staging only `designs/KEY/` (one ticket per commit). The hook enforces this and blocks `git commit -a`, force-push and history rewrites.
 - **Read-only toward the artifact.** Sync never edits, republishes or shares it.
 
 ## Stages
@@ -104,11 +97,10 @@ designs/prototype/
 | Stage | Who | Command / action | Result |
 |---|---|---|---|
 | Build | Designer | Make or change the prototype in Claude Design | Artifact in the designer's own organization |
-| Baseline | Designer | `/aisdlc-design:sync <artifact>` (no `--pages`) | Whole prototype in `designs/prototype/`, committed on `main` after approval |
-| Change | Designer | `/aisdlc-design:sync <artifact> --ticket KEY --pages <pages>` | Branch `KEY` (or `design/<slug>`) from `main`, only those pages updated, committed `KEY: <summary>` after approval |
-| Publish | Designer | `git push -u origin KEY` | Branch on the design remote |
-| Link | Developer | `/aisdlc-dev:design-link <KEY>` | Spec pins the ticket's pages and the source commit sha |
-| Merge | Team | Pull request `KEY` into `main` after development | `main` holds the current prototype |
+| Sync | Designer | `/aisdlc-design:sync <artifact> --ticket KEY [--pages ...]` | `designs/KEY/` committed as `KEY: <summary>` on `main` after approval |
+| Publish | Designer | `git push` | Design on the remote |
+| Link | Developer | `/aisdlc-dev:design-link KEY` | Spec pins the folder's pages and the source commit sha |
+| Change | Designer | Sync the same ticket again, push | Folder replaced, new commit; developer re-links |
 
 ## Checks
 
@@ -119,4 +111,4 @@ node scripts/validation/test-gates-design.js
 ## Working with the other plugins
 
 1. The developer registers the design repository with `/aisdlc-dev:add-repo <name> <path> --kind design`.
-2. During `/aisdlc-dev:feature`, the `design-link` step reads the ticket's pages from the design repository and pins the source commit sha in the feature specification.
+2. During `/aisdlc-dev:feature`, the `design-link` step reads `designs/<TICKET>/` from the design repository and pins the source commit sha in the feature specification.

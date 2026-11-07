@@ -2,6 +2,9 @@
 
 What changed in aisdlc-design, newest first. Versions: **major** when people must act, **minor** for something new, **patch** for fixes. README, tests and docs-site changes need no version. Every behavior change to this plugin needs a bump here and in `.claude-plugin/plugin.json` (checked by `node scripts/version-check.js --base <ref>`).
 
+## 3.0.0 (2026-11-07)
+Breaking: no more branches and no shared `designs/prototype/`. `/aisdlc-design:sync` now requires `--ticket KEY` and writes a self-contained `designs/<KEY>/` folder (pages, `support.js`, `viewer.html`, `canvas.json`, `design.md`) containing all pages or only `--pages`. It pulls `main`, asks for approval, and commits `<KEY>: <summary>` straight to the current branch; re-syncing a ticket replaces its folder and git history keeps the old version. The hook now requires a commit to stage exactly one `designs/<KEY>/` folder with a matching message, and no longer has branch rules. `pages.yaml` is gone. Nothing used 2.0.0.
+
 ## 2.0.0 (2026-11-06)
 Breaking: the plugin is now just `init` and `sync`.
 - New `/aisdlc-design:sync`: syncs a Claude Design prototype (own artifact link, file or pasted HTML) into `designs/prototype/` and pushes it to git with no ticket needed, so a designer in another Claude organization can hand off without shared access. Syncs the whole prototype or only `--pages`. The first sync is a baseline commit on `main`; later changes go on a branch from `main` (`<KEY>` or `design/<slug>`).

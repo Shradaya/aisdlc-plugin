@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-// Deterministic acceptance tests for the design workspace hook (prototype sync commits). No model needed.
+// Deterministic acceptance tests for the design workspace hook (per-ticket sync commits). No model needed.
 const fs = require("fs"), path = require("path"), os = require("os");
 const { spawnSync, execSync } = require("child_process");
 const SRC = path.resolve(__dirname, "..", "..");
 const W = fs.mkdtempSync(path.join(os.tmpdir(), "aisdlc-design-test-"));
-for (const d of ["hooks", "scripts/lib", "config", "designs/prototype"]) fs.mkdirSync(path.join(W, d), { recursive: true });
+for (const d of ["hooks", "scripts/lib", "config", "designs"]) fs.mkdirSync(path.join(W, d), { recursive: true });
 fs.copyFileSync(path.join(SRC, "hooks/pre-tool-policy.js"), path.join(W, "hooks/pre-tool-policy.js"));
 fs.copyFileSync(path.join(SRC, "scripts/lib/root.js"), path.join(W, "scripts/lib/root.js"));
 // config/repositories.yaml is the marker that makes the folder a workspace.
@@ -21,42 +21,45 @@ const git = (c) => execSync("git " + c, { cwd: W, stdio: "pipe" });
 const stage = (f, body) => { const p = path.join(W, f); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, body); git("add -A " + JSON.stringify(path.dirname(f))); };
 
 // file writes
-t("prototype write allowed", write(path.join(W, "designs/prototype/home.dc.html")), 0);
+t("design file write allowed", write(path.join(W, "designs/DES-1/home.dc.html")), 0);
 t(".git write blocked", write(path.join(W, ".git/config")), 2);
 t("key file write blocked", write(path.join(W, "designs/x.pem")), 2);
 
-// baseline on main
-stage("designs/prototype/home.dc.html", "<!doctype html><title>home</title>");
-t("baseline on main allowed", bash(`git commit -m "design: baseline Initial prototype"`), 0);
-t("old-style message on main blocked", bash(`git commit -m "DESIGN-1: x"`), 2);
-t("commit -a blocked", bash(`git commit -a -m "design: baseline x"`), 2);
-git(`commit -q -m "design: baseline Initial prototype"`);
+// ticket commits, straight on main (no branches)
+stage("designs/DES-1/home.dc.html", "<!doctype html><title>home</title>");
+t("ticket commit on main allowed", bash(`git commit -m "DES-1: Add home page"`), 0);
+t("ticket commit with another key blocked", bash(`git commit -m "DES-2: Add home page"`), 2);
+t("message without key blocked", bash(`git commit -m "Add home page"`), 2);
+t("old baseline message blocked", bash(`git commit -m "design: baseline x"`), 2);
+t("commit -a blocked", bash(`git commit -a -m "DES-1: x"`), 2);
+t("multi-line message blocked", bash(`git commit -m "DES-1: a" -m "body"`), 2);
+git(`commit -q -m "DES-1: Add home page"`);
 
-// ticket branch
-git("checkout -q -b SYNC-7");
-stage("designs/prototype/checkout.dc.html", "<!doctype html><title>checkout</title>");
-t("ticket commit on its branch allowed", bash(`git commit -m "SYNC-7: Update checkout page"`), 0);
-t("ticket commit on wrong branch blocked", bash(`git commit -m "SYNC-8: Update checkout page"`), 2);
-t("baseline off main blocked", bash(`git commit -m "design: baseline again"`), 2);
-t("slug commit needs design/ branch", bash(`git commit -m "design: tweak"`), 2);
-t("multi-line message blocked", bash(`git commit -m "SYNC-7: a" -m "body"`), 2);
-t("invalid message blocked", bash(`git commit -m "add checkout page"`), 2);
-git(`commit -q -m "SYNC-7: Update checkout page"`);
-
-// slug branch
-git("checkout -q main && git checkout -q -b design/tweak-colors");
-stage("designs/prototype/home.dc.html", "<!doctype html><title>home v2</title>");
-t("slug commit on design/ branch allowed", bash(`git commit -m "design: Tweak colors"`), 0);
+// another ticket, and a re-sync of the first
+stage("designs/DES-2/checkout.dc.html", "<!doctype html><title>checkout</title>");
+t("second ticket folder allowed", bash(`git commit -m "DES-2: Add checkout page"`), 0);
+git(`commit -q -m "DES-2: Add checkout page"`);
+stage("designs/DES-1/home.dc.html", "<!doctype html><title>home v2</title>");
+t("re-sync of an existing ticket allowed", bash(`git commit -m "DES-1: Update home page"`), 0);
+git(`commit -q -m "DES-1: Update home page"`);
+t("commit on a feature branch also allowed", (git("checkout -q -b scratch"), stage("designs/DES-3/a.dc.html", "x"), bash(`git commit -m "DES-3: Add a"`)), 0);
+git("reset -q"); git("checkout -q main");
 
 // staged paths
+stage("designs/DES-1/home.dc.html", "<!doctype html><title>home v3</title>");
+stage("designs/DES-2/checkout.dc.html", "<!doctype html><title>checkout v2</title>");
+t("two ticket folders in one commit blocked", bash(`git commit -m "DES-1: Both"`), 2);
+git("reset -q");
 fs.writeFileSync(path.join(W, "README.md"), "x");
 git("add README.md");
-t("commit staging files outside designs/prototype blocked", bash(`git commit -m "design: Tweak colors"`), 2);
+t("commit staging files outside designs/<KEY> blocked", bash(`git commit -m "DES-1: x"`), 2);
 git("reset -q README.md");
+stage("designs/prototype/home.dc.html", "x");
+t("non-ticket folder blocked", bash(`git commit -m "DES-1: x"`), 2);
+git("reset -q");
 
 // dangerous operations
-t("commit on main (ticket message) blocked", (git("checkout -q main"), bash(`git commit -m "SYNC-7: x"`)), 2);
-t("force push blocked", bash("git push --force origin SYNC-7"), 2);
+t("force push blocked", bash("git push --force origin main"), 2);
 t("history rewrite blocked", bash("git filter-branch --all"), 2);
 t("credential print blocked", bash("echo $JIRA_API_TOKEN"), 2);
 t("harmless command allowed", bash("git status"), 0);

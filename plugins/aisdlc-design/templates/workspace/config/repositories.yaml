@@ -1,6 +1,6 @@
 # Design workspace marker (JSON-compatible YAML; full-line '#' comments only).
 # The presence of this file is what makes the folder an aisdlc workspace (resolved by the plugin's scripts/lib/root.js).
-# The folder itself is the design git repository that /aisdlc-design:sync commits designs/prototype/ into.
+# The folder itself is the design git repository that /aisdlc-design:sync commits designs/<KEY>/ into.
 {
   "repositories": {}
 }
