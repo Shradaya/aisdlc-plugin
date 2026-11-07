@@ -15,7 +15,11 @@ try {
   if (KIND && KIND !== "dev") process.exit(0); // another aisdlc plugin's workspace
 
   let ev;
-  try { ev = JSON.parse(fs.readFileSync(0, "utf8")); } catch { process.exit(0); }
+  try {
+    ev = JSON.parse(fs.readFileSync(0, "utf8"));
+  } catch {
+    process.exit(0);
+  }
   if (!["Write", "Edit", "MultiEdit"].includes(ev.tool_name)) process.exit(0);
   const input = ev.tool_input || {};
   if (!input.file_path) process.exit(0);
@@ -26,7 +30,12 @@ try {
   const { readYaml } = require("../scripts/lib/yaml");
   const { resolveRepoPath } = require("../scripts/lib/repo-paths");
   const onEdit = require("../scripts/lib/on-edit");
-  const repos = (readYaml(path.join(ROOT, "config", "repositories.yaml"), { repositories: {} }) || {}).repositories || {};
+  const repos =
+    (
+      readYaml(path.join(ROOT, "config", "repositories.yaml"), {
+        repositories: {},
+      }) || {}
+    ).repositories || {};
   const realFile = fs.realpathSync(file);
 
   for (const [name, entry] of Object.entries(repos)) {
@@ -39,12 +48,16 @@ try {
 
     const errors = onEdit.validate(entry.on_edit);
     if (errors.length) {
-      process.stderr.write(`aisdlc on_edit: config/repositories.yaml, repository '${name}': ${errors.join("; ")}. Fix it so the checks run.\n`);
+      process.stderr.write(
+        `aisdlc on_edit: config/repositories.yaml, repository '${name}': ${errors.join("; ")}. Fix it so the checks run.\n`,
+      );
       process.exit(2);
     }
     const problems = onEdit.runRules(dir, rel, entry.on_edit);
     if (problems.length) {
-      process.stderr.write(`aisdlc on_edit checks for '${name}' (${rel}):\n\n${problems.join("\n\n")}\n`);
+      process.stderr.write(
+        `aisdlc on_edit checks for '${name}' (${rel}):\n\n${problems.join("\n\n")}\n`,
+      );
       process.exit(2);
     }
     process.exit(0);

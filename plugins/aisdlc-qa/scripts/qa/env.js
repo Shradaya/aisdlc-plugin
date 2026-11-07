@@ -17,18 +17,55 @@ function environmentsConfig(root) {
 // Returns { ok, name, base_url, host, login, data, reason }.
 function resolveEnv(root, name) {
   const cfg = environmentsConfig(root);
-  if (!cfg) return { ok: false, reason: "config/environments.yaml is missing or unreadable." };
+  if (!cfg)
+    return {
+      ok: false,
+      reason: "config/environments.yaml is missing or unreadable.",
+    };
   const env = loadEnv(root);
   const chosen = name || env.QA_ENV || cfg.default;
-  if (!chosen) return { ok: false, reason: "No environment chosen: pass one, set QA_ENV, or set \"default\" in config/environments.yaml." };
+  if (!chosen)
+    return {
+      ok: false,
+      reason:
+        'No environment chosen: pass one, set QA_ENV, or set "default" in config/environments.yaml.',
+    };
   const e = (cfg.environments || {})[chosen];
-  if (!e) return { ok: false, name: chosen, reason: `Environment '${chosen}' is not defined in config/environments.yaml.` };
-  if (!e.base_url) return { ok: false, name: chosen, reason: `Environment '${chosen}' has no base_url in config/environments.yaml.` };
+  if (!e)
+    return {
+      ok: false,
+      name: chosen,
+      reason: `Environment '${chosen}' is not defined in config/environments.yaml.`,
+    };
+  if (!e.base_url)
+    return {
+      ok: false,
+      name: chosen,
+      reason: `Environment '${chosen}' has no base_url in config/environments.yaml.`,
+    };
   let host;
-  try { host = new URL(e.base_url).hostname.toLowerCase(); }
-  catch { return { ok: false, name: chosen, reason: `Environment '${chosen}' has an invalid base_url.` }; }
-  const base = { name: chosen, base_url: e.base_url, host, login: e.login || { mode: "none" }, data: e.data || "synthetic" };
-  if (e.allow_automation !== true) return { ok: false, ...base, reason: `Environment '${chosen}' does not allow automation (allow_automation is not true).` };
+  try {
+    host = new URL(e.base_url).hostname.toLowerCase();
+  } catch {
+    return {
+      ok: false,
+      name: chosen,
+      reason: `Environment '${chosen}' has an invalid base_url.`,
+    };
+  }
+  const base = {
+    name: chosen,
+    base_url: e.base_url,
+    host,
+    login: e.login || { mode: "none" },
+    data: e.data || "synthetic",
+  };
+  if (e.allow_automation !== true)
+    return {
+      ok: false,
+      ...base,
+      reason: `Environment '${chosen}' does not allow automation (allow_automation is not true).`,
+    };
   const blocked = blockedReason(root, host, cfg);
   if (blocked) return { ok: false, ...base, reason: blocked };
   return { ok: true, ...base };
@@ -38,16 +75,20 @@ function resolveEnv(root, name) {
 // Keep identical to hostBlocked() in templates/workspace/fixtures/env.ts.
 function hostBlocked(entry, host) {
   const e = String(entry).toLowerCase();
-  return e.startsWith("=") ? host === e.slice(1) : host === e || host.endsWith("." + e);
+  return e.startsWith("=")
+    ? host === e.slice(1)
+    : host === e || host.endsWith("." + e);
 }
 
 function blockedReason(root, host, cfg = environmentsConfig(root) || {}) {
   const hit = (cfg.blocked_hosts || []).find((h) => hostBlocked(h, host));
-  if (hit) return `Host ${host} is blocked by blocked_hosts entry "${hit}"; automation never runs against production.`;
+  if (hit)
+    return `Host ${host} is blocked by blocked_hosts entry "${hit}"; automation never runs against production.`;
   const policy = readYaml(configPath(root, "qa-policy.yaml"), {}) || {};
-  const patterns = ((policy.environments || {}).blocked_host_patterns || []);
+  const patterns = (policy.environments || {}).blocked_host_patterns || [];
   const pattern = patterns.find((p) => new RegExp(p, "i").test(host));
-  if (pattern) return `Host ${host} looks like production (matches ${pattern}); automation never runs against production. Fix the base_url or the policy override if this is wrong.`;
+  if (pattern)
+    return `Host ${host} looks like production (matches ${pattern}); automation never runs against production. Fix the base_url or the policy override if this is wrong.`;
   return null;
 }
 
@@ -79,4 +120,12 @@ function credentialStatus(root, name) {
   return m && m[1].replace(/^(['"])(.*)\1\s*$/, "$2").trim() ? ".env" : null;
 }
 
-module.exports = { resolveEnv, blockedReason, hostBlocked, environmentsConfig, playwrightCli, playwrightEnv, credentialStatus };
+module.exports = {
+  resolveEnv,
+  blockedReason,
+  hostBlocked,
+  environmentsConfig,
+  playwrightCli,
+  playwrightEnv,
+  credentialStatus,
+};

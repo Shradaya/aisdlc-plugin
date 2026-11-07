@@ -17,8 +17,14 @@ const target = path.resolve(positional[0] || process.cwd());
 const dryRun = flag("--dry-run");
 const force = flag("--force");
 
-if (!fs.existsSync(TEMPLATES)) { console.error(`Templates not found at ${TEMPLATES}`); process.exit(2); }
-if (!fs.existsSync(target) || !fs.statSync(target).isDirectory()) { console.error(`Target folder does not exist: ${target}`); process.exit(2); }
+if (!fs.existsSync(TEMPLATES)) {
+  console.error(`Templates not found at ${TEMPLATES}`);
+  process.exit(2);
+}
+if (!fs.existsSync(target) || !fs.statSync(target).isDirectory()) {
+  console.error(`Target folder does not exist: ${target}`);
+  process.exit(2);
+}
 
 const report = { created: [], merged: [], skipped: [], overwritten: [] };
 
@@ -49,8 +55,16 @@ for (const [name, dir] of Object.entries(PARTS)) {
     } else if (path.basename(rel) === ".gitignore") {
       const have = fs.readFileSync(dest, "utf8");
       const lines = have.split(/\r?\n/);
-      const missing = content.toString().split(/\r?\n/).filter((l) => l.trim() && !l.startsWith("#") && !lines.includes(l));
-      if (missing.length) write(dest, have.trimEnd() + "\n\n# aisdlc-design\n" + missing.join("\n") + "\n", "merged");
+      const missing = content
+        .toString()
+        .split(/\r?\n/)
+        .filter((l) => l.trim() && !l.startsWith("#") && !lines.includes(l));
+      if (missing.length)
+        write(
+          dest,
+          have.trimEnd() + "\n\n# aisdlc-design\n" + missing.join("\n") + "\n",
+          "merged",
+        );
       else report.skipped.push(`${rel} (already up to date)`);
     } else if (force && !content.equals(fs.readFileSync(dest))) {
       write(dest, content, "overwritten");
@@ -61,5 +75,8 @@ for (const [name, dir] of Object.entries(PARTS)) {
 }
 
 console.log(`${dryRun ? "[dry run] " : ""}aisdlc-design init -> ${target}`);
-for (const [k, v] of Object.entries(report)) if (v.length) console.log(`${k} (${v.length}):\n  ${v.join("\n  ")}`);
-console.log("\nNext: make sure this folder is the design git repository (clone it, or git init and add the remote), then run /aisdlc-design:sync <artifact link> --ticket KEY from Claude Code in this folder.");
+for (const [k, v] of Object.entries(report))
+  if (v.length) console.log(`${k} (${v.length}):\n  ${v.join("\n  ")}`);
+console.log(
+  "\nNext: make sure this folder is the design git repository (clone it, or git init and add the remote), then run /aisdlc-design:sync <artifact link> --ticket KEY from Claude Code in this folder.",
+);

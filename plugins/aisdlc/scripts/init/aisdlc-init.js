@@ -14,20 +14,43 @@ const SKIP = new Set(["node_modules"]);
 
 const args = process.argv.slice(2);
 const flag = (n) => args.includes(n);
-const opt = (n) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : undefined; };
+const opt = (n) => {
+  const i = args.indexOf(n);
+  return i >= 0 ? args[i + 1] : undefined;
+};
 const role = opt("--role");
-const positional = args.filter((a, i) => !a.startsWith("--") && args[i - 1] !== "--role");
+const positional = args.filter(
+  (a, i) => !a.startsWith("--") && args[i - 1] !== "--role",
+);
 const target = path.resolve(positional[0] || process.cwd());
 const dryRun = flag("--dry-run");
 const force = flag("--force");
 const adopt = flag("--adopt");
 
-if (role && !ROLES.includes(role)) { console.error(`--role must be one of: ${ROLES.join(", ")}`); process.exit(2); }
-if (adopt && !role) { console.error("--adopt needs --role (the role whose workspace this is)"); process.exit(2); }
-if (!fs.existsSync(TEMPLATES)) { console.error(`Templates not found at ${TEMPLATES}`); process.exit(2); }
-if (!fs.existsSync(target) || !fs.statSync(target).isDirectory()) { console.error(`Target folder does not exist: ${target}`); process.exit(2); }
+if (role && !ROLES.includes(role)) {
+  console.error(`--role must be one of: ${ROLES.join(", ")}`);
+  process.exit(2);
+}
+if (adopt && !role) {
+  console.error("--adopt needs --role (the role whose workspace this is)");
+  process.exit(2);
+}
+if (!fs.existsSync(TEMPLATES)) {
+  console.error(`Templates not found at ${TEMPLATES}`);
+  process.exit(2);
+}
+if (!fs.existsSync(target) || !fs.statSync(target).isDirectory()) {
+  console.error(`Target folder does not exist: ${target}`);
+  process.exit(2);
+}
 
-const report = { created: [], merged: [], skipped: [], overwritten: [], adopted: [] };
+const report = {
+  created: [],
+  merged: [],
+  skipped: [],
+  overwritten: [],
+  adopted: [],
+};
 
 function walk(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
@@ -52,10 +75,19 @@ for (const file of walk(TEMPLATES)) {
   else if (path.basename(rel) === ".gitignore") {
     const have = fs.readFileSync(dest, "utf8");
     const lines = have.split(/\r?\n/);
-    const missing = content.toString().split(/\r?\n/).filter((l) => l.trim() && !l.startsWith("#") && !lines.includes(l));
-    if (missing.length) write(dest, have.trimEnd() + "\n\n# aisdlc\n" + missing.join("\n") + "\n", "merged");
+    const missing = content
+      .toString()
+      .split(/\r?\n/)
+      .filter((l) => l.trim() && !l.startsWith("#") && !lines.includes(l));
+    if (missing.length)
+      write(
+        dest,
+        have.trimEnd() + "\n\n# aisdlc\n" + missing.join("\n") + "\n",
+        "merged",
+      );
     else report.skipped.push(`${rel} (already up to date)`);
-  } else if (force && !content.equals(fs.readFileSync(dest))) write(dest, content, "overwritten");
+  } else if (force && !content.equals(fs.readFileSync(dest)))
+    write(dest, content, "overwritten");
   else report.skipped.push(rel);
 }
 
@@ -67,32 +99,54 @@ if (adopt) {
     const next = /"kind"\s*:\s*"[^"]*"/.test(text)
       ? text.replace(/"kind"\s*:\s*"[^"]*"/, '"kind": "aisdlc"')
       : text.replace(/("workspace"\s*:\s*\{)/, '$1\n    "kind": "aisdlc",');
-    if (next !== text) { if (!dryRun) fs.writeFileSync(ws, next); report.adopted.push("config/workspace.yaml: kind -> aisdlc"); }
+    if (next !== text) {
+      if (!dryRun) fs.writeFileSync(ws, next);
+      report.adopted.push("config/workspace.yaml: kind -> aisdlc");
+    }
   }
   const tasks = path.join(target, "tasks");
   if (fs.existsSync(tasks)) {
     for (const t of fs.readdirSync(tasks)) {
-      for (const [from, to] of [["task.yaml", `task.${role}.yaml`], ["execution-log.jsonl", `execution-log.${role}.jsonl`]]) {
-        const a = path.join(tasks, t, from), b = path.join(tasks, t, to);
-        if (fs.existsSync(a) && !fs.existsSync(b)) { if (!dryRun) fs.renameSync(a, b); report.adopted.push(`tasks/${t}/${from} -> ${to}`); }
+      for (const [from, to] of [
+        ["task.yaml", `task.${role}.yaml`],
+        ["execution-log.jsonl", `execution-log.${role}.jsonl`],
+      ]) {
+        const a = path.join(tasks, t, from),
+          b = path.join(tasks, t, to);
+        if (fs.existsSync(a) && !fs.existsSync(b)) {
+          if (!dryRun) fs.renameSync(a, b);
+          report.adopted.push(`tasks/${t}/${from} -> ${to}`);
+        }
       }
     }
   }
   const gi = path.join(target, ".gitignore");
   if (fs.existsSync(gi)) {
     const have = fs.readFileSync(gi, "utf8");
-    const kept = have.split(/\r?\n/).filter((l) => l.trim() !== "tasks/*" && l.trim() !== "!tasks/.gitkeep");
-    if (kept.length !== have.split(/\r?\n/).length) { if (!dryRun) fs.writeFileSync(gi, kept.join("\n")); report.adopted.push(".gitignore: tasks/ is now shared"); }
+    const kept = have
+      .split(/\r?\n/)
+      .filter((l) => l.trim() !== "tasks/*" && l.trim() !== "!tasks/.gitkeep");
+    if (kept.length !== have.split(/\r?\n/).length) {
+      if (!dryRun) fs.writeFileSync(gi, kept.join("\n"));
+      report.adopted.push(".gitignore: tasks/ is now shared");
+    }
   }
 }
 
 // 3. role
 if (role) {
   const f = path.join(target, ".aisdlc", "role");
-  if (!fs.existsSync(f) || force || fs.readFileSync(f, "utf8").trim() !== role) write(f, role + "\n", fs.existsSync(f) ? "overwritten" : "created");
+  if (!fs.existsSync(f) || force || fs.readFileSync(f, "utf8").trim() !== role)
+    write(f, role + "\n", fs.existsSync(f) ? "overwritten" : "created");
 }
 
 console.log(`${dryRun ? "[dry run] " : ""}aisdlc init -> ${target}`);
-for (const [k, v] of Object.entries(report)) if (v.length) console.log(`${k} (${v.length}):\n  ${v.join("\n  ")}`);
-if (!role && !fs.existsSync(path.join(target, ".aisdlc", "role"))) console.log("\nRole not set: re-run with --role pm|design|dev|qa (or set AISDLC_ROLE).");
-console.log("\nNext: make sure this folder is the shared git repository (clone it, or git init and add the remote), install your role's plugin, then /aisdlc:pull and /aisdlc:status-page.");
+for (const [k, v] of Object.entries(report))
+  if (v.length) console.log(`${k} (${v.length}):\n  ${v.join("\n  ")}`);
+if (!role && !fs.existsSync(path.join(target, ".aisdlc", "role")))
+  console.log(
+    "\nRole not set: re-run with --role pm|design|dev|qa (or set AISDLC_ROLE).",
+  );
+console.log(
+  "\nNext: make sure this folder is the shared git repository (clone it, or git init and add the remote), install your role's plugin, then /aisdlc:pull and /aisdlc:status-page.",
+);

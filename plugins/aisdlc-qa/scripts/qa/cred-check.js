@@ -8,10 +8,15 @@ const { resolveRoot, NOT_WORKSPACE } = require("../lib/root");
 const { credentialStatus } = require("./env");
 
 const ROOT = resolveRoot();
-if (!ROOT) { console.log(JSON.stringify({ ok: false, error: NOT_WORKSPACE })); process.exit(2); }
+if (!ROOT) {
+  console.log(JSON.stringify({ ok: false, error: NOT_WORKSPACE }));
+  process.exit(2);
+}
 const names = process.argv.slice(2).filter((a) => /^[A-Z_][A-Z0-9_]*$/.test(a));
 const out = {};
-for (const n of names.length ? names : ["QA_USERNAME", "QA_PASSWORD", "JIRA_EMAIL", "JIRA_API_TOKEN"]) {
+for (const n of names.length
+  ? names
+  : ["QA_USERNAME", "QA_PASSWORD", "JIRA_EMAIL", "JIRA_API_TOKEN"]) {
   const s = credentialStatus(ROOT, n);
   out[n] = s ? `set (${s})` : "missing";
 }

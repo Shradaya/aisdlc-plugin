@@ -18,7 +18,9 @@ const TICKET = "[A-Z][A-Z0-9]*-\\d+";
 const DEFAULT_FORMAT = "{ticket}-{env}";
 
 function gitHostingConfig(root) {
-  const cfg = (root && readYaml(path.join(root, "config", "integrations.yaml"), {})) || {};
+  const cfg =
+    (root && readYaml(path.join(root, "config", "integrations.yaml"), {})) ||
+    {};
   return cfg.git_hosting || {};
 }
 
@@ -31,12 +33,19 @@ function envName(cfg, target) {
 // The env branch for a ticket promoted to `target`.
 function envBranchName(cfg, ticket, target) {
   const fmt = String(cfg.env_branch_format || DEFAULT_FORMAT);
-  return fmt.split("{ticket}").join(ticket).split("{env}").join(envName(cfg, target));
+  return fmt
+    .split("{ticket}")
+    .join(ticket)
+    .split("{env}")
+    .join(envName(cfg, target));
 }
 
 // [{ target, branch }] for every configured target.
 function envBranches(cfg, ticket) {
-  return (cfg.pr_target_branches || []).map((target) => ({ target, branch: envBranchName(cfg, ticket, target) }));
+  return (cfg.pr_target_branches || []).map((target) => ({
+    target,
+    branch: envBranchName(cfg, ticket, target),
+  }));
 }
 
 // If `branch` is a ticket's env branch, { ticket, target }; otherwise null.
@@ -44,7 +53,11 @@ function parseEnvBranch(cfg, branch) {
   const fmt = String(cfg.env_branch_format || DEFAULT_FORMAT);
   for (const target of cfg.pr_target_branches || []) {
     const re = new RegExp(
-      "^" + escapeRe(fmt).replace(escapeRe("{ticket}"), `(${TICKET})`).replace(escapeRe("{env}"), escapeRe(envName(cfg, target))) + "$"
+      "^" +
+        escapeRe(fmt)
+          .replace(escapeRe("{ticket}"), `(${TICKET})`)
+          .replace(escapeRe("{env}"), escapeRe(envName(cfg, target))) +
+        "$",
     );
     const m = re.exec(branch);
     if (m) return { ticket: m[1], target };
@@ -56,14 +69,21 @@ const DEFAULT_SYNC_FORMAT = "{base}-{env}-{date}";
 
 // The base branch of the workspace's repositories (config/workspace.yaml git.base_branch), "main" when unset.
 function baseBranch(root) {
-  const ws = (root && readYaml(path.join(root, "config", "workspace.yaml"), {})) || {};
+  const ws =
+    (root && readYaml(path.join(root, "config", "workspace.yaml"), {})) || {};
   return String((ws.git || {}).base_branch || "main");
 }
 
 // The sync branch that brings `base` into `target` on `date` (YYYYMMDD).
 function syncBranchName(cfg, base, target, date) {
   const fmt = String(cfg.sync_branch_format || DEFAULT_SYNC_FORMAT);
-  return fmt.split("{base}").join(base).split("{env}").join(envName(cfg, target)).split("{date}").join(date);
+  return fmt
+    .split("{base}")
+    .join(base)
+    .split("{env}")
+    .join(envName(cfg, target))
+    .split("{date}")
+    .join(date);
 }
 
 // If `branch` is a sync branch for `base`, { target }; otherwise null.
@@ -71,11 +91,25 @@ function parseSyncBranch(cfg, base, branch) {
   const fmt = String(cfg.sync_branch_format || DEFAULT_SYNC_FORMAT);
   for (const target of cfg.pr_target_branches || []) {
     const re = new RegExp(
-      "^" + escapeRe(fmt).replace(escapeRe("{base}"), escapeRe(base)).replace(escapeRe("{env}"), escapeRe(envName(cfg, target))).replace(escapeRe("{date}"), "\\d{8}") + "$"
+      "^" +
+        escapeRe(fmt)
+          .replace(escapeRe("{base}"), escapeRe(base))
+          .replace(escapeRe("{env}"), escapeRe(envName(cfg, target)))
+          .replace(escapeRe("{date}"), "\\d{8}") +
+        "$",
     );
     if (re.test(branch)) return { target };
   }
   return null;
 }
 
-module.exports = { gitHostingConfig, envName, envBranchName, envBranches, parseEnvBranch, baseBranch, syncBranchName, parseSyncBranch };
+module.exports = {
+  gitHostingConfig,
+  envName,
+  envBranchName,
+  envBranches,
+  parseEnvBranch,
+  baseBranch,
+  syncBranchName,
+  parseSyncBranch,
+};

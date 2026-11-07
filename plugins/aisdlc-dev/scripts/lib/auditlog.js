@@ -14,26 +14,51 @@ const path = require("path");
 const crypto = require("crypto");
 
 const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");
-const genesis = (ticket, file) => sha256(`aisdlc-log:v1:${ticket}:${path.basename(file)}`);
+const genesis = (ticket, file) =>
+  sha256(`aisdlc-log:v1:${ticket}:${path.basename(file)}`);
 
 // JSON with keys sorted at every level, so the same entry always hashes the same.
 function canonical(v) {
   if (Array.isArray(v)) return "[" + v.map(canonical).join(",") + "]";
-  if (v && typeof v === "object") return "{" + Object.keys(v).sort().map((k) => JSON.stringify(k) + ":" + canonical(v[k])).join(",") + "}";
+  if (v && typeof v === "object")
+    return (
+      "{" +
+      Object.keys(v)
+        .sort()
+        .map((k) => JSON.stringify(k) + ":" + canonical(v[k]))
+        .join(",") +
+      "}"
+    );
   return JSON.stringify(v);
 }
-const payload = (entry) => { const { hash, mac, ...rest } = entry; return canonical(rest); };
-const macOf = (key, entry) => crypto.createHmac("sha256", key).update(payload(entry)).digest("hex");
+const payload = (entry) => {
+  const { hash, mac, ...rest } = entry;
+  return canonical(rest);
+};
+const macOf = (key, entry) =>
+  crypto.createHmac("sha256", key).update(payload(entry)).digest("hex");
 
 function lines(file) {
-  try { return fs.readFileSync(file, "utf8").split("\n").filter((l) => l.trim()); } catch { return []; }
+  try {
+    return fs
+      .readFileSync(file, "utf8")
+      .split("\n")
+      .filter((l) => l.trim());
+  } catch {
+    return [];
+  }
 }
 
 // Hash a new line must chain to: the last chained line's hash, or the start value.
 function lastHash(file, ticket) {
   const all = lines(file);
   for (let i = all.length - 1; i >= 0; i--) {
-    try { const e = JSON.parse(all[i]); if (e.hash) return e.hash; } catch { /* keep looking */ }
+    try {
+      const e = JSON.parse(all[i]);
+      if (e.hash) return e.hash;
+    } catch {
+      /* keep looking */
+    }
     break; // the last line is unchained or unreadable: start a new chain from the start value
   }
   return genesis(ticket, file);
@@ -50,23 +75,47 @@ function append(file, ticket, entry, key = process.env.AISDLC_LOG_KEY) {
 // Returns { ok, entries, legacy, unsigned, macChecked, brokenAt, reason }. brokenAt is a 1-based line number.
 function verify(file, ticket, key = process.env.AISDLC_LOG_KEY) {
   const all = lines(file);
-  const r = { ok: true, entries: all.length, legacy: 0, unsigned: 0, macChecked: Boolean(key), brokenAt: null, reason: null };
-  const fail = (n, reason) => { r.ok = false; r.brokenAt = n; r.reason = reason; return r; };
-  let prev = genesis(ticket, file), chained = false;
+  const r = {
+    ok: true,
+    entries: all.length,
+    legacy: 0,
+    unsigned: 0,
+    macChecked: Boolean(key),
+    brokenAt: null,
+    reason: null,
+  };
+  const fail = (n, reason) => {
+    r.ok = false;
+    r.brokenAt = n;
+    r.reason = reason;
+    return r;
+  };
+  let prev = genesis(ticket, file),
+    chained = false;
   for (let i = 0; i < all.length; i++) {
     let e;
-    try { e = JSON.parse(all[i]); } catch { return fail(i + 1, "line is not valid JSON"); }
+    try {
+      e = JSON.parse(all[i]);
+    } catch {
+      return fail(i + 1, "line is not valid JSON");
+    }
     if (!e.hash) {
       if (chained) return fail(i + 1, "unchained line after chained lines");
       r.legacy++;
       continue;
     }
     chained = true;
-    if (e.prev !== prev) return fail(i + 1, "does not follow the previous line (a line was changed, removed or reordered)");
-    if (sha256(payload(e)) !== e.hash) return fail(i + 1, "line content does not match its hash");
+    if (e.prev !== prev)
+      return fail(
+        i + 1,
+        "does not follow the previous line (a line was changed, removed or reordered)",
+      );
+    if (sha256(payload(e)) !== e.hash)
+      return fail(i + 1, "line content does not match its hash");
     if (key) {
       if (!e.mac) r.unsigned++;
-      else if (macOf(key, e) !== e.mac) return fail(i + 1, "MAC does not match (wrong key or edited line)");
+      else if (macOf(key, e) !== e.mac)
+        return fail(i + 1, "MAC does not match (wrong key or edited line)");
     }
     prev = e.hash;
   }
@@ -81,7 +130,13 @@ function verify(file, ticket, key = process.env.AISDLC_LOG_KEY) {
 const headOf = (file, ticket) => lastHash(file, ticket);
 // True when the log already holds hash-chained lines, i.e. it was written by an engine that also seals the state file.
 function hasChain(file) {
-  for (const l of lines(file)) { try { if (JSON.parse(l).hash) return true; } catch { /* skip */ } }
+  for (const l of lines(file)) {
+    try {
+      if (JSON.parse(l).hash) return true;
+    } catch {
+      /* skip */
+    }
+  }
   return false;
 }
 
@@ -95,31 +150,76 @@ function sealOf(task, head, key = process.env.AISDLC_LOG_KEY) {
 
 // Returns { sealed, ok, reason, macChecked }. "chained" says the audit log is hash-chained: then a state file without a seal
 // can only mean the seal was stripped, which is a failure (an unsealed file is accepted only next to a legacy, unchained log).
-function verifyState(task, head, key = process.env.AISDLC_LOG_KEY, chained = false) {
+function verifyState(
+  task,
+  head,
+  key = process.env.AISDLC_LOG_KEY,
+  chained = false,
+) {
   const i = task && task.integrity;
-  if (!i || !i.seal) return chained ? { sealed: false, ok: false, reason: "the seal was removed from the state file", macChecked: false } : { sealed: false, ok: true, reason: null, macChecked: false };
+  if (!i || !i.seal)
+    return chained
+      ? {
+          sealed: false,
+          ok: false,
+          reason: "the seal was removed from the state file",
+          macChecked: false,
+        }
+      : { sealed: false, ok: true, reason: null, macChecked: false };
   const { integrity, ...rest } = task;
   const body = canonical(rest) + "|" + i.log_head;
-  if (sha256(body) !== i.seal) return { sealed: true, ok: false, reason: "the state was edited outside aisdlc-state.js", macChecked: false };
+  if (sha256(body) !== i.seal)
+    return {
+      sealed: true,
+      ok: false,
+      reason: "the state was edited outside aisdlc-state.js",
+      macChecked: false,
+    };
   let macChecked = false;
   if (key && i.mac) {
-    if (crypto.createHmac("sha256", key).update(body).digest("hex") !== i.mac) return { sealed: true, ok: false, reason: "the MAC does not match (wrong key, or the state was edited)", macChecked: true };
+    if (crypto.createHmac("sha256", key).update(body).digest("hex") !== i.mac)
+      return {
+        sealed: true,
+        ok: false,
+        reason: "the MAC does not match (wrong key, or the state was edited)",
+        macChecked: true,
+      };
     macChecked = true;
   }
-  if (i.log_head !== head) return { sealed: true, ok: false, reason: "the execution log and the state are out of step (one was changed without the other)", macChecked };
+  if (i.log_head !== head)
+    return {
+      sealed: true,
+      ok: false,
+      reason:
+        "the execution log and the state are out of step (one was changed without the other)",
+      macChecked,
+    };
   return { sealed: true, ok: true, reason: null, macChecked };
 }
 
 function verifyStateFile(stateFile, logFile, ticket, key) {
   let task;
-  try { task = JSON.parse(fs.readFileSync(stateFile, "utf8")); } catch { return { sealed: false, ok: false, reason: "the state file is missing or is not valid JSON", macChecked: false }; }
+  try {
+    task = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+  } catch {
+    return {
+      sealed: false,
+      ok: false,
+      reason: "the state file is missing or is not valid JSON",
+      macChecked: false,
+    };
+  }
   return verifyState(task, headOf(logFile, ticket), key, hasChain(logFile));
 }
 
 // Re-seal a state file against the current audit log head (used right after an audit line is appended).
 function resealFile(stateFile, logFile, ticket, key) {
   let task;
-  try { task = JSON.parse(fs.readFileSync(stateFile, "utf8")); } catch { return false; }
+  try {
+    task = JSON.parse(fs.readFileSync(stateFile, "utf8"));
+  } catch {
+    return false;
+  }
   task.integrity = sealOf(task, headOf(logFile, ticket), key);
   const tmp = stateFile + ".tmp";
   fs.writeFileSync(tmp, JSON.stringify(task, null, 2) + "\n");
@@ -127,4 +227,15 @@ function resealFile(stateFile, logFile, ticket, key) {
   return true;
 }
 
-module.exports = { append, verify, genesis, canonical, headOf, hasChain, sealOf, verifyState, verifyStateFile, resealFile };
+module.exports = {
+  append,
+  verify,
+  genesis,
+  canonical,
+  headOf,
+  hasChain,
+  sealOf,
+  verifyState,
+  verifyStateFile,
+  resealFile,
+};

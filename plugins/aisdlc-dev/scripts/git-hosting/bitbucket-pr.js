@@ -47,7 +47,7 @@ const out = (o, code = 0) => {
 async function closeHttp() {
   try {
     const sym = Object.getOwnPropertySymbols(globalThis).find(
-      (s) => s.description === "undici.globalDispatcher.1"
+      (s) => s.description === "undici.globalDispatcher.1",
     );
     const dispatcher = sym && globalThis[sym];
     if (dispatcher && typeof dispatcher.close === "function") {
@@ -75,7 +75,11 @@ const token = process.env.BITBUCKET_API_TOKEN;
 const auth = "Basic " + Buffer.from(`${email}:${token}`).toString("base64");
 
 function repoSlug(repoPath) {
-  const url = execFileSync("git", ["-C", repoPath, "remote", "get-url", "origin"], { encoding: "utf8" }).trim();
+  const url = execFileSync(
+    "git",
+    ["-C", repoPath, "remote", "get-url", "origin"],
+    { encoding: "utf8" },
+  ).trim();
   const m = url.match(/bitbucket\.org[:/]+([^/]+)\/([^/]+?)(?:\.git)?$/);
   if (!m) out({ ok: false, error: "origin is not a bitbucket.org remote" }, 1);
   return `${m[1]}/${m[2]}`;
@@ -95,24 +99,57 @@ async function call(method, path, body) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const json = await r.json().catch(() => ({}));
-  if (!r.ok) out({ ok: false, status: r.status, error: String(json.error?.message || "request failed").slice(0, 300) }, 1);
+  if (!r.ok)
+    out(
+      {
+        ok: false,
+        status: r.status,
+        error: String(json.error?.message || "request failed").slice(0, 300),
+      },
+      1,
+    );
   return json;
 }
 
 const q = (s) => encodeURIComponent(s);
 
 async function main() {
-  if (!email || !token) out({ ok: false, error: "BITBUCKET_EMAIL and BITBUCKET_API_TOKEN must both be set" }, 2);
+  if (!email || !token)
+    out(
+      {
+        ok: false,
+        error: "BITBUCKET_EMAIL and BITBUCKET_API_TOKEN must both be set",
+      },
+      2,
+    );
   const [cmd, repoPath, ...rest] = process.argv.slice(2);
-  if (!cmd || !repoPath) out({ ok: false, error: "usage: create|status|find|comment|comments <repo-path> ..." }, 1);
+  if (!cmd || !repoPath)
+    out(
+      {
+        ok: false,
+        error: "usage: create|status|find|comment|comments <repo-path> ...",
+      },
+      1,
+    );
   const slug = repoSlug(repoPath);
 
   if (cmd === "create") {
     const draft = rest.includes("--draft");
     const [source, dest, title, descFile] = rest.filter((a) => a !== "--draft");
-    if (!source || !dest || !title || !descFile) out({ ok: false, error: "usage: create <repo-path> <source> <dest> <title> <description-file> [--draft]" }, 1);
+    if (!source || !dest || !title || !descFile)
+      out(
+        {
+          ok: false,
+          error:
+            "usage: create <repo-path> <source> <dest> <title> <description-file> [--draft]",
+        },
+        1,
+      );
     const filter = `state="OPEN" AND source.branch.name="${source}" AND destination.branch.name="${dest}"`;
-    const existing = await call("GET", `/repositories/${slug}/pullrequests?q=${q(filter)}&fields=values.id,values.links.html.href`);
+    const existing = await call(
+      "GET",
+      `/repositories/${slug}/pullrequests?q=${q(filter)}&fields=values.id,values.links.html.href`,
+    );
     if (existing.values?.length) {
       const pr = existing.values[0];
       out({ ok: true, existing: true, id: pr.id, url: pr.links.html.href });
@@ -125,48 +162,110 @@ async function main() {
       close_source_branch: false,
       ...(draft ? { draft: true } : {}),
     });
-    out({ ok: true, existing: false, id: pr.id, url: pr.links.html.href, source, destination: dest, draft: Boolean(pr.draft) });
+    out({
+      ok: true,
+      existing: false,
+      id: pr.id,
+      url: pr.links.html.href,
+      source,
+      destination: dest,
+      draft: Boolean(pr.draft),
+    });
   } else if (cmd === "find") {
     const [source, dest] = rest;
-    if (!source || !dest) out({ ok: false, error: "usage: find <repo-path> <source> <dest>" }, 1);
+    if (!source || !dest)
+      out({ ok: false, error: "usage: find <repo-path> <source> <dest>" }, 1);
     const filter = `state="OPEN" AND source.branch.name="${source}" AND destination.branch.name="${dest}"`;
-    const found = await call("GET", `/repositories/${slug}/pullrequests?q=${q(filter)}&fields=values.id,values.draft,values.links.html.href`);
+    const found = await call(
+      "GET",
+      `/repositories/${slug}/pullrequests?q=${q(filter)}&fields=values.id,values.draft,values.links.html.href`,
+    );
     const pr = found.values?.[0];
-    out(pr ? { ok: true, found: true, id: pr.id, url: pr.links.html.href, draft: Boolean(pr.draft), source, destination: dest } : { ok: true, found: false, source, destination: dest });
+    out(
+      pr
+        ? {
+            ok: true,
+            found: true,
+            id: pr.id,
+            url: pr.links.html.href,
+            draft: Boolean(pr.draft),
+            source,
+            destination: dest,
+          }
+        : { ok: true, found: false, source, destination: dest },
+    );
   } else if (cmd === "status") {
-    const pr = await call("GET", `/repositories/${slug}/pullrequests/${q(rest[0])}?fields=id,state,draft,source.branch.name,destination.branch.name,links.html.href`);
-    out({ ok: true, id: pr.id, state: pr.state, draft: Boolean(pr.draft), source: pr.source.branch.name, destination: pr.destination.branch.name, url: pr.links.html.href });
+    const pr = await call(
+      "GET",
+      `/repositories/${slug}/pullrequests/${q(rest[0])}?fields=id,state,draft,source.branch.name,destination.branch.name,links.html.href`,
+    );
+    out({
+      ok: true,
+      id: pr.id,
+      state: pr.state,
+      draft: Boolean(pr.draft),
+      source: pr.source.branch.name,
+      destination: pr.destination.branch.name,
+      url: pr.links.html.href,
+    });
   } else if (cmd === "comments") {
-    if (!rest[0]) out({ ok: false, error: "usage: comments <repo-path> <pr-id>" }, 1);
-    const fields = "next,values.id,values.parent.id,values.deleted,values.resolution,values.user.display_name,values.content.raw,values.inline.path,values.inline.to";
+    if (!rest[0])
+      out({ ok: false, error: "usage: comments <repo-path> <pr-id>" }, 1);
+    const fields =
+      "next,values.id,values.parent.id,values.deleted,values.resolution,values.user.display_name,values.content.raw,values.inline.path,values.inline.to";
     let url = `/repositories/${slug}/pullrequests/${q(rest[0])}/comments?pagelen=100&fields=${q(fields)}`;
     const all = [];
     for (let page = 0; url && page < 20; page++) {
       const j = await call("GET", url);
       all.push(...(j.values || []));
-      url = j.next ? j.next.replace(/^https?:\/\/[^/]+\/2\.0/, "").replace(/^https?:\/\/[^/]+/, "") : null;
+      url = j.next
+        ? j.next
+            .replace(/^https?:\/\/[^/]+\/2\.0/, "")
+            .replace(/^https?:\/\/[^/]+/, "")
+        : null;
     }
-    const comments = all.filter((c) => !c.deleted).map((c) => ({
-      id: c.id,
-      parent: c.parent?.id ?? null,
-      author: c.user?.display_name || "unknown",
-      file: c.inline?.path ?? null,
-      line: c.inline?.to ?? null,
-      resolved: Boolean(c.resolution),
-      text: String(c.content?.raw || "").slice(0, 2000),
-    }));
+    const comments = all
+      .filter((c) => !c.deleted)
+      .map((c) => ({
+        id: c.id,
+        parent: c.parent?.id ?? null,
+        author: c.user?.display_name || "unknown",
+        file: c.inline?.path ?? null,
+        line: c.inline?.to ?? null,
+        resolved: Boolean(c.resolution),
+        text: String(c.content?.raw || "").slice(0, 2000),
+      }));
     out({ ok: true, count: comments.length, comments });
   } else if (cmd === "comment") {
     const pi = rest.indexOf("--parent");
     const parent = pi >= 0 ? rest[pi + 1] : null;
-    if (pi >= 0 && !/^\d+$/.test(parent || "")) out({ ok: false, error: "--parent needs a numeric comment id" }, 1);
-    const [prId, file, line, textFile] = pi >= 0 ? rest.filter((_, i) => i !== pi && i !== pi + 1) : rest;
-    if (!prId || !file || !line || !textFile) out({ ok: false, error: "usage: comment <repo-path> <pr-id> <file|-> <line> <text-file>" }, 1);
+    if (pi >= 0 && !/^\d+$/.test(parent || ""))
+      out({ ok: false, error: "--parent needs a numeric comment id" }, 1);
+    const [prId, file, line, textFile] =
+      pi >= 0 ? rest.filter((_, i) => i !== pi && i !== pi + 1) : rest;
+    if (!prId || !file || !line || !textFile)
+      out(
+        {
+          ok: false,
+          error:
+            "usage: comment <repo-path> <pr-id> <file|-> <line> <text-file>",
+        },
+        1,
+      );
     const body = { content: { raw: fs.readFileSync(textFile, "utf8") } };
     if (file !== "-") body.inline = { path: file, to: Number(line) };
     if (parent) body.parent = { id: Number(parent) };
-    const c = await call("POST", `/repositories/${slug}/pullrequests/${q(prId)}/comments`, body);
-    out({ ok: true, id: c.id, inline: Boolean(body.inline), url: c.links?.html?.href });
+    const c = await call(
+      "POST",
+      `/repositories/${slug}/pullrequests/${q(prId)}/comments`,
+      body,
+    );
+    out({
+      ok: true,
+      id: c.id,
+      inline: Boolean(body.inline),
+      url: c.links?.html?.href,
+    });
   } else out({ ok: false, error: `unknown command ${cmd}` }, 1);
 }
 
@@ -174,11 +273,15 @@ main()
   .then(() => {
     // main always finishes by calling out() (which throws Done); reaching here means no result was
     // recorded, which is a logic error.
-    if (!RESULT) RESULT = { payload: { ok: false, error: "no result produced" }, code: 1 };
+    if (!RESULT)
+      RESULT = { payload: { ok: false, error: "no result produced" }, code: 1 };
   })
   .catch((e) => {
     if (e instanceof Done) return; // expected unwind; RESULT is already set
-    RESULT = { payload: { ok: false, error: String(e.message || e).slice(0, 300) }, code: 1 };
+    RESULT = {
+      payload: { ok: false, error: String(e.message || e).slice(0, 300) },
+      code: 1,
+    };
   })
   .finally(() => {
     finish(RESULT.payload, RESULT.code);

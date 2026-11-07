@@ -35,35 +35,65 @@ const GATEWAY_DEFAULT = "https://api.atlassian.com";
 const ROUTES = ["auto", "site", "gateway"];
 
 function jiraConfig(root) {
-  const cfg = ((root && readYaml(path.join(root, "config", "integrations.yaml"), {})) || {}).jira || {};
+  const cfg =
+    (
+      (root && readYaml(path.join(root, "config", "integrations.yaml"), {})) ||
+      {}
+    ).jira || {};
   const creds = cfg.credentials || {};
   const emailVar = creds.email_env || "JIRA_EMAIL";
   const tokenVar = creds.api_token_env || "JIRA_API_TOKEN";
   const scheme = cfg.auth_scheme || "basic";
-  const base = String(cfg.base_url || process.env.JIRA_URL || "").replace(/\/+$/, "");
-  const routeMode = ROUTES.includes(String(cfg.api_route || "auto").toLowerCase()) ? String(cfg.api_route || "auto").toLowerCase() : "auto";
+  const base = String(cfg.base_url || process.env.JIRA_URL || "").replace(
+    /\/+$/,
+    "",
+  );
+  const routeMode = ROUTES.includes(
+    String(cfg.api_route || "auto").toLowerCase(),
+  )
+    ? String(cfg.api_route || "auto").toLowerCase()
+    : "auto";
   const auth = () => {
     const token = process.env[tokenVar];
     if (scheme === "bearer") return token ? `Bearer ${token}` : null;
     const email = process.env[emailVar];
-    return email && token ? "Basic " + Buffer.from(`${email}:${token}`).toString("base64") : null;
+    return email && token
+      ? "Basic " + Buffer.from(`${email}:${token}`).toString("base64")
+      : null;
   };
   // Why the client cannot connect (site URL or credentials missing), or null when it can try.
   const missing = () => {
-    if (!base) return "Jira site URL missing: set jira.base_url in config/integrations.yaml (or JIRA_URL)";
-    if (!auth()) return scheme === "bearer" ? `${tokenVar} must be set` : `${emailVar} and ${tokenVar} must both be set`;
+    if (!base)
+      return "Jira site URL missing: set jira.base_url in config/integrations.yaml (or JIRA_URL)";
+    if (!auth())
+      return scheme === "bearer"
+        ? `${tokenVar} must be set`
+        : `${emailVar} and ${tokenVar} must both be set`;
     return null;
   };
   return {
-    cfg, write: cfg.write || {}, base, scheme, emailVar, tokenVar, acField: cfg.acceptance_criteria_field || null, auth, missing,
-    routeMode, cloudId: cfg.cloud_id ? String(cfg.cloud_id).trim() : null,
+    cfg,
+    write: cfg.write || {},
+    base,
+    scheme,
+    emailVar,
+    tokenVar,
+    acField: cfg.acceptance_criteria_field || null,
+    auth,
+    missing,
+    routeMode,
+    cloudId: cfg.cloud_id ? String(cfg.cloud_id).trim() : null,
     gatewayUrl: String(cfg.gateway_url || GATEWAY_DEFAULT).replace(/\/+$/, ""),
-    apiBase: null, via: null, // resolved lazily by resolveRoute()
+    apiBase: null,
+    via: null, // resolved lazily by resolveRoute()
   };
 }
 
 function hints(c) {
-  const scoped = c.via === "gateway" ? " For a scoped token, grant the read/write scopes listed in jira.token_scopes (config/integrations.yaml)." : "";
+  const scoped =
+    c.via === "gateway"
+      ? " For a scoped token, grant the read/write scopes listed in jira.token_scopes (config/integrations.yaml)."
+      : "";
   return {
     401: `authentication failed: check ${c.emailVar} / ${c.tokenVar} (and jira.auth_scheme).${scoped}`,
     403: `the token lacks permission for this request (see jira.token_scopes in config/integrations.yaml).${scoped}`,
@@ -89,13 +119,21 @@ async function send(c, url, method, { json, form, auth = true } = {}) {
       body: json ? JSON.stringify(json) : form,
     });
   } catch (e) {
-    const code = String((e.cause && (e.cause.code || e.cause.message)) || e.message);
+    const code = String(
+      (e.cause && (e.cause.code || e.cause.message)) || e.message,
+    );
     const tls = /CERT|SELF_SIGNED|UNABLE_TO_(GET|VERIFY)/i.test(code);
     let host = url;
-    try { host = new URL(url).origin; } catch {}
+    try {
+      host = new URL(url).origin;
+    } catch {}
     throw new JiraError({
       error: `cannot reach ${host}: ${code.slice(0, 200)}`,
-      ...(tls ? { hint: "TLS inspection proxy? Set NODE_EXTRA_CA_CERTS to the corporate root certificate and restart the session." } : {}),
+      ...(tls
+        ? {
+            hint: "TLS inspection proxy? Set NODE_EXTRA_CA_CERTS to the corporate root certificate and restart the session.",
+          }
+        : {}),
     });
   }
   const body = r.status === 204 ? {} : await r.json().catch(() => ({}));
@@ -104,15 +142,26 @@ async function send(c, url, method, { json, form, auth = true } = {}) {
 
 function httpError(c, status, body) {
   const h = hints(c)[status];
-  const msg = ((body && body.errorMessages) || []).concat(Object.values((body && body.errors) || {})).join("; ") || h || "request failed";
-  return new JiraError({ status, error: String(msg).slice(0, 300), ...(h ? { hint: h } : {}) });
+  const msg =
+    ((body && body.errorMessages) || [])
+      .concat(Object.values((body && body.errors) || {}))
+      .join("; ") ||
+    h ||
+    "request failed";
+  return new JiraError({
+    status,
+    error: String(msg).slice(0, 300),
+    ...(h ? { hint: h } : {}),
+  });
 }
 
 // The Atlassian API gateway base for this site: <gateway_url>/ex/jira/<cloudId>.
 async function gatewayBase(c) {
   let id = c.cloudId;
   if (!id) {
-    const t = await send(c, c.base + "/_edge/tenant_info", "GET", { auth: false });
+    const t = await send(c, c.base + "/_edge/tenant_info", "GET", {
+      auth: false,
+    });
     id = t.ok && t.body && t.body.cloudId;
     if (!id) {
       throw new JiraError({
@@ -129,14 +178,20 @@ async function gatewayBase(c) {
 async function resolveRoute(c) {
   if (c.apiBase) return c.apiBase;
   if (c.scheme === "bearer" || c.routeMode === "site") {
-    c.apiBase = c.base; c.via = "site";
+    c.apiBase = c.base;
+    c.via = "site";
   } else if (c.routeMode === "gateway") {
-    c.apiBase = await gatewayBase(c); c.via = "gateway";
+    c.apiBase = await gatewayBase(c);
+    c.via = "gateway";
   } else {
     const probe = await send(c, c.base + "/rest/api/2/myself", "GET");
-    if (probe.ok) { c.apiBase = c.base; c.via = "site"; }
-    else if (probe.status === 401 || probe.status === 403) { c.apiBase = await gatewayBase(c); c.via = "gateway"; }
-    else throw httpError(c, probe.status, probe.body);
+    if (probe.ok) {
+      c.apiBase = c.base;
+      c.via = "site";
+    } else if (probe.status === 401 || probe.status === 403) {
+      c.apiBase = await gatewayBase(c);
+      c.via = "gateway";
+    } else throw httpError(c, probe.status, probe.body);
   }
   return c.apiBase;
 }
@@ -162,23 +217,43 @@ const MAX_COMMENT = 4000;
 const clip = (s, n = MAX_TEXT) => {
   if (s == null) return null;
   const t = String(s);
-  return t.length > n ? t.slice(0, n) + `\n[... truncated ${t.length - n} characters]` : t;
+  return t.length > n
+    ? t.slice(0, n) + `\n[... truncated ${t.length - n} characters]`
+    : t;
 };
 const name = (x) => (x && (x.name || x.displayName || x.value)) || null;
-const brief = (i) => i && { key: i.key, summary: (i.fields || {}).summary || null, status: name((i.fields || {}).status), type: name((i.fields || {}).issuetype) };
+const brief = (i) =>
+  i && {
+    key: i.key,
+    summary: (i.fields || {}).summary || null,
+    status: name((i.fields || {}).status),
+    type: name((i.fields || {}).issuetype),
+  };
 
 // Custom field values come in several shapes (string, option, array of options, ADF); flatten to text.
 function adfText(node) {
   if (!node) return "";
   if (node.type === "text") return node.text || "";
   const inner = (node.content || []).map(adfText).join("");
-  return ["paragraph", "heading", "listItem", "codeBlock", "blockquote"].includes(node.type) ? inner + "\n" : inner;
+  return [
+    "paragraph",
+    "heading",
+    "listItem",
+    "codeBlock",
+    "blockquote",
+  ].includes(node.type)
+    ? inner + "\n"
+    : inner;
 }
 function fieldText(v) {
   if (v == null) return null;
   if (typeof v === "string") return v;
-  if (Array.isArray(v)) return v.map(fieldText).filter(Boolean).join("\n") || null;
-  if (typeof v === "object") return v.type === "doc" && Array.isArray(v.content) ? adfText(v) : v.value || v.name || v.displayName || null;
+  if (Array.isArray(v))
+    return v.map(fieldText).filter(Boolean).join("\n") || null;
+  if (typeof v === "object")
+    return v.type === "doc" && Array.isArray(v.content)
+      ? adfText(v)
+      : v.value || v.name || v.displayName || null;
   return String(v);
 }
 
@@ -189,7 +264,9 @@ function acFromDescription(desc) {
   // In wiki markup "# item" is a numbered list, so markdown "#" headings count only when there are no wiki headings.
   const wiki = lines.some((l) => /^\s*h[1-6]\.\s/i.test(l));
   const heading = (l) => (wiki ? /^\s*h[1-6]\.\s/i : /^\s*#{1,6}\s/).test(l);
-  const start = lines.findIndex((l) => /^\s*(h[1-6]\.\s*|#{1,6}\s*|\*+|_+)?\s*acceptance\s+criteria\b/i.test(l));
+  const start = lines.findIndex((l) =>
+    /^\s*(h[1-6]\.\s*|#{1,6}\s*|\*+|_+)?\s*acceptance\s+criteria\b/i.test(l),
+  );
   if (start < 0) return null;
   const rest = lines.slice(start + 1);
   const end = rest.findIndex(heading);
@@ -200,20 +277,47 @@ function acFromDescription(desc) {
 async function findAcField(c) {
   if (c.acField) return { id: c.acField, name: c.acField };
   const fields = await request(c, "GET", "/rest/api/2/field", { quiet: true });
-  const f = (Array.isArray(fields) ? fields : []).find((x) => /acceptance\s*criteria/i.test(x.name || ""));
+  const f = (Array.isArray(fields) ? fields : []).find((x) =>
+    /acceptance\s*criteria/i.test(x.name || ""),
+  );
   return f ? { id: f.id, name: f.name } : null;
 }
 
-const ISSUE_FIELDS = ["summary", "issuetype", "status", "priority", "labels", "components", "fixVersions", "versions",
-  "parent", "description", "issuelinks", "subtasks", "attachment", "assignee", "reporter", "created", "updated"];
+const ISSUE_FIELDS = [
+  "summary",
+  "issuetype",
+  "status",
+  "priority",
+  "labels",
+  "components",
+  "fixVersions",
+  "versions",
+  "parent",
+  "description",
+  "issuelinks",
+  "subtasks",
+  "attachment",
+  "assignee",
+  "reporter",
+  "created",
+  "updated",
+];
 
 // The requests fetchIssue makes, for --dry-run output.
 function issueRequests(c, key, { comments } = {}) {
   return [
-    ...(c.scheme === "basic" && c.routeMode === "auto" ? ["GET /rest/api/2/myself (route probe; a scoped token then goes through the Atlassian API gateway)"] : []),
-    ...(c.acField ? [] : ["GET /rest/api/2/field (find the acceptance-criteria field)"]),
+    ...(c.scheme === "basic" && c.routeMode === "auto"
+      ? [
+          "GET /rest/api/2/myself (route probe; a scoped token then goes through the Atlassian API gateway)",
+        ]
+      : []),
+    ...(c.acField
+      ? []
+      : ["GET /rest/api/2/field (find the acceptance-criteria field)"]),
     `GET /rest/api/2/issue/${key}?fields=${ISSUE_FIELDS.join(",")},${c.acField || "<acceptance-criteria field>"}`,
-    ...(comments ? [`GET /rest/api/2/issue/${key}/comment?orderBy=created&maxResults=100`] : []),
+    ...(comments
+      ? [`GET /rest/api/2/issue/${key}/comment?orderBy=created&maxResults=100`]
+      : []),
   ];
 }
 
@@ -221,7 +325,11 @@ function issueRequests(c, key, { comments } = {}) {
 async function fetchIssue(c, key, { comments } = {}) {
   const k = encodeURIComponent(key);
   const ac = await findAcField(c);
-  const issue = await request(c, "GET", `/rest/api/2/issue/${k}?fields=${ISSUE_FIELDS.concat(ac ? [ac.id] : []).join(",")}`);
+  const issue = await request(
+    c,
+    "GET",
+    `/rest/api/2/issue/${k}?fields=${ISSUE_FIELDS.concat(ac ? [ac.id] : []).join(",")}`,
+  );
   const f = issue.fields || {};
 
   let acceptance = ac ? fieldText(f[ac.id]) : null;
@@ -233,12 +341,28 @@ async function fetchIssue(c, key, { comments } = {}) {
 
   let list;
   if (comments) {
-    const r = await request(c, "GET", `/rest/api/2/issue/${k}/comment?orderBy=created&maxResults=100`);
-    list = (r.comments || []).map((x) => ({ id: String(x.id), author: name(x.author), created: x.created, updated: x.updated, text: clip(x.body, MAX_COMMENT) }));
+    const r = await request(
+      c,
+      "GET",
+      `/rest/api/2/issue/${k}/comment?orderBy=created&maxResults=100`,
+    );
+    list = (r.comments || []).map((x) => ({
+      id: String(x.id),
+      author: name(x.author),
+      created: x.created,
+      updated: x.updated,
+      text: clip(x.body, MAX_COMMENT),
+    }));
   }
 
   return {
-    source: { type: "jira", jira_available: true, issue_key: issue.key, fetched_at: new Date().toISOString(), url: `${c.base}/browse/${issue.key}` },
+    source: {
+      type: "jira",
+      jira_available: true,
+      issue_key: issue.key,
+      fetched_at: new Date().toISOString(),
+      url: `${c.base}/browse/${issue.key}`,
+    },
     issue: {
       key: issue.key,
       summary: f.summary || null,
@@ -259,7 +383,11 @@ async function fetchIssue(c, key, { comments } = {}) {
       acceptance_criteria_source: acSource,
       linked_issues: (f.issuelinks || []).map((l) => {
         const outward = Boolean(l.outwardIssue);
-        return { relation: (l.type && (outward ? l.type.outward : l.type.inward)) || null, ...brief(l.outwardIssue || l.inwardIssue) };
+        return {
+          relation:
+            (l.type && (outward ? l.type.outward : l.type.inward)) || null,
+          ...brief(l.outwardIssue || l.inwardIssue),
+        };
       }),
       subtasks: (f.subtasks || []).map(brief),
       attachments: (f.attachment || []).map((a) => a.filename),
@@ -278,27 +406,56 @@ async function checkConnection(c) {
 // current status does not offer it; never guesses a similar one. Returns { id, name, from, to }.
 async function transitionIssue(c, key, transitionName) {
   const k = encodeURIComponent(key);
-  const before = await request(c, "GET", `/rest/api/2/issue/${k}?fields=status`);
+  const before = await request(
+    c,
+    "GET",
+    `/rest/api/2/issue/${k}?fields=status`,
+  );
   const list = await request(c, "GET", `/rest/api/2/issue/${k}/transitions`);
   const wanted = String(transitionName).trim().toLowerCase();
-  const t = (list.transitions || []).find((x) => String(x.name || "").trim().toLowerCase() === wanted);
+  const t = (list.transitions || []).find(
+    (x) =>
+      String(x.name || "")
+        .trim()
+        .toLowerCase() === wanted,
+  );
   if (!t) {
     throw new JiraError({
       error: `transition "${transitionName}" is not available for ${key} in status "${name((before.fields || {}).status) || "unknown"}"`,
       available: (list.transitions || []).map((x) => x.name),
     });
   }
-  await request(c, "POST", `/rest/api/2/issue/${k}/transitions`, { json: { transition: { id: String(t.id) } } });
-  return { id: String(t.id), name: t.name, from: name((before.fields || {}).status), to: name(t.to) };
+  await request(c, "POST", `/rest/api/2/issue/${k}/transitions`, {
+    json: { transition: { id: String(t.id) } },
+  });
+  return {
+    id: String(t.id),
+    name: t.name,
+    from: name((before.fields || {}).status),
+    to: name(t.to),
+  };
 }
 
 // Release fetch's (undici's) global dispatcher so no keepalive socket holds the process open (see bitbucket-pr.js).
 async function closeHttp() {
   try {
-    const sym = Object.getOwnPropertySymbols(globalThis).find((s) => s.description === "undici.globalDispatcher.1");
+    const sym = Object.getOwnPropertySymbols(globalThis).find(
+      (s) => s.description === "undici.globalDispatcher.1",
+    );
     const dispatcher = sym && globalThis[sym];
-    if (dispatcher && typeof dispatcher.close === "function") await dispatcher.close();
+    if (dispatcher && typeof dispatcher.close === "function")
+      await dispatcher.close();
   } catch {}
 }
 
-module.exports = { JiraError, jiraConfig, request, fetchIssue, issueRequests, checkConnection, transitionIssue, acFromDescription, closeHttp };
+module.exports = {
+  JiraError,
+  jiraConfig,
+  request,
+  fetchIssue,
+  issueRequests,
+  checkConnection,
+  transitionIssue,
+  acFromDescription,
+  closeHttp,
+};

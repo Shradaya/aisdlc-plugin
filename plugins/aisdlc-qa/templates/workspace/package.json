@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "description": "QA Playwright regression suite, managed with the aisdlc-qa Claude Code plugin.",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "test": "playwright test",
     "test:ui": "playwright test --ui",

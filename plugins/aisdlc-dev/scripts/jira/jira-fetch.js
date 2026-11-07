@@ -32,7 +32,9 @@ const out = (o, code = 0) => {
 };
 async function finish(payload, code) {
   process.exitCode = code;
-  await new Promise((resolve) => process.stdout.write(JSON.stringify(payload) + "\n", resolve));
+  await new Promise((resolve) =>
+    process.stdout.write(JSON.stringify(payload) + "\n", resolve),
+  );
   await jira.closeHttp();
   setTimeout(() => process.exit(code), 3000).unref();
 }
@@ -47,26 +49,44 @@ async function main() {
   if (!ROOT) out({ ok: false, error: NOT_WORKSPACE }, 2);
   const usage = "usage: issue <TICKET> [--comments] | check   [--dry-run]";
   if (cmd !== "issue" && cmd !== "check") out({ ok: false, error: usage }, 1);
-  if (cmd === "issue" && !/^[A-Z][A-Z0-9]*-\d+$/.test(ticket || "")) out({ ok: false, error: `invalid ticket number. ${usage}` }, 1);
+  if (cmd === "issue" && !/^[A-Z][A-Z0-9]*-\d+$/.test(ticket || ""))
+    out({ ok: false, error: `invalid ticket number. ${usage}` }, 1);
   const c = jira.jiraConfig(ROOT);
   if (!dryRun && c.missing()) out({ ok: false, error: c.missing() }, 2);
 
   if (cmd === "check") {
-    if (dryRun) out({ ok: true, dry_run: true, would: ["GET /rest/api/2/myself"] });
-    out({ ok: true, connected: true, base_url: c.base, ...(await jira.checkConnection(c)) });
+    if (dryRun)
+      out({ ok: true, dry_run: true, would: ["GET /rest/api/2/myself"] });
+    out({
+      ok: true,
+      connected: true,
+      base_url: c.base,
+      ...(await jira.checkConnection(c)),
+    });
   }
-  if (dryRun) out({ ok: true, dry_run: true, would: jira.issueRequests(c, ticket, { comments }) });
+  if (dryRun)
+    out({
+      ok: true,
+      dry_run: true,
+      would: jira.issueRequests(c, ticket, { comments }),
+    });
   out({ ok: true, ...(await jira.fetchIssue(c, ticket, { comments })) });
 }
 
 main()
   .then(() => {
-    if (!RESULT) RESULT = { payload: { ok: false, error: "no result produced" }, code: 1 };
+    if (!RESULT)
+      RESULT = { payload: { ok: false, error: "no result produced" }, code: 1 };
   })
   .catch((e) => {
     if (e instanceof Done) return;
-    if (e instanceof jira.JiraError) RESULT = { payload: e.payload, code: e.code };
-    else RESULT = { payload: { ok: false, error: String(e.message || e).slice(0, 300) }, code: 1 };
+    if (e instanceof jira.JiraError)
+      RESULT = { payload: e.payload, code: e.code };
+    else
+      RESULT = {
+        payload: { ok: false, error: String(e.message || e).slice(0, 300) },
+        code: 1,
+      };
   })
   .finally(() => {
     finish(RESULT.payload, RESULT.code);

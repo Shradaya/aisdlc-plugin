@@ -19,7 +19,9 @@ const opt = (name) => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 const only = opt("--only");
-const positional = args.filter((a, i) => !a.startsWith("--") && args[i - 1] !== "--only");
+const positional = args.filter(
+  (a, i) => !a.startsWith("--") && args[i - 1] !== "--only",
+);
 const target = path.resolve(positional[0] || process.cwd());
 const dryRun = flag("--dry-run");
 const force = flag("--force");
@@ -53,9 +55,15 @@ function mergeSettings(existing, template) {
   const out = { ...template, ...existing };
   out.permissions = { ...template.permissions, ...existing.permissions };
   for (const k of ["allow", "deny", "ask"]) {
-    out.permissions[k] = union(existing.permissions?.[k], template.permissions?.[k]);
+    out.permissions[k] = union(
+      existing.permissions?.[k],
+      template.permissions?.[k],
+    );
   }
-  out.enabledPlugins = { ...template.enabledPlugins, ...existing.enabledPlugins };
+  out.enabledPlugins = {
+    ...template.enabledPlugins,
+    ...existing.enabledPlugins,
+  };
   return out;
 }
 
@@ -78,19 +86,31 @@ for (const [name, dir] of Object.entries(PARTS)) {
     } else if (rel === ".gitignore") {
       const have = fs.readFileSync(dest, "utf8");
       const lines = have.split(/\r?\n/);
-      const missing = content.toString().split(/\r?\n/).filter((l) => l.trim() && !l.startsWith("#") && !lines.includes(l));
-      if (missing.length) write(dest, have.trimEnd() + "\n\n# aisdlc\n" + missing.join("\n") + "\n", "merged");
+      const missing = content
+        .toString()
+        .split(/\r?\n/)
+        .filter((l) => l.trim() && !l.startsWith("#") && !lines.includes(l));
+      if (missing.length)
+        write(
+          dest,
+          have.trimEnd() + "\n\n# aisdlc\n" + missing.join("\n") + "\n",
+          "merged",
+        );
       else report.skipped.push(`${rel} (already up to date)`);
     } else if (rel === path.join(".claude", "settings.json")) {
       let merged;
       try {
-        merged = mergeSettings(JSON.parse(fs.readFileSync(dest, "utf8")), JSON.parse(content));
+        merged = mergeSettings(
+          JSON.parse(fs.readFileSync(dest, "utf8")),
+          JSON.parse(content),
+        );
       } catch (e) {
         report.skipped.push(`${rel} (not valid JSON, left untouched)`);
         continue;
       }
       const text = JSON.stringify(merged, null, 2) + "\n";
-      if (text === fs.readFileSync(dest, "utf8")) report.skipped.push(`${rel} (already up to date)`);
+      if (text === fs.readFileSync(dest, "utf8"))
+        report.skipped.push(`${rel} (already up to date)`);
       else write(dest, text, "merged");
     } else if (force && !content.equals(fs.readFileSync(dest))) {
       write(dest, content, "overwritten");
@@ -101,9 +121,14 @@ for (const [name, dir] of Object.entries(PARTS)) {
 }
 
 console.log(`${dryRun ? "[dry run] " : ""}aisdlc init -> ${target}`);
-for (const [k, v] of Object.entries(report)) if (v.length) console.log(`${k} (${v.length}):\n  ${v.join("\n  ")}`);
+for (const [k, v] of Object.entries(report))
+  if (v.length) console.log(`${k} (${v.length}):\n  ${v.join("\n  ")}`);
 if (!dryRun && report.created.some((f) => f.startsWith("web"))) {
   console.log("\nNext: cd web && npm install && npm run dev  (needs Node 20+)");
 }
-console.log("\nNext: copy claude.env.example to claude.env and set AISDLC_REPOS_ROOT; then /aisdlc-dev:add-repo <name> <path> for each repository.");
-console.log("Work across repositories: start Claude Code in this folder, or set AISDLC_ROOT to it.");
+console.log(
+  "\nNext: copy claude.env.example to claude.env and set AISDLC_REPOS_ROOT; then /aisdlc-dev:add-repo <name> <path> for each repository.",
+);
+console.log(
+  "Work across repositories: start Claude Code in this folder, or set AISDLC_ROOT to it.",
+);

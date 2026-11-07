@@ -9,7 +9,14 @@ const KIND = workspaceKind(ROOT);
 if (KIND && KIND !== "design" && KIND !== "aisdlc") process.exit(0); // another aisdlc plugin's workspace (config/workspace.yaml "kind")
 const dir = path.join(ROOT, "designs");
 let tickets = [];
-try { tickets = fs.readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory() && /^[A-Z][A-Z0-9]*-\d+$/.test(e.name)).map((e) => e.name); } catch {}
-console.log(tickets.length
-  ? `aisdlc-design: ${tickets.length} ticket design(s) in designs/ (${tickets.slice(-5).join(", ")}). Add or update one with /aisdlc-design:sync --ticket KEY.`
-  : "aisdlc-design: no designs synced yet. Run /aisdlc-design:sync <artifact link> --ticket KEY.");
+try {
+  tickets = fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && /^[A-Z][A-Z0-9]*-\d+$/.test(e.name))
+    .map((e) => e.name);
+} catch {}
+console.log(
+  tickets.length
+    ? `aisdlc-design: ${tickets.length} ticket design(s) in designs/ (${tickets.slice(-5).join(", ")}). Add or update one with /aisdlc-design:sync --ticket KEY.`
+    : "aisdlc-design: no designs synced yet. Run /aisdlc-design:sync <artifact link> --ticket KEY.",
+);

@@ -1,52 +1,948 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>aisdlc command flow, PM to release</title>
-<style>
-:root{--bg:#f7f6f3;--card:#fff;--ink:#1c1d1f;--mute:#62666d;--line:#dedad3;--code:#f1efea}
-@media (prefers-color-scheme:dark){:root{--bg:#131416;--card:#1b1d20;--ink:#e7e5e2;--mute:#a0a4ab;--line:#34373c;--code:#23262a}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
-header{padding:28px 24px 8px;max-width:1100px;margin:0 auto}h1{margin:0 0 4px;font-size:24px}header p{margin:4px 0;color:var(--mute)}
-main{max-width:1100px;margin:0 auto;padding:8px 24px 56px}
-.strip{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:16px 0 8px}
-.pill{display:flex;flex-direction:column;padding:8px 14px;border-radius:10px;background:var(--card);border:1px solid var(--line);border-top:3px solid var(--c);color:var(--ink);text-decoration:none}
-.pill small{color:var(--mute);font-size:12px}.arrow{color:var(--mute)}
-.legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:13px;color:var(--mute);margin:8px 0 18px}
-section{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:12px;padding:16px 18px;margin:16px 0}
-h2{margin:0;font-size:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}h2 small{font-weight:500;color:var(--mute);font-size:13px}
-.dot{width:10px;height:10px;border-radius:50%;background:var(--c)}.note{margin:4px 0 10px;color:var(--mute);font-size:13.5px}
-.wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:640px}
-th,td{text-align:left;padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top;font-size:14px}
-th{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute)}tr:last-child td{border-bottom:none}
-td.n{color:var(--mute);width:34px;font-variant-numeric:tabular-nums}td.who{white-space:nowrap;color:var(--mute);font-size:13px}
-tr.sub td:nth-child(2){padding-left:26px}
-code{font:12.5px ui-monospace,SFMono-Regular,Consolas,monospace;background:var(--code);padding:2px 6px;border-radius:5px;word-break:break-word}
-.tag{display:inline-block;font-size:11px;font-weight:650;padding:0 8px;border-radius:99px;line-height:1.7;border:1px solid currentColor;white-space:nowrap}
-.human{color:#a15c00}.sim{color:#7c3aed}.opt{color:#62666d}.once{color:#2563eb}.loop{color:#b91c1c}.fixed{color:#15803d}.openi{color:#b45309}
-.findings{margin:0;padding-left:0;list-style:none}.findings li{padding:6px 0;border-bottom:1px solid var(--line)}.findings li:last-child{border-bottom:none}
-footer{color:var(--mute);font-size:13px;margin-top:20px}
-</style>
-</head>
-<body>
-<header>
-<h1>aisdlc command flow: PM to release</h1>
-<p>The commands used in a normal development flow, taken from a real test run of ticket <b>EL-0000</b> (develop a login feature) in the shared repository <code>C:\Evoke\aisdlc-demo</code>, with its design synced from a Claude Design artifact.</p>
-<p>57 steps. Every role starts with <code>/aisdlc:pull</code> and ends with <code>/aisdlc:push</code> and a hand-off; <code>/aisdlc:push</code> always pulls first and leaves merge conflicts to you.</p>
-</header>
-<main>
-<nav class="strip" aria-label="Phases"><a class="pill" href="#setup" style="--c:#64748b"><b>Set up</b><small>4 steps</small></a><span class="arrow" aria-hidden="true">→</span><a class="pill" href="#pm" style="--c:#2563eb"><b>PM</b><small>10 steps</small></a><span class="arrow" aria-hidden="true">→</span><a class="pill" href="#design" style="--c:#7c3aed"><b>Design</b><small>4 steps</small></a><span class="arrow" aria-hidden="true">→</span><a class="pill" href="#dev" style="--c:#0f766e"><b>Dev</b><small>16 steps</small></a><span class="arrow" aria-hidden="true">→</span><a class="pill" href="#qa" style="--c:#c2410c"><b>QA</b><small>9 steps</small></a><span class="arrow" aria-hidden="true">→</span><a class="pill" href="#loop" style="--c:#b91c1c"><b>Change request loop</b><small>8 steps</small></a><span class="arrow" aria-hidden="true">→</span><a class="pill" href="#release" style="--c:#15803d"><b>Release</b><small>6 steps</small></a></nav>
-<div class="legend"><span><span class="tag human">Human decision</span> approvals and merges are never done by Claude</span><span><span class="tag loop">Change request</span> tracked return</span><span><span class="tag sim">Simulated in this run</span> no Bitbucket, Jira or CI connected</span><span><span class="tag opt">Optional, not run</span></span><span><span class="tag once">Once</span> per machine or repository</span></div>
-<section id="setup" style="--c:#64748b"><h2><span class="dot"></span>Set up <small>Everyone, once</small></h2><p class="note">Per machine and repository.</p><div class="wrap"><table><thead><tr><th>#</th><th>Command</th><th>Run by</th><th>What it does</th></tr></thead><tbody><tr class=""><td class="n">1</td><td><code>git clone &lt;repo&gt;  (or git init + git remote add origin &lt;url&gt;)</code></td><td class="who">Everyone</td><td>Make the folder the shared git repository. <span class="tag once">Once</span></td></tr><tr class=""><td class="n">2</td><td><code>/aisdlc:init --role &lt;pm|design|dev|qa&gt;</code></td><td class="who">Everyone</td><td>Scaffold config, tasks, designs, system; record your role locally. <span class="tag once">Once</span></td></tr><tr class=""><td class="n">3</td><td><code>/aisdlc-qa:init</code></td><td class="who">QA</td><td>Local test scaffold only (tests, fixtures, Playwright config; gitignored). <span class="tag once">Once</span></td></tr><tr class=""><td class="n">4</td><td><code>/aisdlc:status-page</code></td><td class="who">Anyone</td><td>Start the status page (http://localhost:4320): flow per ticket, documents, hand-offs. Leave it running.</td></tr></tbody></table></div></section>
-<section id="pm" style="--c:#2563eb"><h2><span class="dot"></span>PM <small>Project manager</small></h2><p class="note">Requirement gathering, acceptance criteria, hand off.</p><div class="wrap"><table><thead><tr><th>#</th><th>Command</th><th>Run by</th><th>What it does</th></tr></thead><tbody><tr class=""><td class="n">5</td><td><code>/aisdlc:pull</code></td><td class="who">PM</td><td>Latest from the other roles; shows what waits for you.</td></tr><tr class=""><td class="n">6</td><td><code>/aisdlc-pm:requirements EL-0000</code></td><td class="who">PM</td><td>Create the PM task, draft requirements.md from the ticket (or a pasted brief).</td></tr><tr class=""><td class="n">7</td><td><code>/aisdlc-pm:acceptance-criteria EL-0000</code></td><td class="who">PM</td><td>Draft numbered criteria AC1..ACn.</td></tr><tr class=""><td class="n">8</td><td><code>/aisdlc-pm:approve EL-0000 acceptance_criteria</code></td><td class="who">PM</td><td>Approve the criteria; the file's hash is pinned. <span class="tag human">Human decision</span></td></tr><tr class=""><td class="n">9</td><td><code>/aisdlc-pm:jira-sync EL-0000</code></td><td class="who">PM</td><td>Write requirements and criteria into the Jira ticket (Jira stays optional). <span class="tag opt">Optional, not run</span></td></tr><tr class=""><td class="n">10</td><td><code>/aisdlc-pm:handoff EL-0000 design|dev</code></td><td class="who">PM</td><td>PM state moves to HANDED_OFF_TO_*; refused unless approved and unchanged.</td></tr><tr class=""><td class="n">11</td><td><code>/aisdlc:push</code></td><td class="who">PM</td><td>Pull first, then commit &quot;EL-0000: ...&quot; and push.</td></tr><tr class=""><td class="n">12</td><td><code>/aisdlc:handoff EL-0000 design</code></td><td class="who">PM</td><td>Design becomes active (UI tickets only).</td></tr><tr class=""><td class="n">13</td><td><code>/aisdlc:handoff EL-0000 dev</code></td><td class="who">PM</td><td>Dev becomes active. PM can hand off to both at once.</td></tr><tr class=""><td class="n">14</td><td><code>/aisdlc:push</code></td><td class="who">PM</td><td>Share the hand-off events.</td></tr></tbody></table></div></section>
-<section id="design" style="--c:#7c3aed"><h2><span class="dot"></span>Design <small>Designer</small></h2><p class="note">Designs are synced from Claude Design into designs/EL-0000/.</p><div class="wrap"><table><thead><tr><th>#</th><th>Command</th><th>Run by</th><th>What it does</th></tr></thead><tbody><tr class=""><td class="n">15</td><td><code>/aisdlc:pull</code></td><td class="who">Designer</td><td>See the hand-off from PM.</td></tr><tr class=""><td class="n">16</td><td><code>/aisdlc-design:sync &lt;artifact link&gt; --ticket EL-0000 [--pages Main]</code></td><td class="who">Designer</td><td>Copy the prototype pages, the viewer runtime and design.md into designs/EL-0000/ after a safety scan. In the shared repo it stops before committing.</td></tr><tr class=""><td class="n">17</td><td><code>/aisdlc:push</code></td><td class="who">Designer</td><td>Pull first, then commit and push the design folder.</td></tr><tr class=""><td class="n">18</td><td><code>/aisdlc:handoff EL-0000 dev</code></td><td class="who">Designer</td><td>Design is done; Dev has the design.</td></tr></tbody></table></div></section>
-<section id="dev" style="--c:#0f766e"><h2><span class="dot"></span>Dev <small>Developer</small></h2><p class="note">Build from tasks/EL-0000/ and designs/EL-0000/. /aisdlc-dev:feature runs the first five stage skills for you.</p><div class="wrap"><table><thead><tr><th>#</th><th>Command</th><th>Run by</th><th>What it does</th></tr></thead><tbody><tr class=""><td class="n">19</td><td><code>/aisdlc:pull</code></td><td class="who">Developer</td><td>Get PM requirements and criteria, and the design.</td></tr><tr class=""><td class="n">20</td><td><code>/aisdlc-dev:add-repo &lt;name&gt; &lt;path&gt;</code></td><td class="who">Developer</td><td>Register the application repository (once per repository). <span class="tag once">Once</span></td></tr><tr class=""><td class="n">21</td><td><code>/aisdlc-dev:feature EL-0000</code></td><td class="who">Developer</td><td>Dev task; reads the PM's files (no Jira fetch); drives the stages below.</td></tr><tr class="sub"><td class="n"></td><td><code>jira-ticket, impact-analysis, repository-preparation</code></td><td class="who">(inside feature)</td><td>Ticket content, impact analysis, branch EL-0000 from the latest main in the app repository.</td></tr><tr class="sub"><td class="n"></td><td><code>/aisdlc-dev:design-link EL-0000</code></td><td class="who">(inside feature)</td><td>Read designs/EL-0000/, record snapshot v1, pin it with the source commit.</td></tr><tr class="sub"><td class="n"></td><td><code>/aisdlc-dev:feature-specification EL-0000</code></td><td class="who">(inside feature)</td><td>Short specification with the design pin and criteria mapping.</td></tr><tr class=""><td class="n">22</td><td><code>/aisdlc-dev:approve EL-0000 specification</code></td><td class="who">Developer</td><td>Approve the specification; implementation is blocked until then. <span class="tag human">Human decision</span></td></tr><tr class=""><td class="n">23</td><td><code>(implement in the application repository)</code></td><td class="who">Developer</td><td>Code on branch EL-0000 after approval.</td></tr><tr class=""><td class="n">24</td><td><code>/aisdlc-dev:testing EL-0000</code></td><td class="who">Developer</td><td>Run tests, record validation.md.</td></tr><tr class=""><td class="n">25</td><td><code>/aisdlc-dev:code-review EL-0000</code></td><td class="who">Developer</td><td>Independent review, recorded in code-review.md.</td></tr><tr class=""><td class="n">26</td><td><code>/aisdlc-dev:commit EL-0000</code></td><td class="who">Developer</td><td>Commit &quot;EL-0000: ...&quot; on branch EL-0000 in the application repository.</td></tr><tr class=""><td class="n">27</td><td><code>/aisdlc-dev:pr EL-0000</code></td><td class="who">Developer</td><td>Push the branch, open the pull request in Bitbucket. <span class="tag sim">Simulated in this run</span></td></tr><tr class=""><td class="n">28</td><td><code>(reviewer merges the pull request)</code></td><td class="who">Reviewer</td><td>The merge is always a human action. <span class="tag sim">Simulated in this run</span></td></tr><tr class=""><td class="n">29</td><td><code>/aisdlc-dev:pr-comments EL-0000</code></td><td class="who">Developer</td><td>Read, triage and fix review comments (when there are any). <span class="tag opt">Optional, not run</span></td></tr><tr class=""><td class="n">30</td><td><code>/aisdlc:push</code></td><td class="who">Developer</td><td>Share spec, design snapshot, validation, state.</td></tr><tr class=""><td class="n">31</td><td><code>/aisdlc:handoff EL-0000 qa</code></td><td class="who">Developer</td><td>QA becomes active (after the merge).</td></tr></tbody></table></div></section>
-<section id="qa" style="--c:#c2410c"><h2><span class="dot"></span>QA <small>QA engineer</small></h2><p class="note">Scenarios come from the PM's acceptance criteria. Tests stay local; documents are shared.</p><div class="wrap"><table><thead><tr><th>#</th><th>Command</th><th>Run by</th><th>What it does</th></tr></thead><tbody><tr class=""><td class="n">32</td><td><code>/aisdlc:pull</code></td><td class="who">QA</td><td>See the hand-off from Dev.</td></tr><tr class=""><td class="n">33</td><td><code>/aisdlc-qa:test EL-0000</code></td><td class="who">QA</td><td>QA task from the PM's criteria, environment check, scenario drafting; continues through approval, tests and the run.</td></tr><tr class=""><td class="n">34</td><td><code>/aisdlc:return EL-0000 pm &quot;&lt;reason&gt;&quot;</code></td><td class="who">QA</td><td>Gap found: no criterion for the 8-character password rule. Sends the ticket back; PM shows &quot;changes requested&quot;. <span class="tag loop">Change request</span></td></tr><tr class=""><td class="n">35</td><td><code>/aisdlc-qa:approve EL-0000 scenarios</code></td><td class="who">QA</td><td>Approve scenarios S1-S5; hash pinned (after the loop below). <span class="tag human">Human decision</span></td></tr><tr class=""><td class="n">36</td><td><code>/aisdlc-qa:run EL-0000</code></td><td class="who">QA</td><td>Run the tests (a browser run); results.md. Demo: headless Chrome stood in for Playwright.</td></tr><tr class=""><td class="n">37</td><td><code>/aisdlc-qa:approve EL-0000 signoff</code></td><td class="who">QA</td><td>Sign off the results: 5 of 5 pass, 0 defects. <span class="tag human">Human decision</span></td></tr><tr class=""><td class="n">38</td><td><code>/aisdlc-qa:publish EL-0000</code></td><td class="who">QA</td><td>Evidence and results comment on the Jira ticket (skipped in the demo). <span class="tag sim">Simulated in this run</span></td></tr><tr class=""><td class="n">39</td><td><code>/aisdlc:push</code></td><td class="who">QA</td><td>Share scenarios, spec, results, state. tests/ is never committed.</td></tr><tr class=""><td class="n">40</td><td><code>/aisdlc:handoff EL-0000 dev</code></td><td class="who">QA</td><td>Dev (release) becomes active again.</td></tr></tbody></table></div></section>
-<section id="loop" style="--c:#b91c1c"><h2><span class="dot"></span>Change request loop <small>QA to PM and back</small></h2><p class="note">A request for changes, tracked until resolved. Runs between QA drafting scenarios and approving them.</p><div class="wrap"><table><thead><tr><th>#</th><th>Command</th><th>Run by</th><th>What it does</th></tr></thead><tbody><tr class=""><td class="n">41</td><td><code>/aisdlc:return EL-0000 pm &quot;&lt;reason&gt;&quot;</code></td><td class="who">QA</td><td>Reason is required; adds an open item to changes.md and the status page. <span class="tag loop">Change request</span></td></tr><tr class=""><td class="n">42</td><td><code>/aisdlc:pull</code></td><td class="who">PM</td><td>PM sees 1 open change request.</td></tr><tr class=""><td class="n">43</td><td><code>/aisdlc-pm:refine EL-0000</code></td><td class="who">PM</td><td>Reopen the criteria (state back to ACCEPTANCE_CRITERIA_DEFINED).</td></tr><tr class=""><td class="n">44</td><td><code>(edit acceptance-criteria.md: add AC5)</code></td><td class="who">PM</td><td>Numbers stay stable; the edit invalidates the approval.</td></tr><tr class=""><td class="n">45</td><td><code>/aisdlc-pm:approve EL-0000 acceptance_criteria</code></td><td class="who">PM</td><td>Approve AC1-AC5 again. <span class="tag human">Human decision</span></td></tr><tr class=""><td class="n">46</td><td><code>/aisdlc-pm:handoff EL-0000 dev</code></td><td class="who">PM</td><td>PM state back to HANDED_OFF_TO_DEV.</td></tr><tr class=""><td class="n">47</td><td><code>/aisdlc:handoff EL-0000 qa --resolve all</code></td><td class="who">PM</td><td>Hand back to QA; refused while change requests are open unless resolved here. <span class="tag loop">Change request</span></td></tr><tr class=""><td class="n">48</td><td><code>/aisdlc:push</code></td><td class="who">PM</td><td>Share the revised criteria and the hand-off.</td></tr></tbody></table></div></section>
-<section id="release" style="--c:#15803d"><h2><span class="dot"></span>Release <small>Developer (release owner)</small></h2><p class="note">After QA's sign-off Dev owns the release. Production deployment itself is disabled in the plugin config.</p><div class="wrap"><table><thead><tr><th>#</th><th>Command</th><th>Run by</th><th>What it does</th></tr></thead><tbody><tr class=""><td class="n">49</td><td><code>/aisdlc:pull</code></td><td class="who">Developer</td><td>See QA's sign-off and hand-off.</td></tr><tr class=""><td class="n">50</td><td><code>/aisdlc-dev:post-release EL-0000</code></td><td class="who">Developer</td><td>Record the release (UAT merge counts as released); state RELEASED. Evidence simulated in the demo. <span class="tag sim">Simulated in this run</span></td></tr><tr class=""><td class="n">51</td><td><code>/aisdlc-dev:product-knowledge-consolidation EL-0000</code></td><td class="who">Developer</td><td>Write the released behavior into system/product/, then clean up the dev-owned task artifacts.</td></tr><tr class=""><td class="n">52</td><td><code>/aisdlc-dev:finish EL-0000</code></td><td class="who">Developer</td><td>Dev task COMPLETED (needs the cleanup first).</td></tr><tr class=""><td class="n">53</td><td><code>/aisdlc:push</code></td><td class="who">Developer</td><td>Share the consolidation, cleanup and completion.</td></tr><tr class=""><td class="n">54</td><td><code>(PM and QA mark their tasks COMPLETED)</code></td><td class="who">PM, QA</td><td>State transitions; the status page shows every role done.</td></tr></tbody></table></div></section>
-<section style="--c:#64748b"><h2><span class="dot"></span>What the run found <small>fixed in the plugin, or still open</small></h2><ul class="findings"><li><span class="tag fixed">Fixed</span> Status page: document viewer now lists markdown documents and the design pages (with preview) only; same look as the role pages.</li><li><span class="tag fixed">Fixed</span> /aisdlc:push listed the first changed file with its first letter cut off.</li><li><span class="tag fixed">Fixed</span> A role that handed off and later received a hand-off back (Dev after QA) stayed &quot;done&quot;; a role whose task is COMPLETED now shows done.</li><li><span class="tag openi">Open</span> /aisdlc-design:sync --pages must also include the pages a page imports (Main.dc.html imports Feed), so a login-only ticket still needs the feed page.</li><li><span class="tag openi">Open</span> /aisdlc-qa:test creates a ticket branch; in the shared repo it should stay on main (no ticket branches).</li><li><span class="tag openi">Open</span> Dev's post-release cleanup deletes protected artifacts including PM's jira.md and requirements.md; in the shared repo it must delete only dev-owned files (done by hand in this run).</li></ul></section>
-<footer>Run on 2026-11-07. Real: init, status page, every state change, hand-off and return, the design sync from the artifact, the code and its tests in aisdlc-demo-app, the QA browser run (headless Chrome), push and pull between clones of a local remote. Simulated: pull request, merge, Jira publishing and release evidence.</footer>
-</main>
-</body>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>aisdlc command flow, PM to release</title>
+    <style>
+      :root {
+        --bg: #f7f6f3;
+        --card: #fff;
+        --ink: #1c1d1f;
+        --mute: #62666d;
+        --line: #dedad3;
+        --code: #f1efea;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #131416;
+          --card: #1b1d20;
+          --ink: #e7e5e2;
+          --mute: #a0a4ab;
+          --line: #34373c;
+          --code: #23262a;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font:
+          15px/1.55 system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      header {
+        padding: 28px 24px 8px;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      h1 {
+        margin: 0 0 4px;
+        font-size: 24px;
+      }
+      header p {
+        margin: 4px 0;
+        color: var(--mute);
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 8px 24px 56px;
+      }
+      .strip {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin: 16px 0 8px;
+      }
+      .pill {
+        display: flex;
+        flex-direction: column;
+        padding: 8px 14px;
+        border-radius: 10px;
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-top: 3px solid var(--c);
+        color: var(--ink);
+        text-decoration: none;
+      }
+      .pill small {
+        color: var(--mute);
+        font-size: 12px;
+      }
+      .arrow {
+        color: var(--mute);
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 14px;
+        font-size: 13px;
+        color: var(--mute);
+        margin: 8px 0 18px;
+      }
+      section {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--c);
+        border-radius: 12px;
+        padding: 16px 18px;
+        margin: 16px 0;
+      }
+      h2 {
+        margin: 0;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      h2 small {
+        font-weight: 500;
+        color: var(--mute);
+        font-size: 13px;
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--c);
+      }
+      .note {
+        margin: 4px 0 10px;
+        color: var(--mute);
+        font-size: 13.5px;
+      }
+      .wrap {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 640px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 7px 9px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+        font-size: 14px;
+      }
+      th {
+        font-size: 11.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--mute);
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      td.n {
+        color: var(--mute);
+        width: 34px;
+        font-variant-numeric: tabular-nums;
+      }
+      td.who {
+        white-space: nowrap;
+        color: var(--mute);
+        font-size: 13px;
+      }
+      tr.sub td:nth-child(2) {
+        padding-left: 26px;
+      }
+      code {
+        font:
+          12.5px ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        background: var(--code);
+        padding: 2px 6px;
+        border-radius: 5px;
+        word-break: break-word;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 650;
+        padding: 0 8px;
+        border-radius: 99px;
+        line-height: 1.7;
+        border: 1px solid currentColor;
+        white-space: nowrap;
+      }
+      .human {
+        color: #a15c00;
+      }
+      .sim {
+        color: #7c3aed;
+      }
+      .opt {
+        color: #62666d;
+      }
+      .once {
+        color: #2563eb;
+      }
+      .loop {
+        color: #b91c1c;
+      }
+      .fixed {
+        color: #15803d;
+      }
+      .openi {
+        color: #b45309;
+      }
+      .findings {
+        margin: 0;
+        padding-left: 0;
+        list-style: none;
+      }
+      .findings li {
+        padding: 6px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .findings li:last-child {
+        border-bottom: none;
+      }
+      footer {
+        color: var(--mute);
+        font-size: 13px;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>aisdlc command flow: PM to release</h1>
+      <p>
+        The commands used in a normal development flow, taken from a real test
+        run of ticket <b>EL-0000</b> (develop a login feature) in the shared
+        repository <code>C:\Evoke\aisdlc-demo</code>, with its design synced
+        from a Claude Design artifact.
+      </p>
+      <p>
+        57 steps. Every role starts with <code>/aisdlc:pull</code> and ends with
+        <code>/aisdlc:push</code> and a hand-off;
+        <code>/aisdlc:push</code> always pulls first and leaves merge conflicts
+        to you.
+      </p>
+    </header>
+    <main>
+      <nav class="strip" aria-label="Phases">
+        <a class="pill" href="#setup" style="--c: #64748b"
+          ><b>Set up</b><small>4 steps</small></a
+        ><span class="arrow" aria-hidden="true">→</span
+        ><a class="pill" href="#pm" style="--c: #2563eb"
+          ><b>PM</b><small>10 steps</small></a
+        ><span class="arrow" aria-hidden="true">→</span
+        ><a class="pill" href="#design" style="--c: #7c3aed"
+          ><b>Design</b><small>4 steps</small></a
+        ><span class="arrow" aria-hidden="true">→</span
+        ><a class="pill" href="#dev" style="--c: #0f766e"
+          ><b>Dev</b><small>16 steps</small></a
+        ><span class="arrow" aria-hidden="true">→</span
+        ><a class="pill" href="#qa" style="--c: #c2410c"
+          ><b>QA</b><small>9 steps</small></a
+        ><span class="arrow" aria-hidden="true">→</span
+        ><a class="pill" href="#loop" style="--c: #b91c1c"
+          ><b>Change request loop</b><small>8 steps</small></a
+        ><span class="arrow" aria-hidden="true">→</span
+        ><a class="pill" href="#release" style="--c: #15803d"
+          ><b>Release</b><small>6 steps</small></a
+        >
+      </nav>
+      <div class="legend">
+        <span
+          ><span class="tag human">Human decision</span> approvals and merges
+          are never done by Claude</span
+        ><span><span class="tag loop">Change request</span> tracked return</span
+        ><span
+          ><span class="tag sim">Simulated in this run</span> no Bitbucket, Jira
+          or CI connected</span
+        ><span><span class="tag opt">Optional, not run</span></span
+        ><span
+          ><span class="tag once">Once</span> per machine or repository</span
+        >
+      </div>
+      <section id="setup" style="--c: #64748b">
+        <h2><span class="dot"></span>Set up <small>Everyone, once</small></h2>
+        <p class="note">Per machine and repository.</p>
+        <div class="wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Command</th>
+                <th>Run by</th>
+                <th>What it does</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="">
+                <td class="n">1</td>
+                <td>
+                  <code
+                    >git clone &lt;repo&gt; (or git init + git remote add origin
+                    &lt;url&gt;)</code
+                  >
+                </td>
+                <td class="who">Everyone</td>
+                <td>
+                  Make the folder the shared git repository.
+                  <span class="tag once">Once</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">2</td>
+                <td>
+                  <code>/aisdlc:init --role &lt;pm|design|dev|qa&gt;</code>
+                </td>
+                <td class="who">Everyone</td>
+                <td>
+                  Scaffold config, tasks, designs, system; record your role
+                  locally. <span class="tag once">Once</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">3</td>
+                <td><code>/aisdlc-qa:init</code></td>
+                <td class="who">QA</td>
+                <td>
+                  Local test scaffold only (tests, fixtures, Playwright config;
+                  gitignored). <span class="tag once">Once</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">4</td>
+                <td><code>/aisdlc:status-page</code></td>
+                <td class="who">Anyone</td>
+                <td>
+                  Start the status page (http://localhost:4320): flow per
+                  ticket, documents, hand-offs. Leave it running.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section id="pm" style="--c: #2563eb">
+        <h2><span class="dot"></span>PM <small>Project manager</small></h2>
+        <p class="note">
+          Requirement gathering, acceptance criteria, hand off.
+        </p>
+        <div class="wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Command</th>
+                <th>Run by</th>
+                <th>What it does</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="">
+                <td class="n">5</td>
+                <td><code>/aisdlc:pull</code></td>
+                <td class="who">PM</td>
+                <td>Latest from the other roles; shows what waits for you.</td>
+              </tr>
+              <tr class="">
+                <td class="n">6</td>
+                <td><code>/aisdlc-pm:requirements EL-0000</code></td>
+                <td class="who">PM</td>
+                <td>
+                  Create the PM task, draft requirements.md from the ticket (or
+                  a pasted brief).
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">7</td>
+                <td><code>/aisdlc-pm:acceptance-criteria EL-0000</code></td>
+                <td class="who">PM</td>
+                <td>Draft numbered criteria AC1..ACn.</td>
+              </tr>
+              <tr class="">
+                <td class="n">8</td>
+                <td>
+                  <code>/aisdlc-pm:approve EL-0000 acceptance_criteria</code>
+                </td>
+                <td class="who">PM</td>
+                <td>
+                  Approve the criteria; the file's hash is pinned.
+                  <span class="tag human">Human decision</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">9</td>
+                <td><code>/aisdlc-pm:jira-sync EL-0000</code></td>
+                <td class="who">PM</td>
+                <td>
+                  Write requirements and criteria into the Jira ticket (Jira
+                  stays optional).
+                  <span class="tag opt">Optional, not run</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">10</td>
+                <td><code>/aisdlc-pm:handoff EL-0000 design|dev</code></td>
+                <td class="who">PM</td>
+                <td>
+                  PM state moves to HANDED_OFF_TO_*; refused unless approved and
+                  unchanged.
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">11</td>
+                <td><code>/aisdlc:push</code></td>
+                <td class="who">PM</td>
+                <td>
+                  Pull first, then commit &quot;EL-0000: ...&quot; and push.
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">12</td>
+                <td><code>/aisdlc:handoff EL-0000 design</code></td>
+                <td class="who">PM</td>
+                <td>Design becomes active (UI tickets only).</td>
+              </tr>
+              <tr class="">
+                <td class="n">13</td>
+                <td><code>/aisdlc:handoff EL-0000 dev</code></td>
+                <td class="who">PM</td>
+                <td>Dev becomes active. PM can hand off to both at once.</td>
+              </tr>
+              <tr class="">
+                <td class="n">14</td>
+                <td><code>/aisdlc:push</code></td>
+                <td class="who">PM</td>
+                <td>Share the hand-off events.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section id="design" style="--c: #7c3aed">
+        <h2><span class="dot"></span>Design <small>Designer</small></h2>
+        <p class="note">
+          Designs are synced from Claude Design into designs/EL-0000/.
+        </p>
+        <div class="wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Command</th>
+                <th>Run by</th>
+                <th>What it does</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="">
+                <td class="n">15</td>
+                <td><code>/aisdlc:pull</code></td>
+                <td class="who">Designer</td>
+                <td>See the hand-off from PM.</td>
+              </tr>
+              <tr class="">
+                <td class="n">16</td>
+                <td>
+                  <code
+                    >/aisdlc-design:sync &lt;artifact link&gt; --ticket EL-0000
+                    [--pages Main]</code
+                  >
+                </td>
+                <td class="who">Designer</td>
+                <td>
+                  Copy the prototype pages, the viewer runtime and design.md
+                  into designs/EL-0000/ after a safety scan. In the shared repo
+                  it stops before committing.
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">17</td>
+                <td><code>/aisdlc:push</code></td>
+                <td class="who">Designer</td>
+                <td>Pull first, then commit and push the design folder.</td>
+              </tr>
+              <tr class="">
+                <td class="n">18</td>
+                <td><code>/aisdlc:handoff EL-0000 dev</code></td>
+                <td class="who">Designer</td>
+                <td>Design is done; Dev has the design.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section id="dev" style="--c: #0f766e">
+        <h2><span class="dot"></span>Dev <small>Developer</small></h2>
+        <p class="note">
+          Build from tasks/EL-0000/ and designs/EL-0000/. /aisdlc-dev:feature
+          runs the first five stage skills for you.
+        </p>
+        <div class="wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Command</th>
+                <th>Run by</th>
+                <th>What it does</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="">
+                <td class="n">19</td>
+                <td><code>/aisdlc:pull</code></td>
+                <td class="who">Developer</td>
+                <td>Get PM requirements and criteria, and the design.</td>
+              </tr>
+              <tr class="">
+                <td class="n">20</td>
+                <td>
+                  <code>/aisdlc-dev:add-repo &lt;name&gt; &lt;path&gt;</code>
+                </td>
+                <td class="who">Developer</td>
+                <td>
+                  Register the application repository (once per repository).
+                  <span class="tag once">Once</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">21</td>
+                <td><code>/aisdlc-dev:feature EL-0000</code></td>
+                <td class="who">Developer</td>
+                <td>
+                  Dev task; reads the PM's files (no Jira fetch); drives the
+                  stages below.
+                </td>
+              </tr>
+              <tr class="sub">
+                <td class="n"></td>
+                <td>
+                  <code
+                    >jira-ticket, impact-analysis, repository-preparation</code
+                  >
+                </td>
+                <td class="who">(inside feature)</td>
+                <td>
+                  Ticket content, impact analysis, branch EL-0000 from the
+                  latest main in the app repository.
+                </td>
+              </tr>
+              <tr class="sub">
+                <td class="n"></td>
+                <td><code>/aisdlc-dev:design-link EL-0000</code></td>
+                <td class="who">(inside feature)</td>
+                <td>
+                  Read designs/EL-0000/, record snapshot v1, pin it with the
+                  source commit.
+                </td>
+              </tr>
+              <tr class="sub">
+                <td class="n"></td>
+                <td><code>/aisdlc-dev:feature-specification EL-0000</code></td>
+                <td class="who">(inside feature)</td>
+                <td>
+                  Short specification with the design pin and criteria mapping.
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">22</td>
+                <td><code>/aisdlc-dev:approve EL-0000 specification</code></td>
+                <td class="who">Developer</td>
+                <td>
+                  Approve the specification; implementation is blocked until
+                  then. <span class="tag human">Human decision</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">23</td>
+                <td><code>(implement in the application repository)</code></td>
+                <td class="who">Developer</td>
+                <td>Code on branch EL-0000 after approval.</td>
+              </tr>
+              <tr class="">
+                <td class="n">24</td>
+                <td><code>/aisdlc-dev:testing EL-0000</code></td>
+                <td class="who">Developer</td>
+                <td>Run tests, record validation.md.</td>
+              </tr>
+              <tr class="">
+                <td class="n">25</td>
+                <td><code>/aisdlc-dev:code-review EL-0000</code></td>
+                <td class="who">Developer</td>
+                <td>Independent review, recorded in code-review.md.</td>
+              </tr>
+              <tr class="">
+                <td class="n">26</td>
+                <td><code>/aisdlc-dev:commit EL-0000</code></td>
+                <td class="who">Developer</td>
+                <td>
+                  Commit &quot;EL-0000: ...&quot; on branch EL-0000 in the
+                  application repository.
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">27</td>
+                <td><code>/aisdlc-dev:pr EL-0000</code></td>
+                <td class="who">Developer</td>
+                <td>
+                  Push the branch, open the pull request in Bitbucket.
+                  <span class="tag sim">Simulated in this run</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">28</td>
+                <td><code>(reviewer merges the pull request)</code></td>
+                <td class="who">Reviewer</td>
+                <td>
+                  The merge is always a human action.
+                  <span class="tag sim">Simulated in this run</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">29</td>
+                <td><code>/aisdlc-dev:pr-comments EL-0000</code></td>
+                <td class="who">Developer</td>
+                <td>
+                  Read, triage and fix review comments (when there are any).
+                  <span class="tag opt">Optional, not run</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">30</td>
+                <td><code>/aisdlc:push</code></td>
+                <td class="who">Developer</td>
+                <td>Share spec, design snapshot, validation, state.</td>
+              </tr>
+              <tr class="">
+                <td class="n">31</td>
+                <td><code>/aisdlc:handoff EL-0000 qa</code></td>
+                <td class="who">Developer</td>
+                <td>QA becomes active (after the merge).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section id="qa" style="--c: #c2410c">
+        <h2><span class="dot"></span>QA <small>QA engineer</small></h2>
+        <p class="note">
+          Scenarios come from the PM's acceptance criteria. Tests stay local;
+          documents are shared.
+        </p>
+        <div class="wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Command</th>
+                <th>Run by</th>
+                <th>What it does</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="">
+                <td class="n">32</td>
+                <td><code>/aisdlc:pull</code></td>
+                <td class="who">QA</td>
+                <td>See the hand-off from Dev.</td>
+              </tr>
+              <tr class="">
+                <td class="n">33</td>
+                <td><code>/aisdlc-qa:test EL-0000</code></td>
+                <td class="who">QA</td>
+                <td>
+                  QA task from the PM's criteria, environment check, scenario
+                  drafting; continues through approval, tests and the run.
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">34</td>
+                <td>
+                  <code
+                    >/aisdlc:return EL-0000 pm &quot;&lt;reason&gt;&quot;</code
+                  >
+                </td>
+                <td class="who">QA</td>
+                <td>
+                  Gap found: no criterion for the 8-character password rule.
+                  Sends the ticket back; PM shows &quot;changes requested&quot;.
+                  <span class="tag loop">Change request</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">35</td>
+                <td><code>/aisdlc-qa:approve EL-0000 scenarios</code></td>
+                <td class="who">QA</td>
+                <td>
+                  Approve scenarios S1-S5; hash pinned (after the loop below).
+                  <span class="tag human">Human decision</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">36</td>
+                <td><code>/aisdlc-qa:run EL-0000</code></td>
+                <td class="who">QA</td>
+                <td>
+                  Run the tests (a browser run); results.md. Demo: headless
+                  Chrome stood in for Playwright.
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">37</td>
+                <td><code>/aisdlc-qa:approve EL-0000 signoff</code></td>
+                <td class="who">QA</td>
+                <td>
+                  Sign off the results: 5 of 5 pass, 0 defects.
+                  <span class="tag human">Human decision</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">38</td>
+                <td><code>/aisdlc-qa:publish EL-0000</code></td>
+                <td class="who">QA</td>
+                <td>
+                  Evidence and results comment on the Jira ticket (skipped in
+                  the demo). <span class="tag sim">Simulated in this run</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">39</td>
+                <td><code>/aisdlc:push</code></td>
+                <td class="who">QA</td>
+                <td>
+                  Share scenarios, spec, results, state. tests/ is never
+                  committed.
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">40</td>
+                <td><code>/aisdlc:handoff EL-0000 dev</code></td>
+                <td class="who">QA</td>
+                <td>Dev (release) becomes active again.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section id="loop" style="--c: #b91c1c">
+        <h2>
+          <span class="dot"></span>Change request loop
+          <small>QA to PM and back</small>
+        </h2>
+        <p class="note">
+          A request for changes, tracked until resolved. Runs between QA
+          drafting scenarios and approving them.
+        </p>
+        <div class="wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Command</th>
+                <th>Run by</th>
+                <th>What it does</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="">
+                <td class="n">41</td>
+                <td>
+                  <code
+                    >/aisdlc:return EL-0000 pm &quot;&lt;reason&gt;&quot;</code
+                  >
+                </td>
+                <td class="who">QA</td>
+                <td>
+                  Reason is required; adds an open item to changes.md and the
+                  status page. <span class="tag loop">Change request</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">42</td>
+                <td><code>/aisdlc:pull</code></td>
+                <td class="who">PM</td>
+                <td>PM sees 1 open change request.</td>
+              </tr>
+              <tr class="">
+                <td class="n">43</td>
+                <td><code>/aisdlc-pm:refine EL-0000</code></td>
+                <td class="who">PM</td>
+                <td>
+                  Reopen the criteria (state back to
+                  ACCEPTANCE_CRITERIA_DEFINED).
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">44</td>
+                <td><code>(edit acceptance-criteria.md: add AC5)</code></td>
+                <td class="who">PM</td>
+                <td>Numbers stay stable; the edit invalidates the approval.</td>
+              </tr>
+              <tr class="">
+                <td class="n">45</td>
+                <td>
+                  <code>/aisdlc-pm:approve EL-0000 acceptance_criteria</code>
+                </td>
+                <td class="who">PM</td>
+                <td>
+                  Approve AC1-AC5 again.
+                  <span class="tag human">Human decision</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">46</td>
+                <td><code>/aisdlc-pm:handoff EL-0000 dev</code></td>
+                <td class="who">PM</td>
+                <td>PM state back to HANDED_OFF_TO_DEV.</td>
+              </tr>
+              <tr class="">
+                <td class="n">47</td>
+                <td><code>/aisdlc:handoff EL-0000 qa --resolve all</code></td>
+                <td class="who">PM</td>
+                <td>
+                  Hand back to QA; refused while change requests are open unless
+                  resolved here. <span class="tag loop">Change request</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">48</td>
+                <td><code>/aisdlc:push</code></td>
+                <td class="who">PM</td>
+                <td>Share the revised criteria and the hand-off.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section id="release" style="--c: #15803d">
+        <h2>
+          <span class="dot"></span>Release
+          <small>Developer (release owner)</small>
+        </h2>
+        <p class="note">
+          After QA's sign-off Dev owns the release. Production deployment itself
+          is disabled in the plugin config.
+        </p>
+        <div class="wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Command</th>
+                <th>Run by</th>
+                <th>What it does</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="">
+                <td class="n">49</td>
+                <td><code>/aisdlc:pull</code></td>
+                <td class="who">Developer</td>
+                <td>See QA's sign-off and hand-off.</td>
+              </tr>
+              <tr class="">
+                <td class="n">50</td>
+                <td><code>/aisdlc-dev:post-release EL-0000</code></td>
+                <td class="who">Developer</td>
+                <td>
+                  Record the release (UAT merge counts as released); state
+                  RELEASED. Evidence simulated in the demo.
+                  <span class="tag sim">Simulated in this run</span>
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">51</td>
+                <td>
+                  <code
+                    >/aisdlc-dev:product-knowledge-consolidation EL-0000</code
+                  >
+                </td>
+                <td class="who">Developer</td>
+                <td>
+                  Write the released behavior into system/product/, then clean
+                  up the dev-owned task artifacts.
+                </td>
+              </tr>
+              <tr class="">
+                <td class="n">52</td>
+                <td><code>/aisdlc-dev:finish EL-0000</code></td>
+                <td class="who">Developer</td>
+                <td>Dev task COMPLETED (needs the cleanup first).</td>
+              </tr>
+              <tr class="">
+                <td class="n">53</td>
+                <td><code>/aisdlc:push</code></td>
+                <td class="who">Developer</td>
+                <td>Share the consolidation, cleanup and completion.</td>
+              </tr>
+              <tr class="">
+                <td class="n">54</td>
+                <td><code>(PM and QA mark their tasks COMPLETED)</code></td>
+                <td class="who">PM, QA</td>
+                <td>
+                  State transitions; the status page shows every role done.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section style="--c: #64748b">
+        <h2>
+          <span class="dot"></span>What the run found
+          <small>fixed in the plugin, or still open</small>
+        </h2>
+        <ul class="findings">
+          <li>
+            <span class="tag fixed">Fixed</span> Status page: document viewer
+            now lists markdown documents and the design pages (with preview)
+            only; same look as the role pages.
+          </li>
+          <li>
+            <span class="tag fixed">Fixed</span> /aisdlc:push listed the first
+            changed file with its first letter cut off.
+          </li>
+          <li>
+            <span class="tag fixed">Fixed</span> A role that handed off and
+            later received a hand-off back (Dev after QA) stayed
+            &quot;done&quot;; a role whose task is COMPLETED now shows done.
+          </li>
+          <li>
+            <span class="tag openi">Open</span> /aisdlc-design:sync --pages must
+            also include the pages a page imports (Main.dc.html imports Feed),
+            so a login-only ticket still needs the feed page.
+          </li>
+          <li>
+            <span class="tag openi">Open</span> /aisdlc-qa:test creates a ticket
+            branch; in the shared repo it should stay on main (no ticket
+            branches).
+          </li>
+          <li>
+            <span class="tag openi">Open</span> Dev's post-release cleanup
+            deletes protected artifacts including PM's jira.md and
+            requirements.md; in the shared repo it must delete only dev-owned
+            files (done by hand in this run).
+          </li>
+        </ul>
+      </section>
+      <footer>
+        Run on 2026-11-07. Real: init, status page, every state change, hand-off
+        and return, the design sync from the artifact, the code and its tests in
+        aisdlc-demo-app, the QA browser run (headless Chrome), push and pull
+        between clones of a local remote. Simulated: pull request, merge, Jira
+        publishing and release evidence.
+      </footer>
+    </main>
+  </body>
 </html>

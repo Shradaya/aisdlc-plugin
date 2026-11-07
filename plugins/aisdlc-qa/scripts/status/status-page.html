@@ -1,248 +1,1026 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>aisdlc QA status</title>
-<style>
-  :root {
-    --bg: #f7f6f3; --surface: #ffffff; --surface-2: #f1efea; --text: #1c1d1f; --muted: #62666d; --line: #dedad3;
-    --accent: #2457d6; --accent-soft: #e8eefc;
-    --ok: #1d7a43; --ok-soft: #e4f4ea; --warn: #a15c00; --warn-soft: #fcf0dc; --bad: #b42318; --bad-soft: #fde8e6;
-    --you: #a15c00; --you-soft: #fcf0dc; --claude: #2457d6; --claude-soft: #e8eefc; --dev: #6d3fd6; --dev-soft: #efe9fd;
-    --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #131416; --surface: #1b1d20; --surface-2: #23262a; --text: #e7e5e2; --muted: #a0a4ab; --line: #34373c;
-      --accent: #7ea6ff; --accent-soft: #1d2a45;
-      --ok: #5fcb8b; --ok-soft: #173525; --warn: #f0ad4e; --warn-soft: #3a2b13; --bad: #ff7b6e; --bad-soft: #401c19;
-      --you: #f0ad4e; --you-soft: #3a2b13; --claude: #7ea6ff; --claude-soft: #1d2a45; --dev: #b99bff; --dev-soft: #2b2242;
-    }
-  }
-  :root[data-theme="dark"] {
-    --bg: #131416; --surface: #1b1d20; --surface-2: #23262a; --text: #e7e5e2; --muted: #a0a4ab; --line: #34373c;
-    --accent: #7ea6ff; --accent-soft: #1d2a45;
-    --ok: #5fcb8b; --ok-soft: #173525; --warn: #f0ad4e; --warn-soft: #3a2b13; --bad: #ff7b6e; --bad-soft: #401c19;
-    --you: #f0ad4e; --you-soft: #3a2b13; --claude: #7ea6ff; --claude-soft: #1d2a45; --dev: #b99bff; --dev-soft: #2b2242;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 14.5px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  code, pre, .mono { font-family: var(--mono); }
-  header.top { position: sticky; top: 0; z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
-  .top-in { padding: 10px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-  .brand { font-weight: 700; font-size: 16px; color: var(--text); }
-  .brand small { font-weight: 500; color: var(--muted); margin-left: 6px; }
-  .live { margin-left: auto; font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); display: inline-block; }
-  .dot.off { background: var(--bad); }
-  main { padding: 20px 16px 60px; }
-  h1 { font-size: 22px; margin: 0; line-height: 1.25; }
-  h2 { font-size: 15px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 650; }
-  section.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; min-width: 0; }
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
-  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
-  .stat b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; line-height: 1.1; }
-  .stat span { font-size: 12.5px; color: var(--muted); }
-  .stat.you b { color: var(--you); } .stat.bad b { color: var(--bad); } .stat.dev b { color: var(--dev); }
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; white-space: nowrap; }
-  tr:last-child td { border-bottom: none; }
-  tbody tr.click { cursor: pointer; }
-  tbody tr.click:hover td { background: var(--surface-2); }
-  .chip { display: inline-block; font: 600 11.5px/1.6 var(--mono); padding: 0 7px; border-radius: 5px; background: var(--surface-2); color: var(--text); white-space: nowrap; }
-  .chip.gate { background: var(--warn-soft); color: var(--warn); }
-  .chip.bad { background: var(--bad-soft); color: var(--bad); }
-  .chip.ok { background: var(--ok-soft); color: var(--ok); }
-  .chip.accent { background: var(--accent-soft); color: var(--accent); }
-  .chip.dev { background: var(--dev-soft); color: var(--dev); }
-  .who { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 0 7px; border-radius: 99px; line-height: 1.7; white-space: nowrap; }
-  .who.you { background: var(--you-soft); color: var(--you); }
-  .who.claude { background: var(--claude-soft); color: var(--claude); }
-  .who.none { background: var(--surface-2); color: var(--muted); }
-  .bar { height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; min-width: 90px; }
-  .bar i { display: block; height: 100%; background: var(--accent); }
-  .bar.bad i { background: var(--bad); }
-  .muted { color: var(--muted); }
-  .small { font-size: 12.5px; }
-  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-  .tabs button { font: inherit; font-size: 13px; padding: 4px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--text); cursor: pointer; }
-  .tabs button.on { background: var(--text); color: var(--surface); border-color: var(--text); }
-  .tabs button .r { font-size: 11px; margin-left: 4px; }
-  ul.plain { list-style: none; margin: 0; padding: 0; }
-  ul.plain li { padding: 6px 0; border-bottom: 1px solid var(--line); }
-  ul.plain li:last-child { border-bottom: none; }
-  .empty { color: var(--muted); font-style: italic; }
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>aisdlc QA status</title>
+    <style>
+      :root {
+        --bg: #f7f6f3;
+        --surface: #ffffff;
+        --surface-2: #f1efea;
+        --text: #1c1d1f;
+        --muted: #62666d;
+        --line: #dedad3;
+        --accent: #2457d6;
+        --accent-soft: #e8eefc;
+        --ok: #1d7a43;
+        --ok-soft: #e4f4ea;
+        --warn: #a15c00;
+        --warn-soft: #fcf0dc;
+        --bad: #b42318;
+        --bad-soft: #fde8e6;
+        --you: #a15c00;
+        --you-soft: #fcf0dc;
+        --claude: #2457d6;
+        --claude-soft: #e8eefc;
+        --dev: #6d3fd6;
+        --dev-soft: #efe9fd;
+        --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #131416;
+          --surface: #1b1d20;
+          --surface-2: #23262a;
+          --text: #e7e5e2;
+          --muted: #a0a4ab;
+          --line: #34373c;
+          --accent: #7ea6ff;
+          --accent-soft: #1d2a45;
+          --ok: #5fcb8b;
+          --ok-soft: #173525;
+          --warn: #f0ad4e;
+          --warn-soft: #3a2b13;
+          --bad: #ff7b6e;
+          --bad-soft: #401c19;
+          --you: #f0ad4e;
+          --you-soft: #3a2b13;
+          --claude: #7ea6ff;
+          --claude-soft: #1d2a45;
+          --dev: #b99bff;
+          --dev-soft: #2b2242;
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #131416;
+        --surface: #1b1d20;
+        --surface-2: #23262a;
+        --text: #e7e5e2;
+        --muted: #a0a4ab;
+        --line: #34373c;
+        --accent: #7ea6ff;
+        --accent-soft: #1d2a45;
+        --ok: #5fcb8b;
+        --ok-soft: #173525;
+        --warn: #f0ad4e;
+        --warn-soft: #3a2b13;
+        --bad: #ff7b6e;
+        --bad-soft: #401c19;
+        --you: #f0ad4e;
+        --you-soft: #3a2b13;
+        --claude: #7ea6ff;
+        --claude-soft: #1d2a45;
+        --dev: #b99bff;
+        --dev-soft: #2b2242;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          14.5px/1.55 system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+      }
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      code,
+      pre,
+      .mono {
+        font-family: var(--mono);
+      }
+      header.top {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: var(--surface);
+        border-bottom: 1px solid var(--line);
+      }
+      .top-in {
+        padding: 10px 16px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+      .brand {
+        font-weight: 700;
+        font-size: 16px;
+        color: var(--text);
+      }
+      .brand small {
+        font-weight: 500;
+        color: var(--muted);
+        margin-left: 6px;
+      }
+      .live {
+        margin-left: auto;
+        font-size: 12.5px;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--ok);
+        display: inline-block;
+      }
+      .dot.off {
+        background: var(--bad);
+      }
+      main {
+        padding: 20px 16px 60px;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0;
+        line-height: 1.25;
+      }
+      h2 {
+        font-size: 15px;
+        margin: 0 0 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        font-weight: 650;
+      }
+      section.card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+        min-width: 0;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .stat {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 12px 14px;
+      }
+      .stat b {
+        display: block;
+        font-size: 26px;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.1;
+      }
+      .stat span {
+        font-size: 12.5px;
+        color: var(--muted);
+      }
+      .stat.you b {
+        color: var(--you);
+      }
+      .stat.bad b {
+        color: var(--bad);
+      }
+      .stat.dev b {
+        color: var(--dev);
+      }
+      .table-wrap {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        font-size: 11.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      tbody tr.click {
+        cursor: pointer;
+      }
+      tbody tr.click:hover td {
+        background: var(--surface-2);
+      }
+      .chip {
+        display: inline-block;
+        font: 600 11.5px/1.6 var(--mono);
+        padding: 0 7px;
+        border-radius: 5px;
+        background: var(--surface-2);
+        color: var(--text);
+        white-space: nowrap;
+      }
+      .chip.gate {
+        background: var(--warn-soft);
+        color: var(--warn);
+      }
+      .chip.bad {
+        background: var(--bad-soft);
+        color: var(--bad);
+      }
+      .chip.ok {
+        background: var(--ok-soft);
+        color: var(--ok);
+      }
+      .chip.accent {
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+      .chip.dev {
+        background: var(--dev-soft);
+        color: var(--dev);
+      }
+      .who {
+        display: inline-block;
+        font-size: 11.5px;
+        font-weight: 700;
+        padding: 0 7px;
+        border-radius: 99px;
+        line-height: 1.7;
+        white-space: nowrap;
+      }
+      .who.you {
+        background: var(--you-soft);
+        color: var(--you);
+      }
+      .who.claude {
+        background: var(--claude-soft);
+        color: var(--claude);
+      }
+      .who.none {
+        background: var(--surface-2);
+        color: var(--muted);
+      }
+      .bar {
+        height: 6px;
+        background: var(--surface-2);
+        border-radius: 3px;
+        overflow: hidden;
+        min-width: 90px;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        background: var(--accent);
+      }
+      .bar.bad i {
+        background: var(--bad);
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .small {
+        font-size: 12.5px;
+      }
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 10px;
+      }
+      .tabs button {
+        font: inherit;
+        font-size: 13px;
+        padding: 4px 12px;
+        border-radius: 99px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--text);
+        cursor: pointer;
+      }
+      .tabs button.on {
+        background: var(--text);
+        color: var(--surface);
+        border-color: var(--text);
+      }
+      .tabs button .r {
+        font-size: 11px;
+        margin-left: 4px;
+      }
+      ul.plain {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+      }
+      ul.plain li {
+        padding: 6px 0;
+        border-bottom: 1px solid var(--line);
+      }
+      ul.plain li:last-child {
+        border-bottom: none;
+      }
+      .empty {
+        color: var(--muted);
+        font-style: italic;
+      }
 
-  /* task detail */
-  .crumb { font-size: 13px; margin-bottom: 10px; }
-  .task-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 6px; }
-  .task-head .sub { color: var(--muted); font-size: 13px; width: 100%; }
-  .banner { border-radius: 10px; padding: 12px 14px; margin: 12px 0 16px; border: 1px solid; }
-  .banner.bad { background: var(--bad-soft); border-color: var(--bad); color: var(--text); }
-  .banner.next { background: var(--surface); border-color: var(--line); }
-  .banner .lbl { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 650; display: block; margin-bottom: 2px; }
-  .grid { display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: 16px; align-items: start; }
-  .grid > * { min-width: 0; }
-  @media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
-  ol.flow { list-style: none; margin: 0; padding: 0; position: relative; }
-  ol.flow li { position: relative; padding: 4px 0 10px 28px; }
-  ol.flow li::before { content: ""; position: absolute; left: 8px; top: 18px; bottom: -4px; width: 2px; background: var(--line); }
-  ol.flow li:last-child::before { display: none; }
-  ol.flow li.done::before, ol.flow li.skipped::before { background: var(--accent); }
-  .node { position: absolute; left: 1px; top: 7px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface); }
-  li.done .node { background: var(--accent); border-color: var(--accent); }
-  li.done .node::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid var(--surface); border-width: 0 2px 2px 0; transform: rotate(45deg); }
-  li.skipped .node { border-style: dashed; border-color: var(--accent); }
-  li.current .node { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); background: var(--accent-soft); }
-  li.current .node::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--accent); }
-  li.interrupted .node { border-color: var(--bad); background: var(--bad-soft); box-shadow: 0 0 0 4px var(--bad-soft); }
-  li.revisited .node { border-color: var(--accent); border-style: dotted; }
-  li.gatestep .node { border-radius: 3px; }
-  .st-name { font: 600 12.5px var(--mono); }
-  li.future .st-name, li.revisited .st-name { color: var(--muted); font-weight: 500; }
-  li.skipped .st-name { color: var(--muted); text-decoration: line-through; font-weight: 500; }
-  li.current .st-name { color: var(--accent); }
-  li.interrupted .st-name { color: var(--bad); }
-  .st-meta { font-size: 12px; color: var(--muted); }
-  .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); margin: 0 0 12px; }
-  dl.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0; font-size: 13.5px; }
-  dl.kv dt { color: var(--muted); }
-  dl.kv dd { margin: 0; overflow-wrap: anywhere; }
+      /* task detail */
+      .crumb {
+        font-size: 13px;
+        margin-bottom: 10px;
+      }
+      .task-head {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 14px;
+        align-items: center;
+        margin-bottom: 6px;
+      }
+      .task-head .sub {
+        color: var(--muted);
+        font-size: 13px;
+        width: 100%;
+      }
+      .banner {
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin: 12px 0 16px;
+        border: 1px solid;
+      }
+      .banner.bad {
+        background: var(--bad-soft);
+        border-color: var(--bad);
+        color: var(--text);
+      }
+      .banner.next {
+        background: var(--surface);
+        border-color: var(--line);
+      }
+      .banner .lbl {
+        font-size: 11.5px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        font-weight: 650;
+        display: block;
+        margin-bottom: 2px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+        gap: 16px;
+        align-items: start;
+      }
+      .grid > * {
+        min-width: 0;
+      }
+      @media (max-width: 860px) {
+        .grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+      ol.flow {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        position: relative;
+      }
+      ol.flow li {
+        position: relative;
+        padding: 4px 0 10px 28px;
+      }
+      ol.flow li::before {
+        content: "";
+        position: absolute;
+        left: 8px;
+        top: 18px;
+        bottom: -4px;
+        width: 2px;
+        background: var(--line);
+      }
+      ol.flow li:last-child::before {
+        display: none;
+      }
+      ol.flow li.done::before,
+      ol.flow li.skipped::before {
+        background: var(--accent);
+      }
+      .node {
+        position: absolute;
+        left: 1px;
+        top: 7px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 2px solid var(--line);
+        background: var(--surface);
+      }
+      li.done .node {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+      li.done .node::after {
+        content: "";
+        position: absolute;
+        left: 4px;
+        top: 1px;
+        width: 4px;
+        height: 8px;
+        border: solid var(--surface);
+        border-width: 0 2px 2px 0;
+        transform: rotate(45deg);
+      }
+      li.skipped .node {
+        border-style: dashed;
+        border-color: var(--accent);
+      }
+      li.current .node {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 4px var(--accent-soft);
+        background: var(--accent-soft);
+      }
+      li.current .node::after {
+        content: "";
+        position: absolute;
+        inset: 3px;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+      li.interrupted .node {
+        border-color: var(--bad);
+        background: var(--bad-soft);
+        box-shadow: 0 0 0 4px var(--bad-soft);
+      }
+      li.revisited .node {
+        border-color: var(--accent);
+        border-style: dotted;
+      }
+      li.gatestep .node {
+        border-radius: 3px;
+      }
+      .st-name {
+        font: 600 12.5px var(--mono);
+      }
+      li.future .st-name,
+      li.revisited .st-name {
+        color: var(--muted);
+        font-weight: 500;
+      }
+      li.skipped .st-name {
+        color: var(--muted);
+        text-decoration: line-through;
+        font-weight: 500;
+      }
+      li.current .st-name {
+        color: var(--accent);
+      }
+      li.interrupted .st-name {
+        color: var(--bad);
+      }
+      .st-meta {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 12px;
+        font-size: 12px;
+        color: var(--muted);
+        margin: 0 0 12px;
+      }
+      dl.kv {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr);
+        gap: 4px 14px;
+        margin: 0;
+        font-size: 13.5px;
+      }
+      dl.kv dt {
+        color: var(--muted);
+      }
+      dl.kv dd {
+        margin: 0;
+        overflow-wrap: anywhere;
+      }
 
-  /* runs and screenshots */
-  .run-head { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; margin: 4px 0 12px; font-size: 13px; }
-  .run-head b { font-size: 15px; }
-  .scen { border: 1px solid var(--line); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
-  .scen-head { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); }
-  .scen-head .t { font-weight: 600; }
-  .scen-err { margin: 10px 14px 0; padding: 8px 10px; background: var(--bad-soft); border-radius: 6px; font: 12px/1.45 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 160px; overflow: auto; }
-  .shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; padding: 12px 14px 14px; }
-  .shot { margin: 0; cursor: zoom-in; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; }
-  .shot img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; object-position: top; display: block; background: var(--surface-2); }
-  .shot figcaption { padding: 6px 8px; font-size: 12px; line-height: 1.35; border-top: 1px solid var(--line); }
-  .shot figcaption b { font-family: var(--mono); margin-right: 4px; }
-  .shot.failed { border-color: var(--bad); box-shadow: 0 0 0 2px var(--bad-soft); }
-  .shot.failed figcaption { color: var(--bad); }
-  .shot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  video { max-width: 100%; border-radius: 8px; border: 1px solid var(--line); }
-  .lightbox { position: fixed; inset: 0; z-index: 50; background: rgba(10, 11, 13, .92); display: none; flex-direction: column; }
-  .lightbox.on { display: flex; }
-  .lb-bar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; color: #e7e5e2; font-size: 13px; }
-  .lb-bar .cap { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-  .lb-bar button { font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 6px; border: 1px solid #4a4d52; background: #24262a; color: #e7e5e2; cursor: pointer; }
-  /* Screenshots are often full-page (very tall): default is full width with scrolling; "Fit" shows it whole. */
-  .lb-img { flex: 1; min-height: 0; overflow: auto; padding: 0 16px 16px; text-align: center; }
-  .lb-img img { max-width: 100%; height: auto; border-radius: 6px; background: #fff; vertical-align: top; }
-  .lightbox.fit .lb-img { display: flex; align-items: center; justify-content: center; overflow: hidden; }
-  .lightbox.fit .lb-img img { max-height: 100%; object-fit: contain; }
+      /* runs and screenshots */
+      .run-head {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 16px;
+        align-items: baseline;
+        margin: 4px 0 12px;
+        font-size: 13px;
+      }
+      .run-head b {
+        font-size: 15px;
+      }
+      .scen {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        margin-bottom: 14px;
+        overflow: hidden;
+      }
+      .scen-head {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 12px;
+        align-items: center;
+        padding: 10px 14px;
+        background: var(--surface-2);
+        border-bottom: 1px solid var(--line);
+      }
+      .scen-head .t {
+        font-weight: 600;
+      }
+      .scen-err {
+        margin: 10px 14px 0;
+        padding: 8px 10px;
+        background: var(--bad-soft);
+        border-radius: 6px;
+        font: 12px/1.45 var(--mono);
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        max-height: 160px;
+        overflow: auto;
+      }
+      .shots {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 12px;
+        padding: 12px 14px 14px;
+      }
+      .shot {
+        margin: 0;
+        cursor: zoom-in;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--surface);
+        display: flex;
+        flex-direction: column;
+      }
+      .shot img {
+        width: 100%;
+        aspect-ratio: 16 / 10;
+        object-fit: cover;
+        object-position: top;
+        display: block;
+        background: var(--surface-2);
+      }
+      .shot figcaption {
+        padding: 6px 8px;
+        font-size: 12px;
+        line-height: 1.35;
+        border-top: 1px solid var(--line);
+      }
+      .shot figcaption b {
+        font-family: var(--mono);
+        margin-right: 4px;
+      }
+      .shot.failed {
+        border-color: var(--bad);
+        box-shadow: 0 0 0 2px var(--bad-soft);
+      }
+      .shot.failed figcaption {
+        color: var(--bad);
+      }
+      .shot:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+      video {
+        max-width: 100%;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+      }
+      .lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        background: rgba(10, 11, 13, 0.92);
+        display: none;
+        flex-direction: column;
+      }
+      .lightbox.on {
+        display: flex;
+      }
+      .lb-bar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 16px;
+        color: #e7e5e2;
+        font-size: 13px;
+      }
+      .lb-bar .cap {
+        flex: 1;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      .lb-bar button {
+        font: inherit;
+        font-size: 13px;
+        padding: 5px 12px;
+        border-radius: 6px;
+        border: 1px solid #4a4d52;
+        background: #24262a;
+        color: #e7e5e2;
+        cursor: pointer;
+      }
+      /* Screenshots are often full-page (very tall): default is full width with scrolling; "Fit" shows it whole. */
+      .lb-img {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        padding: 0 16px 16px;
+        text-align: center;
+      }
+      .lb-img img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 6px;
+        background: #fff;
+        vertical-align: top;
+      }
+      .lightbox.fit .lb-img {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      .lightbox.fit .lb-img img {
+        max-height: 100%;
+        object-fit: contain;
+      }
 
-  /* documents */
-  .docs { display: grid; grid-template-columns: minmax(200px, 280px) minmax(0, 1fr); gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
-  @media (max-width: 760px) { .docs { grid-template-columns: minmax(0, 1fr); } .doclist { border-right: none; border-bottom: 1px solid var(--line); max-height: 220px; } }
-  .doclist { border-right: 1px solid var(--line); background: var(--surface-2); max-height: 760px; overflow: auto; }
-  .doclist a { display: block; padding: 7px 12px; color: var(--text); font-size: 13px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
-  .doclist a.on { background: var(--surface); color: var(--accent); font-weight: 600; box-shadow: inset 3px 0 0 var(--accent); }
-  .doclist a small { display: block; color: var(--muted); font-size: 11.5px; font-weight: 400; }
-  .viewer { padding: 18px 22px; min-width: 0; max-height: 760px; overflow: auto; }
-  .viewer pre { background: var(--surface-2); padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; }
-  .viewer pre.raw { white-space: pre-wrap; overflow-wrap: anywhere; }
-  .viewer img { max-width: 100%; border: 1px solid var(--line); border-radius: 6px; }
-  .md h1 { font-size: 21px; margin: 0 0 12px; } .md h2 { font-size: 17px; text-transform: none; letter-spacing: 0; color: var(--text); margin: 22px 0 8px; }
-  .md h3 { font-size: 15px; margin: 18px 0 6px; } .md h4, .md h5, .md h6 { font-size: 14px; margin: 14px 0 4px; }
-  .md table { width: auto; margin: 10px 0; font-size: 13px; } .md th, .md td { border: 1px solid var(--line); }
-  .md blockquote { margin: 10px 0; padding: 4px 14px; border-left: 3px solid var(--line); color: var(--muted); }
-  .md code { background: var(--surface-2); padding: 1px 4px; border-radius: 4px; font-size: .9em; } .md pre code { background: none; padding: 0; }
-  .md hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
-  .doc-head { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
-  .doc-head b { font-family: var(--mono); font-size: 13.5px; }
-  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-left: auto; }
-  .seg button { font: inherit; font-size: 12px; padding: 2px 10px; border: none; background: var(--surface); color: var(--muted); cursor: pointer; }
-  .seg button.on { background: var(--surface-2); color: var(--text); font-weight: 600; }
-  .ev td { font-size: 13px; }
-</style>
-</head>
-<body>
-<header class="top"><div class="top-in">
-  <a class="brand" href="#/">aisdlc QA status<small id="ws"></small></a>
-  <span class="live"><i class="dot" id="dot"></i><span id="updated">connecting…</span></span>
-</div></header>
-<main id="app"><p class="muted">Loading…</p></main>
-<div class="lightbox" id="lb" role="dialog" aria-modal="true" aria-label="Screenshot">
-  <div class="lb-bar"><button id="lb-prev" aria-label="Previous screenshot">← Prev</button><button id="lb-next" aria-label="Next screenshot">Next →</button><span class="cap" id="lb-cap"></span><button id="lb-fit" aria-pressed="false" title="Toggle fit to screen (F)">Fit to screen</button><a id="lb-open" target="_blank" rel="noopener" style="color:#9fbfff">Open in new tab</a><button id="lb-close" aria-label="Close">Close ✕</button></div>
-  <div class="lb-img"><img id="lb-img" alt=""></div>
-</div>
+      /* documents */
+      .docs {
+        display: grid;
+        grid-template-columns: minmax(200px, 280px) minmax(0, 1fr);
+        gap: 0;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--surface);
+      }
+      @media (max-width: 760px) {
+        .docs {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .doclist {
+          border-right: none;
+          border-bottom: 1px solid var(--line);
+          max-height: 220px;
+        }
+      }
+      .doclist {
+        border-right: 1px solid var(--line);
+        background: var(--surface-2);
+        max-height: 760px;
+        overflow: auto;
+      }
+      .doclist a {
+        display: block;
+        padding: 7px 12px;
+        color: var(--text);
+        font-size: 13px;
+        border-bottom: 1px solid var(--line);
+        overflow-wrap: anywhere;
+      }
+      .doclist a.on {
+        background: var(--surface);
+        color: var(--accent);
+        font-weight: 600;
+        box-shadow: inset 3px 0 0 var(--accent);
+      }
+      .doclist a small {
+        display: block;
+        color: var(--muted);
+        font-size: 11.5px;
+        font-weight: 400;
+      }
+      .viewer {
+        padding: 18px 22px;
+        min-width: 0;
+        max-height: 760px;
+        overflow: auto;
+      }
+      .viewer pre {
+        background: var(--surface-2);
+        padding: 12px 14px;
+        border-radius: 8px;
+        overflow-x: auto;
+        font-size: 12.5px;
+        line-height: 1.5;
+      }
+      .viewer pre.raw {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      .viewer img {
+        max-width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+      }
+      .md h1 {
+        font-size: 21px;
+        margin: 0 0 12px;
+      }
+      .md h2 {
+        font-size: 17px;
+        text-transform: none;
+        letter-spacing: 0;
+        color: var(--text);
+        margin: 22px 0 8px;
+      }
+      .md h3 {
+        font-size: 15px;
+        margin: 18px 0 6px;
+      }
+      .md h4,
+      .md h5,
+      .md h6 {
+        font-size: 14px;
+        margin: 14px 0 4px;
+      }
+      .md table {
+        width: auto;
+        margin: 10px 0;
+        font-size: 13px;
+      }
+      .md th,
+      .md td {
+        border: 1px solid var(--line);
+      }
+      .md blockquote {
+        margin: 10px 0;
+        padding: 4px 14px;
+        border-left: 3px solid var(--line);
+        color: var(--muted);
+      }
+      .md code {
+        background: var(--surface-2);
+        padding: 1px 4px;
+        border-radius: 4px;
+        font-size: 0.9em;
+      }
+      .md pre code {
+        background: none;
+        padding: 0;
+      }
+      .md hr {
+        border: none;
+        border-top: 1px solid var(--line);
+        margin: 18px 0;
+      }
+      .doc-head {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 12px;
+        align-items: baseline;
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      .doc-head b {
+        font-family: var(--mono);
+        font-size: 13.5px;
+      }
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        overflow: hidden;
+        margin-left: auto;
+      }
+      .seg button {
+        font: inherit;
+        font-size: 12px;
+        padding: 2px 10px;
+        border: none;
+        background: var(--surface);
+        color: var(--muted);
+        cursor: pointer;
+      }
+      .seg button.on {
+        background: var(--surface-2);
+        color: var(--text);
+        font-weight: 600;
+      }
+      .ev td {
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="top-in">
+        <a class="brand" href="#/">aisdlc QA status<small id="ws"></small></a>
+        <span class="live"
+          ><i class="dot" id="dot"></i
+          ><span id="updated">connecting…</span></span
+        >
+      </div>
+    </header>
+    <main id="app"><p class="muted">Loading…</p></main>
+    <div
+      class="lightbox"
+      id="lb"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Screenshot"
+    >
+      <div class="lb-bar">
+        <button id="lb-prev" aria-label="Previous screenshot">← Prev</button
+        ><button id="lb-next" aria-label="Next screenshot">Next →</button
+        ><span class="cap" id="lb-cap"></span
+        ><button
+          id="lb-fit"
+          aria-pressed="false"
+          title="Toggle fit to screen (F)"
+        >
+          Fit to screen</button
+        ><a id="lb-open" target="_blank" rel="noopener" style="color: #9fbfff"
+          >Open in new tab</a
+        ><button id="lb-close" aria-label="Close">Close ✕</button>
+      </div>
+      <div class="lb-img"><img id="lb-img" alt="" /></div>
+    </div>
 
-<script>
-"use strict";
-const $app = document.getElementById("app");
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const enc = encodeURIComponent;
-const WHO = { you: "You", claude: "Claude", none: "Done" };
-const BLOCKING = ["BLOCKED", "CONFLICTED", "FAILED", "JIRA_CHANGED", "WAITING_FOR_INPUT", "SCENARIO_REVIEW_REQUIRED"];
-const state = { filter: "active", docView: "rendered", lastDoc: null, run: {} };
-try { state.filter = localStorage.getItem("aisdlc-qa-status-filter") || "active"; } catch {}
+    <script>
+      "use strict";
+      const $app = document.getElementById("app");
+      const esc = (s) =>
+        String(s ?? "").replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      const enc = encodeURIComponent;
+      const WHO = { you: "You", claude: "Claude", none: "Done" };
+      const BLOCKING = [
+        "BLOCKED",
+        "CONFLICTED",
+        "FAILED",
+        "JIRA_CHANGED",
+        "WAITING_FOR_INPUT",
+        "SCENARIO_REVIEW_REQUIRED",
+      ];
+      const state = {
+        filter: "active",
+        docView: "rendered",
+        lastDoc: null,
+        run: {},
+      };
+      try {
+        state.filter =
+          localStorage.getItem("aisdlc-qa-status-filter") || "active";
+      } catch {}
 
-function ago(iso) {
-  if (!iso) return "—";
-  const s = Math.round((Date.now() - Date.parse(iso)) / 1000);
-  if (s < 60) return "just now";
-  const m = Math.round(s / 60); if (m < 60) return m + " min ago";
-  const h = Math.round(m / 60); if (h < 48) return h + " h ago";
-  return Math.round(h / 24) + " days ago";
-}
-const when = (iso) => iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—";
-const bytes = (n) => n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(1) + " KB" : (n / 1048576).toFixed(1) + " MB";
-const docUrl = (id, p) => `/api/tasks/${enc(id)}/doc?path=${enc(p)}`;
-function statusChip(s) {
-  const cls = BLOCKING.includes(s) || s === "CANCELLED" ? "bad" : /^AWAITING_(SCENARIO_APPROVAL|RESULTS_SIGNOFF)$/.test(s) ? "gate" : s === "AWAITING_DEV_FIX" ? "dev" : s === "COMPLETED" ? "ok" : "accent";
-  return `<span class="chip ${cls}">${esc(s)}</span>`;
-}
-const resultChip = (st) => `<span class="chip ${st === "passed" ? "ok" : st === "failed" || st === "timedOut" ? "bad" : st === "flaky" ? "gate" : ""}">${esc(st || "no result")}</span>`;
-const awaitingChip = (t) => t.awaiting_approval ? `<div><span class="chip gate">awaiting ${esc(t.awaiting_approval === "signoff" ? "results sign-off" : t.awaiting_approval + " approval")}</span></div>` : t.waiting_on_developer ? `<div><span class="chip dev">waiting on developer</span></div>` : "";
-const whoChip = (n) => n ? `<span class="who ${esc(n.who)}">${esc(WHO[n.who] || n.who)}</span>` : "";
-function totalsText(t) {
-  if (!t) return "no results";
-  return [t.passed && `${t.passed} passed`, t.failed && `${t.failed} failed`, t.flaky && `${t.flaky} flaky`, t.skipped && `${t.skipped} skipped`].filter(Boolean).join(" · ") || `${t.tests || 0} tests`;
-}
+      function ago(iso) {
+        if (!iso) return "—";
+        const s = Math.round((Date.now() - Date.parse(iso)) / 1000);
+        if (s < 60) return "just now";
+        const m = Math.round(s / 60);
+        if (m < 60) return m + " min ago";
+        const h = Math.round(m / 60);
+        if (h < 48) return h + " h ago";
+        return Math.round(h / 24) + " days ago";
+      }
+      const when = (iso) =>
+        iso
+          ? new Date(iso).toLocaleString(undefined, {
+              dateStyle: "medium",
+              timeStyle: "short",
+            })
+          : "—";
+      const bytes = (n) =>
+        n < 1024
+          ? n + " B"
+          : n < 1048576
+            ? (n / 1024).toFixed(1) + " KB"
+            : (n / 1048576).toFixed(1) + " MB";
+      const docUrl = (id, p) => `/api/tasks/${enc(id)}/doc?path=${enc(p)}`;
+      function statusChip(s) {
+        const cls =
+          BLOCKING.includes(s) || s === "CANCELLED"
+            ? "bad"
+            : /^AWAITING_(SCENARIO_APPROVAL|RESULTS_SIGNOFF)$/.test(s)
+              ? "gate"
+              : s === "AWAITING_DEV_FIX"
+                ? "dev"
+                : s === "COMPLETED"
+                  ? "ok"
+                  : "accent";
+        return `<span class="chip ${cls}">${esc(s)}</span>`;
+      }
+      const resultChip = (st) =>
+        `<span class="chip ${st === "passed" ? "ok" : st === "failed" || st === "timedOut" ? "bad" : st === "flaky" ? "gate" : ""}">${esc(st || "no result")}</span>`;
+      const awaitingChip = (t) =>
+        t.awaiting_approval
+          ? `<div><span class="chip gate">awaiting ${esc(t.awaiting_approval === "signoff" ? "results sign-off" : t.awaiting_approval + " approval")}</span></div>`
+          : t.waiting_on_developer
+            ? `<div><span class="chip dev">waiting on developer</span></div>`
+            : "";
+      const whoChip = (n) =>
+        n
+          ? `<span class="who ${esc(n.who)}">${esc(WHO[n.who] || n.who)}</span>`
+          : "";
+      function totalsText(t) {
+        if (!t) return "no results";
+        return (
+          [
+            t.passed && `${t.passed} passed`,
+            t.failed && `${t.failed} failed`,
+            t.flaky && `${t.flaky} flaky`,
+            t.skipped && `${t.skipped} skipped`,
+          ]
+            .filter(Boolean)
+            .join(" · ") || `${t.tests || 0} tests`
+        );
+      }
 
-async function getJSON(url) {
-  const r = await fetch(url, { cache: "no-store" });
-  if (!r.ok) throw Object.assign(new Error((await r.json().catch(() => ({}))).error || r.statusText), { status: r.status });
-  return r.json();
-}
-function live(ok, at) {
-  document.getElementById("dot").className = "dot" + (ok ? "" : " off");
-  document.getElementById("updated").textContent = ok ? "live · updated " + new Date(at).toLocaleTimeString() : "server not reachable (is the status page still running?)";
-}
+      async function getJSON(url) {
+        const r = await fetch(url, { cache: "no-store" });
+        if (!r.ok)
+          throw Object.assign(
+            new Error((await r.json().catch(() => ({}))).error || r.statusText),
+            { status: r.status },
+          );
+        return r.json();
+      }
+      function live(ok, at) {
+        document.getElementById("dot").className = "dot" + (ok ? "" : " off");
+        document.getElementById("updated").textContent = ok
+          ? "live · updated " + new Date(at).toLocaleTimeString()
+          : "server not reachable (is the status page still running?)";
+      }
 
-// ---------- overview ----------
-function overview(d) {
-  document.getElementById("ws").textContent = d.workspace.name;
-  const active = d.tasks.filter((t) => !["COMPLETED", "CANCELLED"].includes(t.status));
-  const yours = active.filter((t) => t.next && t.next.who === "you");
-  const blocked = active.filter((t) => t.failure);
-  const shown = state.filter === "all" ? d.tasks : state.filter === "you" ? yours : active;
-  const rows = shown.map((t) => t.unreadable
-    ? `<tr><td class="mono">${esc(t.id)}</td><td colspan="6" class="muted">task.yaml cannot be read</td></tr>`
-    : `<tr class="click" data-href="#/task/${enc(t.id)}">
+      // ---------- overview ----------
+      function overview(d) {
+        document.getElementById("ws").textContent = d.workspace.name;
+        const active = d.tasks.filter(
+          (t) => !["COMPLETED", "CANCELLED"].includes(t.status),
+        );
+        const yours = active.filter((t) => t.next && t.next.who === "you");
+        const blocked = active.filter((t) => t.failure);
+        const shown =
+          state.filter === "all"
+            ? d.tasks
+            : state.filter === "you"
+              ? yours
+              : active;
+        const rows = shown
+          .map((t) =>
+            t.unreadable
+              ? `<tr><td class="mono">${esc(t.id)}</td><td colspan="6" class="muted">task.yaml cannot be read</td></tr>`
+              : `<tr class="click" data-href="#/task/${enc(t.id)}">
         <td><a class="mono" href="#/task/${enc(t.id)}">${esc(t.id)}</a><div class="small muted">${esc(t.title || "")}</div></td>
         <td>${statusChip(t.status)}${t.failure && t.resume_state ? `<div class="small muted">left ${esc(t.resume_state)}</div>` : ""}${awaitingChip(t)}</td>
         <td><div class="bar ${t.failure ? "bad" : ""}" title="${t.position} of ${t.total}"><i style="width:${t.total ? Math.round((t.position / t.total) * 100) : 0}%"></i></div><div class="small muted">${t.position} / ${t.total}</div></td>
         <td class="small">${t.last_run ? `<b>run ${esc(t.last_run.run)}</b> · ${esc(totalsText(t.last_run))}<div class="muted">${esc(t.last_run.build || "")}${t.last_run.finished_at ? " · " + esc(ago(t.last_run.finished_at)) : ""}</div>` : '<span class="muted">not run yet</span>'}</td>
         <td class="small">${t.defects.open ? `<span class="chip bad">${t.defects.open} open</span> ` : ""}${t.defects.fixed ? `<span class="chip ok">${t.defects.fixed} fixed</span> ` : ""}${t.defects.waived ? `<span class="chip">${t.defects.waived} waived</span>` : ""}${!t.defects.open && !t.defects.fixed && !t.defects.waived ? '<span class="muted">—</span>' : ""}</td>
         <td>${whoChip(t.next)} <span class="small">${esc(t.next ? t.next.text : "")}</span></td>
-        <td class="small muted" title="${esc(when(t.updated_at))}">${esc(ago(t.updated_at))}</td></tr>`).join("");
-  const envRows = d.environments.list.map((e) => `<tr><td><b>${esc(e.name)}</b>${d.environments.default === e.name ? ' <span class="chip accent">default</span>' : ""}</td>
+        <td class="small muted" title="${esc(when(t.updated_at))}">${esc(ago(t.updated_at))}</td></tr>`,
+          )
+          .join("");
+        const envRows = d.environments.list
+          .map(
+            (
+              e,
+            ) => `<tr><td><b>${esc(e.name)}</b>${d.environments.default === e.name ? ' <span class="chip accent">default</span>' : ""}</td>
       <td class="mono small">${e.base_url ? esc(e.base_url) : '<span class="muted">not set</span>'}</td>
       <td>${e.allow_automation ? '<span class="chip ok">allowed</span>' : '<span class="chip">off</span>'}</td>
       <td class="small">${esc(e.data || "—")}</td>
-      <td class="small">${esc(e.login || "—")}${e.login && e.login !== "none" ? (e.session_saved ? ' · <span class="muted">session saved</span>' : ' · <span class="muted">no saved session</span>') : ""}</td></tr>`).join("");
-  $app.innerHTML = `
+      <td class="small">${esc(e.login || "—")}${e.login && e.login !== "none" ? (e.session_saved ? ' · <span class="muted">session saved</span>' : ' · <span class="muted">no saved session</span>') : ""}</td></tr>`,
+          )
+          .join("");
+        $app.innerHTML = `
     <div class="stats">
       <div class="stat"><b>${active.length}</b><span>active tickets</span></div>
       <div class="stat you"><b>${yours.length}</b><span>waiting on you</span></div>
@@ -252,7 +1030,16 @@ function overview(d) {
       <div class="stat bad"><b>${blocked.length}</b><span>blocked or failed</span></div>
     </div>
     <section class="card"><h2>Tickets</h2>
-      <div class="tabs">${[["active", "Active"], ["you", "Waiting on you"], ["all", "All"]].map(([k, l]) => `<button data-filter="${k}" class="${state.filter === k ? "on" : ""}">${l}</button>`).join("")}</div>
+      <div class="tabs">${[
+        ["active", "Active"],
+        ["you", "Waiting on you"],
+        ["all", "All"],
+      ]
+        .map(
+          ([k, l]) =>
+            `<button data-filter="${k}" class="${state.filter === k ? "on" : ""}">${l}</button>`,
+        )
+        .join("")}</div>
       ${shown.length ? `<div class="table-wrap"><table><thead><tr><th>Ticket</th><th>State</th><th>Progress</th><th>Last run</th><th>Defects</th><th>Next step</th><th>Updated</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<p class="empty">No tickets here. Start one with /aisdlc-qa:test &lt;TICKET&gt;.</p>`}
     </section>
     <section class="card"><h2>Blocking issues</h2>
@@ -266,26 +1053,59 @@ function overview(d) {
       <p class="small">${d.credentials.map((c) => `<span class="chip ${c.set ? "ok" : "bad"}">${esc(c.name)}: ${c.set ? "set (" + esc(c.set) + ")" : "missing"}</span>`).join(" ")}</p>
       <p class="small muted">As seen by the status page process (names only, never values). Whether Jira is connected is a property of your Claude Code session: run /aisdlc-qa:status there.</p>
     </section>`;
-  $app.querySelectorAll("[data-filter]").forEach((b) => b.onclick = () => { state.filter = b.dataset.filter; try { localStorage.setItem("aisdlc-qa-status-filter", state.filter); } catch {} render(); });
-  $app.querySelectorAll("tr.click").forEach((tr) => tr.onclick = (e) => { if (!e.target.closest("a")) location.hash = tr.dataset.href; });
-}
+        $app.querySelectorAll("[data-filter]").forEach(
+          (b) =>
+            (b.onclick = () => {
+              state.filter = b.dataset.filter;
+              try {
+                localStorage.setItem("aisdlc-qa-status-filter", state.filter);
+              } catch {}
+              render();
+            }),
+        );
+        $app.querySelectorAll("tr.click").forEach(
+          (tr) =>
+            (tr.onclick = (e) => {
+              if (!e.target.closest("a")) location.hash = tr.dataset.href;
+            }),
+        );
+      }
 
-// ---------- ticket detail ----------
-function flow(d) {
-  return `<ol class="flow">${d.timeline.map((s) => {
-    const visits = s.visits.filter(Boolean);
-    const meta = s.status === "future" ? "" : s.status === "skipped" ? "skipped" :
-      visits.length ? (visits.length > 2 ? when(visits[0]) + " … " + when(visits.at(-1)) : visits.map((v) => when(v)).join(" · ")) + (visits.length > 1 ? ` (${visits.length}×)` : "") : "";
-    const extra = s.status === "current" ? " — now" : s.status === "interrupted" ? ` — interrupted: ${esc(d.summary.status)}` : s.status === "revisited" ? " — visited before a loop back" : "";
-    return `<li class="${s.status}${s.gate ? " gatestep" : ""}"><span class="node"></span>
+      // ---------- ticket detail ----------
+      function flow(d) {
+        return `<ol class="flow">${d.timeline
+          .map((s) => {
+            const visits = s.visits.filter(Boolean);
+            const meta =
+              s.status === "future"
+                ? ""
+                : s.status === "skipped"
+                  ? "skipped"
+                  : visits.length
+                    ? (visits.length > 2
+                        ? when(visits[0]) + " … " + when(visits.at(-1))
+                        : visits.map((v) => when(v)).join(" · ")) +
+                      (visits.length > 1 ? ` (${visits.length}×)` : "")
+                    : "";
+            const extra =
+              s.status === "current"
+                ? " — now"
+                : s.status === "interrupted"
+                  ? ` — interrupted: ${esc(d.summary.status)}`
+                  : s.status === "revisited"
+                    ? " — visited before a loop back"
+                    : "";
+            return `<li class="${s.status}${s.gate ? " gatestep" : ""}"><span class="node"></span>
       <span class="st-name">${esc(s.state)}</span>${s.gate ? ' <span class="chip gate">QA decision</span>' : ""}
       <div class="st-meta">${esc(meta)}${extra}</div></li>`;
-  }).join("")}</ol>`;
-}
+          })
+          .join("")}</ol>`;
+      }
 
-function infoCard(d) {
-  const s = d.summary, env = d.task.environment;
-  return `<dl class="kv">
+      function infoCard(d) {
+        const s = d.summary,
+          env = d.task.environment;
+        return `<dl class="kv">
     <dt>Environment</dt><dd>${env ? `<b>${esc(env.name)}</b> <span class="mono small">${esc(env.base_url || "")}</span>` : "not chosen yet"}</dd>
     ${env && env.build ? `<dt>Build</dt><dd>${esc(env.build)}</dd>` : ""}
     ${env && env.data ? `<dt>Data</dt><dd>${esc(env.data)}${env.confirmed_at ? ` <span class="muted">· confirmed ${esc(when(env.confirmed_at))}</span>` : ""}</dd>` : ""}
@@ -295,64 +1115,110 @@ function infoCard(d) {
     <dt>Updated</dt><dd>${esc(when(s.updated_at))} <span class="muted">(${esc(ago(s.updated_at))})</span></dd>
     ${d.task.source && d.task.source.type ? `<dt>Ticket source</dt><dd>${esc(d.task.source.type)}</dd>` : ""}
   </dl>`;
-}
+      }
 
-function approvalsCard(d) {
-  if (!d.approvals.length) return `<p class="empty">This lifecycle has no approval gates.</p>`;
-  const label = { scenarios: "Scenario approval", signoff: "Results sign-off" };
-  return `<ul class="plain">${d.approvals.map((a) => {
-    const cls = a.status === "approved" ? (a.changed_since_approval ? "gate" : "ok") : a.status === "rejected" ? "bad" : "";
-    return `<li><b>${esc(label[a.gate] || a.gate)}</b> <span class="chip ${cls}">${esc(a.status)}${a.version ? " v" + esc(a.version) : ""}</span>
+      function approvalsCard(d) {
+        if (!d.approvals.length)
+          return `<p class="empty">This lifecycle has no approval gates.</p>`;
+        const label = {
+          scenarios: "Scenario approval",
+          signoff: "Results sign-off",
+        };
+        return `<ul class="plain">${d.approvals
+          .map((a) => {
+            const cls =
+              a.status === "approved"
+                ? a.changed_since_approval
+                  ? "gate"
+                  : "ok"
+                : a.status === "rejected"
+                  ? "bad"
+                  : "";
+            return `<li><b>${esc(label[a.gate] || a.gate)}</b> <span class="chip ${cls}">${esc(a.status)}${a.version ? " v" + esc(a.version) : ""}</span>
       ${a.changed_since_approval ? ' <span class="chip bad">changed since approval</span>' : ""}
       <div class="small muted">${a.artifact ? `pins <a href="#/task/${enc(d.summary.id)}/doc/${enc(a.artifact)}">${esc(a.artifact)}</a>` : "no pinned artifact"}${a.approved_by ? ` · by ${esc(a.approved_by)} ${esc(when(a.approved_at))}` : ""}${a.status === "rejected" ? ` · rejected ${esc(when(a.rejected_at))}: ${esc(a.reason || "")}` : ""}</div></li>`;
-  }).join("")}</ul>`;
-}
+          })
+          .join("")}</ul>`;
+      }
 
-function defectsCard(d) {
-  if (!d.defects.length) return `<p class="empty">No defects recorded.</p>`;
-  return `<div class="table-wrap"><table><thead><tr><th>Defect</th><th>Status</th><th>Expected / actual</th><th>Found</th><th>Resolution</th></tr></thead><tbody>${d.defects.map((x) => `
+      function defectsCard(d) {
+        if (!d.defects.length)
+          return `<p class="empty">No defects recorded.</p>`;
+        return `<div class="table-wrap"><table><thead><tr><th>Defect</th><th>Status</th><th>Expected / actual</th><th>Found</th><th>Resolution</th></tr></thead><tbody>${d.defects
+          .map(
+            (x) => `
     <tr><td><b class="mono">${esc(x.id)}</b> <span class="chip">${esc(x.scenario || "")}</span> <span class="chip ${x.severity === "critical" ? "bad" : x.severity === "major" ? "gate" : ""}">${esc(x.severity || "")}</span><div class="small">${esc(x.title || "")}</div></td>
       <td><span class="chip ${x.status === "open" ? "bad" : x.status === "fixed" ? "ok" : ""}">${esc(x.status || "")}</span>${x.jira_comment ? `<div class="small muted">Jira comment ${esc(x.jira_comment)}</div>` : x.status === "open" ? '<div class="small muted">not posted to Jira</div>' : ""}</td>
       <td class="small"><div><span class="muted">Expected:</span> ${esc(x.expected || "—")}</div><div><span class="muted">Actual:</span> ${esc(x.actual || "—")}</div></td>
       <td class="small">${x.run ? `run ${esc(x.run)}` : ""}${x.build ? `<div class="muted">${esc(x.build)}</div>` : ""}${x.found_at ? `<div class="muted">${esc(when(x.found_at))}</div>` : ""}</td>
-      <td class="small">${x.fixed ? `fixed in run ${esc(x.fixed.run)}<div class="muted">${esc(x.fixed.build || "")} · ${esc(when(x.fixed.at))}</div>` : x.waiver ? `waived by ${esc(x.waiver.by || "")}<div class="muted">${esc(x.waiver.reason || "")}</div>` : "—"}</td></tr>`).join("")}</tbody></table></div>`;
-}
+      <td class="small">${x.fixed ? `fixed in run ${esc(x.fixed.run)}<div class="muted">${esc(x.fixed.build || "")} · ${esc(when(x.fixed.at))}</div>` : x.waiver ? `waived by ${esc(x.waiver.by || "")}<div class="muted">${esc(x.waiver.reason || "")}</div>` : "—"}</td></tr>`,
+          )
+          .join("")}</tbody></table></div>`;
+      }
 
-const stepLabel = (step) => {
-  const m = step.match(/^(\d+)-(.*?)(-FAILED)?$/);
-  return m ? { n: m[1], text: m[2].replace(/^\d+-/, "").replace(/-/g, " "), failed: Boolean(m[3]) } : { n: "", text: step.replace(/-/g, " "), failed: false };
-};
+      const stepLabel = (step) => {
+        const m = step.match(/^(\d+)-(.*?)(-FAILED)?$/);
+        return m
+          ? {
+              n: m[1],
+              text: m[2].replace(/^\d+-/, "").replace(/-/g, " "),
+              failed: Boolean(m[3]),
+            }
+          : { n: "", text: step.replace(/-/g, " "), failed: false };
+      };
 
-function runsCard(d) {
-  if (!d.runs.length) return `<p class="empty">No runs yet. Run the tests with /aisdlc-qa:run ${esc(d.summary.id)}.</p>`;
-  const id = d.summary.id;
-  const sel = d.runs.find((r) => r.run === state.run[id]) || d.runs[0];
-  const tabs = d.runs.map((r) => {
-    const t = r.totals, bad = (t && t.failed) || r.setup_error;
-    return `<button data-run="${r.run}" class="${r.run === sel.run ? "on" : ""}">Run ${r.run}<span class="r">${bad ? "✗" : t ? "✓" : "·"}</span></button>`;
-  }).join("");
-  const testsByScen = {};
-  for (const t of sel.tests) (testsByScen[t.scenario || "?"] = testsByScen[t.scenario || "?"] || []).push(t);
-  const scenIds = [...new Set([...sel.screenshots.map((g) => g.scenario), ...Object.keys(testsByScen)])].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  const blocks = scenIds.map((sc) => {
-    const g = sel.screenshots.find((x) => x.scenario === sc);
-    const tests = testsByScen[sc] || [];
-    const t = tests[0] || {};
-    const shots = g ? g.shots : [];
-    return `<div class="scen">
-      <div class="scen-head"><span class="chip">${esc(sc)}</span>${resultChip(t.status)}<span class="t">${esc(t.title || g && g.group || sc)}</span>
+      function runsCard(d) {
+        if (!d.runs.length)
+          return `<p class="empty">No runs yet. Run the tests with /aisdlc-qa:run ${esc(d.summary.id)}.</p>`;
+        const id = d.summary.id;
+        const sel = d.runs.find((r) => r.run === state.run[id]) || d.runs[0];
+        const tabs = d.runs
+          .map((r) => {
+            const t = r.totals,
+              bad = (t && t.failed) || r.setup_error;
+            return `<button data-run="${r.run}" class="${r.run === sel.run ? "on" : ""}">Run ${r.run}<span class="r">${bad ? "✗" : t ? "✓" : "·"}</span></button>`;
+          })
+          .join("");
+        const testsByScen = {};
+        for (const t of sel.tests)
+          (testsByScen[t.scenario || "?"] =
+            testsByScen[t.scenario || "?"] || []).push(t);
+        const scenIds = [
+          ...new Set([
+            ...sel.screenshots.map((g) => g.scenario),
+            ...Object.keys(testsByScen),
+          ]),
+        ].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        const blocks = scenIds
+          .map((sc) => {
+            const g = sel.screenshots.find((x) => x.scenario === sc);
+            const tests = testsByScen[sc] || [];
+            const t = tests[0] || {};
+            const shots = g ? g.shots : [];
+            return `<div class="scen">
+      <div class="scen-head"><span class="chip">${esc(sc)}</span>${resultChip(t.status)}<span class="t">${esc(t.title || (g && g.group) || sc)}</span>
         ${t.acs && t.acs.length ? `<span class="small muted">${t.acs.map(esc).join(", ")}</span>` : ""}
         ${t.duration_ms ? `<span class="small muted">${(t.duration_ms / 1000).toFixed(1)} s</span>` : ""}
         ${t.retries ? `<span class="small muted">${esc(t.retries)} retr${t.retries === 1 ? "y" : "ies"}</span>` : ""}
         <span class="small muted" style="margin-left:auto">${shots.length} screenshot${shots.length === 1 ? "" : "s"}</span></div>
       ${t.status === "failed" && (t.failed_step || t.error) ? `<div class="scen-err">${t.failed_step ? "Failed step: " + esc(t.failed_step) + "\n" : ""}${esc(t.error || "")}</div>` : ""}
-      ${shots.length ? `<div class="shots">${shots.map((s) => { const L = stepLabel(s.step); return `
+      ${
+        shots.length
+          ? `<div class="shots">${shots
+              .map((s) => {
+                const L = stepLabel(s.step);
+                return `
         <figure class="shot ${s.failed ? "failed" : ""}" tabindex="0" data-shot="${esc(s.path)}" data-cap="${esc(`Run ${sel.run} · ${sc} · step ${L.n}: ${L.text}${s.failed ? " (FAILED)" : ""}`)}">
           <img loading="lazy" src="${docUrl(id, s.path)}" alt="${esc(`${sc} step ${L.n}: ${L.text}`)}">
-          <figcaption><b>${esc(L.n)}</b>${esc(L.text)}${s.failed ? " — FAILED" : ""}</figcaption></figure>`; }).join("")}</div>` : `<p class="small muted" style="margin:10px 14px">No step screenshots for this scenario.</p>`}
+          <figcaption><b>${esc(L.n)}</b>${esc(L.text)}${s.failed ? " — FAILED" : ""}</figcaption></figure>`;
+              })
+              .join("")}</div>`
+          : `<p class="small muted" style="margin:10px 14px">No step screenshots for this scenario.</p>`
+      }
     </div>`;
-  }).join("");
-  return `<div class="tabs">${tabs}</div>
+          })
+          .join("");
+        return `<div class="tabs">${tabs}</div>
     <div class="run-head"><b>Run ${sel.run}</b>
       <span>${esc(totalsText(sel.totals))}</span>
       <span class="muted">${esc(sel.mode || "")}${sel.environment ? " · " + esc(sel.environment) : ""}${sel.build ? " · " + esc(sel.build) : ""}</span>
@@ -362,108 +1228,231 @@ function runsCard(d) {
     ${sel.uncovered_scenarios && sel.uncovered_scenarios.length ? `<p class="small"><span class="chip gate">not covered by a test</span> ${sel.uncovered_scenarios.map(esc).join(", ")}</p>` : ""}
     ${blocks || `<p class="empty">This run has no results or screenshots (UI mode runs keep no evidence).</p>`}
     ${sel.videos.length ? `<h3 class="small muted">Videos</h3>${sel.videos.map((v) => `<video controls preload="metadata" src="${docUrl(id, v)}"></video>`).join("")}` : ""}`;
-}
+      }
 
-function historyCard(d) {
-  if (!d.history.length) return `<p class="empty">No audit events recorded.</p>`;
-  const rows = d.history.slice().reverse().map((e) => {
-    const detail = e.event === "state-transition" ? `${esc(e.from)} → <b>${esc(e.to)}</b>` :
-      [e.gate && "gate " + e.gate, e.approver && "by " + e.approver, e.type, e.run && "run " + e.run, e.defect, e.scenario, e.result, e.from && e.to && `${e.from} → ${e.to}`, e.reason && "“" + e.reason + "”"].filter(Boolean).map(esc).join(" · ");
-    return `<tr><td class="small muted" title="${esc(e.timestamp)}">${esc(when(e.timestamp))}</td><td><span class="chip">${esc(e.event)}</span></td><td class="small">${detail}</td></tr>`;
-  }).join("");
-  return `<div class="table-wrap" style="max-height:420px;overflow:auto"><table class="ev"><thead><tr><th>When</th><th>Event</th><th>Detail</th></tr></thead><tbody>${rows}</tbody></table></div>`;
-}
+      function historyCard(d) {
+        if (!d.history.length)
+          return `<p class="empty">No audit events recorded.</p>`;
+        const rows = d.history
+          .slice()
+          .reverse()
+          .map((e) => {
+            const detail =
+              e.event === "state-transition"
+                ? `${esc(e.from)} → <b>${esc(e.to)}</b>`
+                : [
+                    e.gate && "gate " + e.gate,
+                    e.approver && "by " + e.approver,
+                    e.type,
+                    e.run && "run " + e.run,
+                    e.defect,
+                    e.scenario,
+                    e.result,
+                    e.from && e.to && `${e.from} → ${e.to}`,
+                    e.reason && "“" + e.reason + "”",
+                  ]
+                    .filter(Boolean)
+                    .map(esc)
+                    .join(" · ");
+            return `<tr><td class="small muted" title="${esc(e.timestamp)}">${esc(when(e.timestamp))}</td><td><span class="chip">${esc(e.event)}</span></td><td class="small">${detail}</td></tr>`;
+          })
+          .join("");
+        return `<div class="table-wrap" style="max-height:420px;overflow:auto"><table class="ev"><thead><tr><th>When</th><th>Event</th><th>Detail</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+      }
 
-function docsCard(d, docPath) {
-  if (!d.documents.length) return `<p class="empty">No documents in tasks/${esc(d.summary.id)}/ yet.</p>`;
-  const current = docPath || (d.documents.find((x) => x.path === "scenarios.md") || d.documents.find((x) => x.path === "jira.md") || d.documents.find((x) => x.kind === "text") || d.documents[0]).path;
-  const list = d.documents.map((x) => `<a href="#/task/${enc(d.summary.id)}/doc/${enc(x.path)}" class="${x.path === current ? "on" : ""}">${esc(x.path)}<small>${esc(bytes(x.size))} · ${esc(ago(x.modified))}</small></a>`).join("");
-  return `<div class="docs"><nav class="doclist">${list}</nav><div class="viewer" id="viewer" data-path="${esc(current)}"><p class="muted">Loading…</p></div></div>`;
-}
+      function docsCard(d, docPath) {
+        if (!d.documents.length)
+          return `<p class="empty">No documents in tasks/${esc(d.summary.id)}/ yet.</p>`;
+        const current =
+          docPath ||
+          (
+            d.documents.find((x) => x.path === "scenarios.md") ||
+            d.documents.find((x) => x.path === "jira.md") ||
+            d.documents.find((x) => x.kind === "text") ||
+            d.documents[0]
+          ).path;
+        const list = d.documents
+          .map(
+            (x) =>
+              `<a href="#/task/${enc(d.summary.id)}/doc/${enc(x.path)}" class="${x.path === current ? "on" : ""}">${esc(x.path)}<small>${esc(bytes(x.size))} · ${esc(ago(x.modified))}</small></a>`,
+          )
+          .join("");
+        return `<div class="docs"><nav class="doclist">${list}</nav><div class="viewer" id="viewer" data-path="${esc(current)}"><p class="muted">Loading…</p></div></div>`;
+      }
 
-async function loadDoc(d) {
-  const v = document.getElementById("viewer");
-  if (!v) return;
-  const p = v.dataset.path, doc = d.documents.find((x) => x.path === p);
-  if (!doc) { v.innerHTML = `<p class="empty">${esc(p)} is not in this task's documents (screenshots and reports are under Runs).</p>`; return; }
-  const key = d.summary.id + "/" + p + "@" + doc.modified + "/" + state.docView;
-  if (state.lastDoc && state.lastDoc.key === key) { v.innerHTML = state.lastDoc.html; wireDoc(d); return; }
-  const url = docUrl(d.summary.id, p);
-  const isMd = /\.(md|markdown)$/i.test(p);
-  const head = `<div class="doc-head"><b>${esc(p)}</b><span class="small muted">${esc(bytes(doc.size))} · modified ${esc(when(doc.modified))}</span>
+      async function loadDoc(d) {
+        const v = document.getElementById("viewer");
+        if (!v) return;
+        const p = v.dataset.path,
+          doc = d.documents.find((x) => x.path === p);
+        if (!doc) {
+          v.innerHTML = `<p class="empty">${esc(p)} is not in this task's documents (screenshots and reports are under Runs).</p>`;
+          return;
+        }
+        const key =
+          d.summary.id + "/" + p + "@" + doc.modified + "/" + state.docView;
+        if (state.lastDoc && state.lastDoc.key === key) {
+          v.innerHTML = state.lastDoc.html;
+          wireDoc(d);
+          return;
+        }
+        const url = docUrl(d.summary.id, p);
+        const isMd = /\.(md|markdown)$/i.test(p);
+        const head = `<div class="doc-head"><b>${esc(p)}</b><span class="small muted">${esc(bytes(doc.size))} · modified ${esc(when(doc.modified))}</span>
     ${isMd ? `<span class="seg"><button data-view="rendered" class="${state.docView === "rendered" ? "on" : ""}">Rendered</button><button data-view="source" class="${state.docView === "source" ? "on" : ""}">Source</button></span>` : ""}</div>`;
-  let body;
-  if (doc.kind === "image") body = `<img src="${url}" alt="${esc(p)}">`;
-  else if (doc.kind === "video") body = `<video controls src="${url}"></video>`;
-  else if (doc.kind === "binary") body = `<p>Binary file. <a href="${url}">Download</a></p>`;
-  else {
-    const r = await fetch(url, { cache: "no-store" });
-    const text = r.ok ? await r.text() : null;
-    if (text === null) body = `<p class="empty">${esc((await r.json().catch(() => ({}))).error || "Cannot show this document.")}</p>`;
-    else if (isMd && state.docView === "rendered") body = `<div class="md">${markdown(text, d.summary.id, p)}</div>`;
-    else if (/\.json$/i.test(p)) { try { body = `<pre class="raw">${esc(JSON.stringify(JSON.parse(text), null, 2))}</pre>`; } catch { body = `<pre class="raw">${esc(text)}</pre>`; } }
-    else body = `<pre class="raw">${esc(text)}</pre>`;
-  }
-  state.lastDoc = { key, html: head + body };
-  if (document.getElementById("viewer") === v) { v.innerHTML = head + body; wireDoc(d); }
-}
-function wireDoc(d) {
-  document.querySelectorAll("#viewer [data-view]").forEach((b) => b.onclick = () => { state.docView = b.dataset.view; state.lastDoc = null; loadDoc(d); });
-}
+        let body;
+        if (doc.kind === "image") body = `<img src="${url}" alt="${esc(p)}">`;
+        else if (doc.kind === "video")
+          body = `<video controls src="${url}"></video>`;
+        else if (doc.kind === "binary")
+          body = `<p>Binary file. <a href="${url}">Download</a></p>`;
+        else {
+          const r = await fetch(url, { cache: "no-store" });
+          const text = r.ok ? await r.text() : null;
+          if (text === null)
+            body = `<p class="empty">${esc((await r.json().catch(() => ({}))).error || "Cannot show this document.")}</p>`;
+          else if (isMd && state.docView === "rendered")
+            body = `<div class="md">${markdown(text, d.summary.id, p)}</div>`;
+          else if (/\.json$/i.test(p)) {
+            try {
+              body = `<pre class="raw">${esc(JSON.stringify(JSON.parse(text), null, 2))}</pre>`;
+            } catch {
+              body = `<pre class="raw">${esc(text)}</pre>`;
+            }
+          } else body = `<pre class="raw">${esc(text)}</pre>`;
+        }
+        state.lastDoc = { key, html: head + body };
+        if (document.getElementById("viewer") === v) {
+          v.innerHTML = head + body;
+          wireDoc(d);
+        }
+      }
+      function wireDoc(d) {
+        document.querySelectorAll("#viewer [data-view]").forEach(
+          (b) =>
+            (b.onclick = () => {
+              state.docView = b.dataset.view;
+              state.lastDoc = null;
+              loadDoc(d);
+            }),
+        );
+      }
 
-// ---------- lightbox ----------
-const lb = { list: [], i: 0, id: null };
-function openLightbox(list, i, id) { lb.list = list; lb.i = i; lb.id = id; showShot(); document.getElementById("lb").classList.add("on"); document.getElementById("lb-close").focus(); }
-function showShot() {
-  const s = lb.list[lb.i]; if (!s) return;
-  const url = docUrl(lb.id, s.path);
-  document.getElementById("lb-img").src = url;
-  document.getElementById("lb-img").alt = s.cap;
-  document.getElementById("lb-open").href = url;
-  document.getElementById("lb-cap").textContent = `${s.cap}   (${lb.i + 1} of ${lb.list.length})`;
-  document.querySelector(".lb-img").scrollTop = 0;
-}
-function setFit(on) {
-  document.getElementById("lb").classList.toggle("fit", on);
-  const b = document.getElementById("lb-fit");
-  b.setAttribute("aria-pressed", String(on));
-  b.textContent = on ? "Full width" : "Fit to screen";
-  try { localStorage.setItem("aisdlc-qa-status-fit", on ? "1" : ""); } catch {}
-}
-document.getElementById("lb-fit").onclick = () => setFit(!document.getElementById("lb").classList.contains("fit"));
-try { setFit(localStorage.getItem("aisdlc-qa-status-fit") === "1"); } catch {}
-function closeLightbox() { document.getElementById("lb").classList.remove("on"); if (lb.from) lb.from.focus(); }
-document.getElementById("lb-close").onclick = closeLightbox;
-document.getElementById("lb-prev").onclick = () => { lb.i = (lb.i - 1 + lb.list.length) % lb.list.length; showShot(); };
-document.getElementById("lb-next").onclick = () => { lb.i = (lb.i + 1) % lb.list.length; showShot(); };
-document.getElementById("lb").addEventListener("click", (e) => { if (e.target.classList.contains("lb-img")) closeLightbox(); });
-document.addEventListener("keydown", (e) => {
-  if (!document.getElementById("lb").classList.contains("on")) {
-    if (e.key === "Enter" && e.target.matches && e.target.matches(".shot")) e.target.click();
-    return;
-  }
-  if (e.key === "Escape") closeLightbox();
-  else if (e.key === "ArrowLeft") document.getElementById("lb-prev").click();
-  else if (e.key === "ArrowRight") document.getElementById("lb-next").click();
-  else if (e.key === "f" || e.key === "F") document.getElementById("lb-fit").click();
-});
-function wireShots(d) {
-  const figs = [...$app.querySelectorAll(".shot")];
-  const list = figs.map((f) => ({ path: f.dataset.shot, cap: f.dataset.cap }));
-  figs.forEach((f, i) => f.onclick = () => { lb.from = f; openLightbox(list, i, d.summary.id); });
-  $app.querySelectorAll("[data-run]").forEach((b) => b.onclick = () => { state.run[d.summary.id] = Number(b.dataset.run); lastTaskKey = null; detail(d, currentDoc(), false); });
-}
+      // ---------- lightbox ----------
+      const lb = { list: [], i: 0, id: null };
+      function openLightbox(list, i, id) {
+        lb.list = list;
+        lb.i = i;
+        lb.id = id;
+        showShot();
+        document.getElementById("lb").classList.add("on");
+        document.getElementById("lb-close").focus();
+      }
+      function showShot() {
+        const s = lb.list[lb.i];
+        if (!s) return;
+        const url = docUrl(lb.id, s.path);
+        document.getElementById("lb-img").src = url;
+        document.getElementById("lb-img").alt = s.cap;
+        document.getElementById("lb-open").href = url;
+        document.getElementById("lb-cap").textContent =
+          `${s.cap}   (${lb.i + 1} of ${lb.list.length})`;
+        document.querySelector(".lb-img").scrollTop = 0;
+      }
+      function setFit(on) {
+        document.getElementById("lb").classList.toggle("fit", on);
+        const b = document.getElementById("lb-fit");
+        b.setAttribute("aria-pressed", String(on));
+        b.textContent = on ? "Full width" : "Fit to screen";
+        try {
+          localStorage.setItem("aisdlc-qa-status-fit", on ? "1" : "");
+        } catch {}
+      }
+      document.getElementById("lb-fit").onclick = () =>
+        setFit(!document.getElementById("lb").classList.contains("fit"));
+      try {
+        setFit(localStorage.getItem("aisdlc-qa-status-fit") === "1");
+      } catch {}
+      function closeLightbox() {
+        document.getElementById("lb").classList.remove("on");
+        if (lb.from) lb.from.focus();
+      }
+      document.getElementById("lb-close").onclick = closeLightbox;
+      document.getElementById("lb-prev").onclick = () => {
+        lb.i = (lb.i - 1 + lb.list.length) % lb.list.length;
+        showShot();
+      };
+      document.getElementById("lb-next").onclick = () => {
+        lb.i = (lb.i + 1) % lb.list.length;
+        showShot();
+      };
+      document.getElementById("lb").addEventListener("click", (e) => {
+        if (e.target.classList.contains("lb-img")) closeLightbox();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (!document.getElementById("lb").classList.contains("on")) {
+          if (
+            e.key === "Enter" &&
+            e.target.matches &&
+            e.target.matches(".shot")
+          )
+            e.target.click();
+          return;
+        }
+        if (e.key === "Escape") closeLightbox();
+        else if (e.key === "ArrowLeft")
+          document.getElementById("lb-prev").click();
+        else if (e.key === "ArrowRight")
+          document.getElementById("lb-next").click();
+        else if (e.key === "f" || e.key === "F")
+          document.getElementById("lb-fit").click();
+      });
+      function wireShots(d) {
+        const figs = [...$app.querySelectorAll(".shot")];
+        const list = figs.map((f) => ({
+          path: f.dataset.shot,
+          cap: f.dataset.cap,
+        }));
+        figs.forEach(
+          (f, i) =>
+            (f.onclick = () => {
+              lb.from = f;
+              openLightbox(list, i, d.summary.id);
+            }),
+        );
+        $app.querySelectorAll("[data-run]").forEach(
+          (b) =>
+            (b.onclick = () => {
+              state.run[d.summary.id] = Number(b.dataset.run);
+              lastTaskKey = null;
+              detail(d, currentDoc(), false);
+            }),
+        );
+      }
 
-let lastTaskKey = null;
-const currentDoc = () => { const m = location.hash.match(/\/doc\/(.+)$/); return m ? decodeURIComponent(m[1]) : null; };
-function detail(d, docPath, focusDocs) {
-  const s = d.summary;
-  document.title = `${s.id} · aisdlc QA status`;
-  const key = JSON.stringify([d.summary, d.timeline, d.approvals, d.defects, d.runs, d.history.length, d.documents, docPath, state.run[s.id]]);
-  if (key === lastTaskKey && document.getElementById("viewer")) return; // nothing changed; keep scroll and the open document
-  lastTaskKey = key;
-  const y = window.scrollY;
-  $app.innerHTML = `
+      let lastTaskKey = null;
+      const currentDoc = () => {
+        const m = location.hash.match(/\/doc\/(.+)$/);
+        return m ? decodeURIComponent(m[1]) : null;
+      };
+      function detail(d, docPath, focusDocs) {
+        const s = d.summary;
+        document.title = `${s.id} · aisdlc QA status`;
+        const key = JSON.stringify([
+          d.summary,
+          d.timeline,
+          d.approvals,
+          d.defects,
+          d.runs,
+          d.history.length,
+          d.documents,
+          docPath,
+          state.run[s.id],
+        ]);
+        if (key === lastTaskKey && document.getElementById("viewer")) return; // nothing changed; keep scroll and the open document
+        lastTaskKey = key;
+        const y = window.scrollY;
+        $app.innerHTML = `
     <div class="crumb"><a href="#/">← All tickets</a></div>
     <div class="task-head"><h1 class="mono">${esc(s.id)}</h1>${statusChip(s.status)}
       <span class="small muted">state ${s.position} of ${s.total}</span>${awaitingChip(s).replace(/<\/?div>/g, "")}
@@ -483,111 +1472,230 @@ function detail(d, docPath, focusDocs) {
     <section class="card" id="runs"><h2>Runs and screenshots</h2>${runsCard(d)}</section>
     <section class="card" id="documents"><h2>Documents</h2>${docsCard(d, docPath)}</section>
     <section class="card"><h2>History</h2>${historyCard(d)}</section>`;
-  window.scrollTo(0, y);
-  if (focusDocs) document.getElementById("documents").scrollIntoView({ block: "start" });
-  wireShots(d);
-  loadDoc(d);
-}
-
-// ---------- markdown (escape first, then a small safe subset) ----------
-function inline(s, id, from) {
-  const codes = [];
-  s = s.replace(/`([^`]+)`/g, (_, c) => (codes.push(`<code>${c}</code>`), `\u0000${codes.length - 1}\u0000`));
-  s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g, (_, alt) => `[image: ${alt}]`);
-  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)[^)]*\)/g, (_, text, href) => {
-    const h = href.replace(/&amp;/g, "&");
-    if (/^https?:\/\//i.test(h)) return `<a href="${h.replace(/"/g, "&quot;")}" target="_blank" rel="noopener">${text}</a>`;
-    if (/^[^:#?]+$/.test(h) && !h.startsWith("/")) {
-      const parts = (from.includes("/") ? from.replace(/[^/]*$/, "") : "") + h;
-      const norm = []; for (const seg of parts.split("/")) { if (seg === "..") norm.pop(); else if (seg && seg !== ".") norm.push(seg); }
-      return `<a href="#/task/${enc(id)}/doc/${enc(norm.join("/"))}">${text}</a>`;
-    }
-    return text;
-  });
-  s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/__([^_]+)__/g, "<strong>$1</strong>")
-       .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>").replace(/~~([^~]+)~~/g, "<del>$1</del>");
-  return s.replace(/\u0000(\d+)\u0000/g, (_, i) => codes[i]);
-}
-function markdown(src, id, from) {
-  const lines = esc(src).replace(/\r\n?/g, "\n").split("\n");
-  const out = []; let i = 0;
-  const isTableSep = (l) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(l);
-  const cells = (l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => inline(c.trim(), id, from));
-  while (i < lines.length) {
-    const l = lines[i];
-    let m;
-    if ((m = l.match(/^\s*(```|~~~)/))) {
-      const fence = m[1], buf = []; i++;
-      while (i < lines.length && !lines[i].trim().startsWith(fence)) buf.push(lines[i++]);
-      i++; out.push(`<pre><code>${buf.join("\n")}</code></pre>`); continue;
-    }
-    if ((m = l.match(/^(#{1,6})\s+(.*?)\s*#*\s*$/))) { out.push(`<h${m[1].length}>${inline(m[2], id, from)}</h${m[1].length}>`); i++; continue; }
-    if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(l)) { out.push("<hr>"); i++; continue; }
-    if (l.includes("|") && i + 1 < lines.length && isTableSep(lines[i + 1])) {
-      const head = cells(l); i += 2; const body = [];
-      while (i < lines.length && lines[i].includes("|") && lines[i].trim()) body.push(cells(lines[i++]));
-      out.push(`<div class="table-wrap"><table><thead><tr>${head.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${body.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`);
-      continue;
-    }
-    if (/^\s*&gt;\s?/.test(l)) {
-      const buf = []; while (i < lines.length && /^\s*&gt;\s?/.test(lines[i])) buf.push(lines[i++].replace(/^\s*&gt;\s?/, ""));
-      out.push(`<blockquote>${markdown(buf.join("\n").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'"), id, from)}</blockquote>`); continue;
-    }
-    if (/^\s*([-*+]|\d+[.)])\s+/.test(l)) {
-      const stack = [];
-      while (i < lines.length && (/^\s*([-*+]|\d+[.)])\s+/.test(lines[i]) || (/^\s{2,}\S/.test(lines[i]) && stack.length))) {
-        const li = lines[i].match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
-        if (!li) { out.push(" " + inline(lines[i].trim(), id, from)); i++; continue; }
-        const depth = Math.floor(li[1].replace(/\t/g, "    ").length / 2), tag = /\d/.test(li[2]) ? "ol" : "ul";
-        while (stack.length && stack[stack.length - 1].depth > depth) out.push(`</li></${stack.pop().tag}>`);
-        if (!stack.length || stack[stack.length - 1].depth < depth) { out.push(`<${tag}>`); stack.push({ depth, tag }); }
-        else out.push("</li>");
-        const task = li[3].match(/^\[([ xX])\]\s+(.*)$/);
-        out.push(`<li>${task ? (task[1] === " " ? "☐ " : "☑ ") + inline(task[2], id, from) : inline(li[3], id, from)}`);
-        i++;
+        window.scrollTo(0, y);
+        if (focusDocs)
+          document
+            .getElementById("documents")
+            .scrollIntoView({ block: "start" });
+        wireShots(d);
+        loadDoc(d);
       }
-      while (stack.length) out.push(`</li></${stack.pop().tag}>`);
-      continue;
-    }
-    if (!l.trim()) { i++; continue; }
-    const buf = [];
-    while (i < lines.length && lines[i].trim() && !/^(#{1,6}\s|\s*(```|~~~)|\s*&gt;|\s*([-*+]|\d+[.)])\s+)/.test(lines[i]) && !(lines[i].includes("|") && i + 1 < lines.length && isTableSep(lines[i + 1]))) buf.push(lines[i++]);
-    out.push(`<p>${inline(buf.join(" "), id, from)}</p>`);
-  }
-  return out.join("\n");
-}
 
-// ---------- routing and polling ----------
-let timer = null;
-async function render() {
-  clearTimeout(timer);
-  const h = location.hash.replace(/^#/, "");
-  const m = h.match(/^\/task\/([^/]+)(?:\/doc\/(.+))?$/);
-  try {
-    if (m) {
-      const id = decodeURIComponent(m[1]);
-      const doc = m[2] ? decodeURIComponent(m[2]) : null;
-      const d = await getJSON(`/api/tasks/${enc(id)}`);
-      const fresh = render.lastRoute !== h;
-      detail(d, doc, fresh && Boolean(doc) && render.lastRouteTask === id);
-      render.lastRoute = h; render.lastRouteTask = id;
-      live(true, Date.now());
-      if (!document.getElementById("ws").textContent) getJSON("/api/status").then((s) => document.getElementById("ws").textContent = s.workspace.name).catch(() => {});
-    } else {
-      lastTaskKey = null; render.lastRoute = h; render.lastRouteTask = null;
-      document.title = "aisdlc QA status";
-      const d = await getJSON("/api/status");
-      overview(d);
-      live(true, d.generated_at);
-    }
-  } catch (e) {
-    if (e.status === 404 && m) { lastTaskKey = null; $app.innerHTML = `<div class="crumb"><a href="#/">← All tickets</a></div><p class="empty">${esc(e.message)}: ${esc(decodeURIComponent(m[1]))}.</p>`; live(true, Date.now()); }
-    else live(false);
-  }
-  timer = setTimeout(render, 4000);
-}
-window.addEventListener("hashchange", () => { lastTaskKey = null; render(); });
-render();
-</script>
-</body>
+      // ---------- markdown (escape first, then a small safe subset) ----------
+      function inline(s, id, from) {
+        const codes = [];
+        s = s.replace(
+          /`([^`]+)`/g,
+          (_, c) => (
+            codes.push(`<code>${c}</code>`), `\u0000${codes.length - 1}\u0000`
+          ),
+        );
+        s = s.replace(
+          /!\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g,
+          (_, alt) => `[image: ${alt}]`,
+        );
+        s = s.replace(/\[([^\]]+)\]\(([^)\s]+)[^)]*\)/g, (_, text, href) => {
+          const h = href.replace(/&amp;/g, "&");
+          if (/^https?:\/\//i.test(h))
+            return `<a href="${h.replace(/"/g, "&quot;")}" target="_blank" rel="noopener">${text}</a>`;
+          if (/^[^:#?]+$/.test(h) && !h.startsWith("/")) {
+            const parts =
+              (from.includes("/") ? from.replace(/[^/]*$/, "") : "") + h;
+            const norm = [];
+            for (const seg of parts.split("/")) {
+              if (seg === "..") norm.pop();
+              else if (seg && seg !== ".") norm.push(seg);
+            }
+            return `<a href="#/task/${enc(id)}/doc/${enc(norm.join("/"))}">${text}</a>`;
+          }
+          return text;
+        });
+        s = s
+          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+          .replace(/__([^_]+)__/g, "<strong>$1</strong>")
+          .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>")
+          .replace(/~~([^~]+)~~/g, "<del>$1</del>");
+        return s.replace(/\u0000(\d+)\u0000/g, (_, i) => codes[i]);
+      }
+      function markdown(src, id, from) {
+        const lines = esc(src).replace(/\r\n?/g, "\n").split("\n");
+        const out = [];
+        let i = 0;
+        const isTableSep = (l) =>
+          /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(l);
+        const cells = (l) =>
+          l
+            .trim()
+            .replace(/^\||\|$/g, "")
+            .split("|")
+            .map((c) => inline(c.trim(), id, from));
+        while (i < lines.length) {
+          const l = lines[i];
+          let m;
+          if ((m = l.match(/^\s*(```|~~~)/))) {
+            const fence = m[1],
+              buf = [];
+            i++;
+            while (i < lines.length && !lines[i].trim().startsWith(fence))
+              buf.push(lines[i++]);
+            i++;
+            out.push(`<pre><code>${buf.join("\n")}</code></pre>`);
+            continue;
+          }
+          if ((m = l.match(/^(#{1,6})\s+(.*?)\s*#*\s*$/))) {
+            out.push(
+              `<h${m[1].length}>${inline(m[2], id, from)}</h${m[1].length}>`,
+            );
+            i++;
+            continue;
+          }
+          if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(l)) {
+            out.push("<hr>");
+            i++;
+            continue;
+          }
+          if (
+            l.includes("|") &&
+            i + 1 < lines.length &&
+            isTableSep(lines[i + 1])
+          ) {
+            const head = cells(l);
+            i += 2;
+            const body = [];
+            while (
+              i < lines.length &&
+              lines[i].includes("|") &&
+              lines[i].trim()
+            )
+              body.push(cells(lines[i++]));
+            out.push(
+              `<div class="table-wrap"><table><thead><tr>${head.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${body.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`,
+            );
+            continue;
+          }
+          if (/^\s*&gt;\s?/.test(l)) {
+            const buf = [];
+            while (i < lines.length && /^\s*&gt;\s?/.test(lines[i]))
+              buf.push(lines[i++].replace(/^\s*&gt;\s?/, ""));
+            out.push(
+              `<blockquote>${markdown(
+                buf
+                  .join("\n")
+                  .replace(/&amp;/g, "&")
+                  .replace(/&lt;/g, "<")
+                  .replace(/&gt;/g, ">")
+                  .replace(/&quot;/g, '"')
+                  .replace(/&#39;/g, "'"),
+                id,
+                from,
+              )}</blockquote>`,
+            );
+            continue;
+          }
+          if (/^\s*([-*+]|\d+[.)])\s+/.test(l)) {
+            const stack = [];
+            while (
+              i < lines.length &&
+              (/^\s*([-*+]|\d+[.)])\s+/.test(lines[i]) ||
+                (/^\s{2,}\S/.test(lines[i]) && stack.length))
+            ) {
+              const li = lines[i].match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
+              if (!li) {
+                out.push(" " + inline(lines[i].trim(), id, from));
+                i++;
+                continue;
+              }
+              const depth = Math.floor(li[1].replace(/\t/g, "    ").length / 2),
+                tag = /\d/.test(li[2]) ? "ol" : "ul";
+              while (stack.length && stack[stack.length - 1].depth > depth)
+                out.push(`</li></${stack.pop().tag}>`);
+              if (!stack.length || stack[stack.length - 1].depth < depth) {
+                out.push(`<${tag}>`);
+                stack.push({ depth, tag });
+              } else out.push("</li>");
+              const task = li[3].match(/^\[([ xX])\]\s+(.*)$/);
+              out.push(
+                `<li>${task ? (task[1] === " " ? "☐ " : "☑ ") + inline(task[2], id, from) : inline(li[3], id, from)}`,
+              );
+              i++;
+            }
+            while (stack.length) out.push(`</li></${stack.pop().tag}>`);
+            continue;
+          }
+          if (!l.trim()) {
+            i++;
+            continue;
+          }
+          const buf = [];
+          while (
+            i < lines.length &&
+            lines[i].trim() &&
+            !/^(#{1,6}\s|\s*(```|~~~)|\s*&gt;|\s*([-*+]|\d+[.)])\s+)/.test(
+              lines[i],
+            ) &&
+            !(
+              lines[i].includes("|") &&
+              i + 1 < lines.length &&
+              isTableSep(lines[i + 1])
+            )
+          )
+            buf.push(lines[i++]);
+          out.push(`<p>${inline(buf.join(" "), id, from)}</p>`);
+        }
+        return out.join("\n");
+      }
+
+      // ---------- routing and polling ----------
+      let timer = null;
+      async function render() {
+        clearTimeout(timer);
+        const h = location.hash.replace(/^#/, "");
+        const m = h.match(/^\/task\/([^/]+)(?:\/doc\/(.+))?$/);
+        try {
+          if (m) {
+            const id = decodeURIComponent(m[1]);
+            const doc = m[2] ? decodeURIComponent(m[2]) : null;
+            const d = await getJSON(`/api/tasks/${enc(id)}`);
+            const fresh = render.lastRoute !== h;
+            detail(
+              d,
+              doc,
+              fresh && Boolean(doc) && render.lastRouteTask === id,
+            );
+            render.lastRoute = h;
+            render.lastRouteTask = id;
+            live(true, Date.now());
+            if (!document.getElementById("ws").textContent)
+              getJSON("/api/status")
+                .then(
+                  (s) =>
+                    (document.getElementById("ws").textContent =
+                      s.workspace.name),
+                )
+                .catch(() => {});
+          } else {
+            lastTaskKey = null;
+            render.lastRoute = h;
+            render.lastRouteTask = null;
+            document.title = "aisdlc QA status";
+            const d = await getJSON("/api/status");
+            overview(d);
+            live(true, d.generated_at);
+          }
+        } catch (e) {
+          if (e.status === 404 && m) {
+            lastTaskKey = null;
+            $app.innerHTML = `<div class="crumb"><a href="#/">← All tickets</a></div><p class="empty">${esc(e.message)}: ${esc(decodeURIComponent(m[1]))}.</p>`;
+            live(true, Date.now());
+          } else live(false);
+        }
+        timer = setTimeout(render, 4000);
+      }
+      window.addEventListener("hashchange", () => {
+        lastTaskKey = null;
+        render();
+      });
+      render();
+    </script>
+  </body>
 </html>

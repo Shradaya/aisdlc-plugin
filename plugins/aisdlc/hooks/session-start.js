@@ -6,7 +6,19 @@ const ROOT = resolveRoot();
 if (!ROOT || workspaceKind(ROOT) !== "aisdlc") process.exit(0);
 try {
   const role = flow.resolveRole(ROOT);
-  if (!role) { console.log("aisdlc: your role is not set. Run /aisdlc:init (or set AISDLC_ROLE) so hand-offs for you are shown."); process.exit(0); }
+  if (!role) {
+    console.log(
+      "aisdlc: your role is not set. Run /aisdlc:init (or set AISDLC_ROLE) so hand-offs for you are shown.",
+    );
+    process.exit(0);
+  }
   const lines = flow.summary(ROOT, role);
-  console.log(`aisdlc (${role}): ` + (lines.length ? "\n  " + lines.join("\n  ") : "nothing waiting. Run /aisdlc:pull for the latest."));
-} catch (e) { console.log("aisdlc: could not read the flow (" + e.message + ")"); }
+  console.log(
+    `aisdlc (${role}): ` +
+      (lines.length
+        ? "\n  " + lines.join("\n  ")
+        : "nothing waiting. Run /aisdlc:pull for the latest."),
+  );
+} catch (e) {
+  console.log("aisdlc: could not read the flow (" + e.message + ")");
+}

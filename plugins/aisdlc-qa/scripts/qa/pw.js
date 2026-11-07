@@ -7,14 +7,26 @@
 //           node pw.js init-agents --loop=claude                       node pw.js codegen --save-storage=.auth/qa.json <url>
 const { spawnSync } = require("child_process");
 const { resolveRoot, NOT_WORKSPACE } = require("../lib/root");
-const { resolveEnv, blockedReason, playwrightCli, playwrightEnv } = require("./env");
+const {
+  resolveEnv,
+  blockedReason,
+  playwrightCli,
+  playwrightEnv,
+} = require("./env");
 
 const ROOT = resolveRoot();
 const args = process.argv.slice(2);
-const fail = (msg, code) => { process.stderr.write(msg + "\n"); process.exit(code); };
+const fail = (msg, code) => {
+  process.stderr.write(msg + "\n");
+  process.exit(code);
+};
 if (!ROOT) fail(NOT_WORKSPACE, 2);
 const cli = playwrightCli(ROOT);
-if (!cli) fail("Playwright is not installed in this workspace: run npm install first.", 2);
+if (!cli)
+  fail(
+    "Playwright is not installed in this workspace: run npm install first.",
+    2,
+  );
 
 if (args[0] === "test" && !args.includes("--list")) {
   const env = resolveEnv(ROOT);
@@ -23,10 +35,18 @@ if (args[0] === "test" && !args.includes("--list")) {
 if (["codegen", "open"].includes(args[0])) {
   for (const a of args) {
     let host = "";
-    try { host = new URL(a).hostname.toLowerCase(); } catch { continue; }
+    try {
+      host = new URL(a).hostname.toLowerCase();
+    } catch {
+      continue;
+    }
     const r = blockedReason(ROOT, host);
     if (r) fail(r, 1);
   }
 }
-const r = spawnSync(process.execPath, [cli, ...args], { cwd: ROOT, env: playwrightEnv(), stdio: "inherit" });
+const r = spawnSync(process.execPath, [cli, ...args], {
+  cwd: ROOT,
+  env: playwrightEnv(),
+  stdio: "inherit",
+});
 process.exit(r.status ?? 1);

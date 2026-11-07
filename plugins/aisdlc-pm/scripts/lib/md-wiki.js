@@ -21,7 +21,8 @@
 
 // The start rule acFromDescription uses to find the "Acceptance Criteria" heading (case-insensitive, line-anchored).
 // Exported so the tests reuse exactly this regex. Mirrors lib/jira.js.
-const AC_START_RE = /^\s*(h[1-6]\.\s*|#{1,6}\s*|\*+|_+)?\s*acceptance\s+criteria\b/i;
+const AC_START_RE =
+  /^\s*(h[1-6]\.\s*|#{1,6}\s*|\*+|_+)?\s*acceptance\s+criteria\b/i;
 
 // A line that, after conversion, begins with a wiki structural marker the AC parser treats as a heading boundary.
 const WIKI_MARKER_RE = /^\s*(h[1-6]\.|bq\.)\s/;
@@ -30,19 +31,31 @@ const WIKI_MARKER_RE = /^\s*(h[1-6]\.|bq\.)\s/;
 // so their contents are never touched by brace-escaping or emphasis rules.
 function inline(text) {
   const spans = [];
-  const stash = (s) => { spans.push(s); return "\u0000" + (spans.length - 1) + "\u0000"; };
+  const stash = (s) => {
+    spans.push(s);
+    return "\u0000" + (spans.length - 1) + "\u0000";
+  };
   // `code` -> {{code}} (stashed so later escaping/emphasis never touches it).
   let s = text.replace(/`([^`]+)`/g, (_m, code) => stash("{{" + code + "}}"));
   // Escape braces in the remaining (non-code) text so user text cannot open a Jira macro.
   s = s.replace(/[{}]/g, (c) => "\\" + c);
   // Links [t](u) -> [t|u].
-  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_m, t, u) => "[" + t + "|" + u + "]");
+  s = s.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    (_m, t, u) => "[" + t + "|" + u + "]",
+  );
   // Bold **x** / __x__ -> *x*; stash the result so the italic pass below cannot re-match the single markers.
   s = s.replace(/\*\*([^*]+)\*\*/g, (_m, x) => stash("*" + x + "*"));
   s = s.replace(/__([^_]+)__/g, (_m, x) => stash("*" + x + "*"));
   // Italic *x* / _x_ -> _x_.
-  s = s.replace(/(^|[^*\w])\*([^*\s][^*]*?)\*(?!\*)/g, (_m, pre, x) => pre + "_" + x + "_");
-  s = s.replace(/(^|[^_\w])_([^_\s][^_]*?)_(?!_)/g, (_m, pre, x) => pre + "_" + x + "_");
+  s = s.replace(
+    /(^|[^*\w])\*([^*\s][^*]*?)\*(?!\*)/g,
+    (_m, pre, x) => pre + "_" + x + "_",
+  );
+  s = s.replace(
+    /(^|[^_\w])_([^_\s][^_]*?)_(?!_)/g,
+    (_m, pre, x) => pre + "_" + x + "_",
+  );
   // Restore stashed spans.
   s = s.replace(/\u0000(\d+)\u0000/g, (_m, i) => spans[Number(i)]);
   return s;
@@ -68,7 +81,9 @@ function neutralise(line, mode) {
 
 function toWiki(markdown, opts = {}) {
   const mode = opts.headings === "bold" ? "bold" : "demote";
-  const src = String(markdown == null ? "" : markdown).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const src = String(markdown == null ? "" : markdown)
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n");
   const lines = src.split("\n");
   const out = [];
   let i = 0;
@@ -81,7 +96,10 @@ function toWiki(markdown, opts = {}) {
       const lang = fence[1].trim();
       out.push(lang ? "{code:" + lang + "}" : "{code}");
       i++;
-      while (i < lines.length && !/^\s*```\s*$/.test(lines[i])) { out.push(lines[i]); i++; }
+      while (i < lines.length && !/^\s*```\s*$/.test(lines[i])) {
+        out.push(lines[i]);
+        i++;
+      }
       if (i < lines.length) i++; // skip the closing fence
       out.push("{code}");
       continue;
@@ -90,21 +108,38 @@ function toWiki(markdown, opts = {}) {
     // Table: a run of lines that all look like "| ... |" (or "a | b"). The |---|---| separator row is dropped.
     if (/\|/.test(line) && /^\s*\|?.*\|.*$/.test(line) && isTableRow(line)) {
       const block = [];
-      while (i < lines.length && isTableRow(lines[i])) { block.push(lines[i]); i++; }
+      while (i < lines.length && isTableRow(lines[i])) {
+        block.push(lines[i]);
+        i++;
+      }
       emitTable(block, out);
       continue;
     }
 
     // ATX heading.
     const h = line.match(/^\s*(#{1,6})\s+(.*)$/);
-    if (h) { out.push(maybeNeutralise(headingLine(h[1].length, h[2].trim(), mode), mode)); i++; continue; }
+    if (h) {
+      out.push(
+        maybeNeutralise(headingLine(h[1].length, h[2].trim(), mode), mode),
+      );
+      i++;
+      continue;
+    }
 
     // Horizontal rule.
-    if (/^\s*([-*_])\1\1+\s*$/.test(line)) { out.push("----"); i++; continue; }
+    if (/^\s*([-*_])\1\1+\s*$/.test(line)) {
+      out.push("----");
+      i++;
+      continue;
+    }
 
     // Blockquote.
     const bq = line.match(/^\s*>\s?(.*)$/);
-    if (bq) { out.push("bq. " + inline(bq[1])); i++; continue; }
+    if (bq) {
+      out.push("bq. " + inline(bq[1]));
+      i++;
+      continue;
+    }
 
     // Unordered list (indent -> nesting depth by two spaces).
     const ul = line.match(/^(\s*)([-*+])\s+(.*)$/);
@@ -125,7 +160,11 @@ function toWiki(markdown, opts = {}) {
     }
 
     // Plain line (including blank lines).
-    if (line.trim() === "") { out.push(""); i++; continue; }
+    if (line.trim() === "") {
+      out.push("");
+      i++;
+      continue;
+    }
     out.push(maybeNeutralise(inline(line), mode));
     i++;
   }

@@ -14,10 +14,15 @@ const path = require("path");
 const crypto = require("crypto");
 const { execSync } = require("child_process");
 
-const { resolveRoot, configPath, workspaceKind } = require("../scripts/lib/root");
+const {
+  resolveRoot,
+  configPath,
+  workspaceKind,
+} = require("../scripts/lib/root");
 const { readYaml } = require("../scripts/lib/yaml");
 const ROOT = resolveRoot();
-const { state: STATE_FILE, log: LOG_FILE } = require("../scripts/lib/root").taskNames(ROOT); // task.yaml, or task.<role>.yaml in a shared aisdlc workspace
+const { state: STATE_FILE, log: LOG_FILE } =
+  require("../scripts/lib/root").taskNames(ROOT); // task.yaml, or task.<role>.yaml in a shared aisdlc workspace
 
 // A task whose state file fails its seal (edited outside the state CLI, or out of step with its audit log) is ignored, so a
 // hand-edited approval cannot unlock anything.
@@ -26,8 +31,17 @@ const trustedState = (t) => {
   try {
     const al = require("../scripts/lib/auditlog");
     const log = path.join(ROOT, "tasks", t.task.id, LOG_FILE);
-    return al.verifyState(t, al.headOf(log, t.task.id), undefined, al.hasChain(log)).ok ? t : null;
-  } catch { return t; }
+    return al.verifyState(
+      t,
+      al.headOf(log, t.task.id),
+      undefined,
+      al.hasChain(log),
+    ).ok
+      ? t
+      : null;
+  } catch {
+    return t;
+  }
 };
 if (!ROOT || !["qa", "aisdlc"].includes(workspaceKind(ROOT))) process.exit(0); // not a QA workspace (config/workspace.yaml "kind": "qa")
 const { resolveEnv, blockedReason } = require("../scripts/qa/env");
@@ -45,19 +59,26 @@ const rootCommit = (cmd, cwd) => {
 };
 const RROOT = norm(ROOT);
 
-function block(reason) { process.stderr.write("BLOCKED\nReason: " + reason + "\n"); process.exit(2); }
+function block(reason) {
+  process.stderr.write("BLOCKED\nReason: " + reason + "\n");
+  process.exit(2);
+}
 
 function activeTasks() {
   const dir = path.join(ROOT, "tasks");
   if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir)
+  return fs
+    .readdirSync(dir)
     .map((t) => trustedState(readYaml(path.join(dir, t, STATE_FILE), null)))
     .filter((t) => t && !["COMPLETED", "CANCELLED"].includes(t.task.status));
 }
 const taskOf = (id) => activeTasks().find((x) => x.task.id === id);
 
 function fileHash(f) {
-  return fs.existsSync(f) ? "sha256:" + crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex") : null;
+  return fs.existsSync(f)
+    ? "sha256:" +
+        crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex")
+    : null;
 }
 
 // Is <gate> approved for task t, with its artifact unchanged since approval?
@@ -65,18 +86,27 @@ function gateOk(t, gate) {
   const a = t.approvals && t.approvals[gate];
   if (!a || a.status !== "approved") return false;
   const art = ((LC.gates || {})[gate] || {}).artifact;
-  return !art || a.artifact_hash === fileHash(path.join(ROOT, "tasks", t.task.id, art));
+  return (
+    !art ||
+    a.artifact_hash === fileHash(path.join(ROOT, "tasks", t.task.id, art))
+  );
 }
 
 // May tests/specs for QA ticket <id> be written right now? Returns a block reason or null.
 function testWriteReason(id) {
   const t = taskOf(id);
   if (!t) return `No active QA task for '${id}'.`;
-  const st = LC.states || [], i = st.indexOf(t.task.status);
-  if (i < 0) return `QA task ${id} is in ${t.task.status}; resolve that first, then resume with /aisdlc-qa:test ${id}.`;
-  if (i < st.indexOf(LC.source_edit_min_state) || i > st.indexOf(LC.source_edit_max_state))
+  const st = LC.states || [],
+    i = st.indexOf(t.task.status);
+  if (i < 0)
+    return `QA task ${id} is in ${t.task.status}; resolve that first, then resume with /aisdlc-qa:test ${id}.`;
+  if (
+    i < st.indexOf(LC.source_edit_min_state) ||
+    i > st.indexOf(LC.source_edit_max_state)
+  )
     return `QA task ${id} is in ${t.task.status}; tests and specs may be written only from ${LC.source_edit_min_state} to ${LC.source_edit_max_state}.`;
-  if (!gateOk(t, "scenarios")) return `Scenarios for ${id} are not approved, or tasks/${id}/scenarios.md changed after approval; reapproval required.`;
+  if (!gateOk(t, "scenarios"))
+    return `Scenarios for ${id} are not approved, or tasks/${id}/scenarios.md changed after approval; reapproval required.`;
   return null;
 }
 
@@ -91,10 +121,12 @@ function gatedPath(n) {
   if (!n.startsWith(RROOT + "/")) return null;
   const rel = n.slice(RROOT.length + 1);
   const spec = rel.match(/^tasks\/([^/]+)\/spec\.md$/);
-  if (spec && TICKET.test(spec[1])) return { kind: "spec", ticket: spec[1].toUpperCase() };
+  if (spec && TICKET.test(spec[1]))
+    return { kind: "spec", ticket: spec[1].toUpperCase() };
   if (/^tests\/(auth\.setup|seed\.spec)\.ts$/.test(rel)) return null;
   const test = rel.match(/^tests\/([^/]+)\/./);
-  if (test && TICKET.test(test[1])) return { kind: "test", ticket: test[1].toUpperCase() };
+  if (test && TICKET.test(test[1]))
+    return { kind: "test", ticket: test[1].toUpperCase() };
   if (/^tests\//.test(rel)) return { kind: "legacy-test" };
   if (/^specs\//.test(rel)) return { kind: "legacy-spec" };
   return null;
@@ -103,11 +135,15 @@ function gatedPath(n) {
 // Tickets a test file names: its @<T>, @<T>-S<n>, @<T>-AC<n> tags and its "// spec: tasks/<T>/spec.md" header.
 function ticketsIn(text) {
   const s = String(text || "");
-  const ids = [...s.matchAll(/@([A-Z][A-Z0-9]*-\d+)(?:-(?:S|AC)\d+)?\b/g), ...s.matchAll(/tasks\/([A-Z][A-Z0-9]*-\d+)\/spec\.md/g)].map((m) => m[1]);
+  const ids = [
+    ...s.matchAll(/@([A-Z][A-Z0-9]*-\d+)(?:-(?:S|AC)\d+)?\b/g),
+    ...s.matchAll(/tasks\/([A-Z][A-Z0-9]*-\d+)\/spec\.md/g),
+  ].map((m) => m[1]);
   return [...new Set(ids)];
 }
 
-const sameText = (a, b) => String(a).replace(/\r\n/g, "\n") === String(b).replace(/\r\n/g, "\n");
+const sameText = (a, b) =>
+  String(a).replace(/\r\n/g, "\n") === String(b).replace(/\r\n/g, "\n");
 
 // Gate a write to a ticket file. `content` is the full new content when known (Write, the generator's MCP tool), else
 // null (an Edit, a shell write); `whole` says whether it is the full file.
@@ -115,76 +151,161 @@ function checkTestWrite(file, content, whole) {
   const g = gatedPath(norm(file));
   if (!g) return;
   if (g.kind === "legacy-spec")
-    block(`specs/ is the old layout: the approved spec of a ticket is tasks/<TICKET>/spec.md (move existing ones with ${MIGRATE}).`);
+    block(
+      `specs/ is the old layout: the approved spec of a ticket is tasks/<TICKET>/spec.md (move existing ones with ${MIGRATE}).`,
+    );
   if (g.kind === "legacy-test")
-    block(`Put this ticket's tests in tests/<TICKET>/ (only tests/auth.setup.ts and tests/seed.spec.ts live directly under tests/; move old feature-area folders with ${MIGRATE}).`);
+    block(
+      `Put this ticket's tests in tests/<TICKET>/ (only tests/auth.setup.ts and tests/seed.spec.ts live directly under tests/; move old feature-area folders with ${MIGRATE}).`,
+    );
   const r = testWriteReason(g.ticket);
   if (r) block(r);
   if (g.kind === "spec") {
     // spec.md is only ever the approved scenarios.md, copied whole.
     const approved = path.join(ROOT, "tasks", g.ticket, "scenarios.md");
     if (!whole || !sameText(content, fs.readFileSync(approved, "utf8")))
-      block(`tasks/${g.ticket}/spec.md must be an exact copy of the approved tasks/${g.ticket}/scenarios.md; copy that file over it instead of editing.`);
+      block(
+        `tasks/${g.ticket}/spec.md must be an exact copy of the approved tasks/${g.ticket}/scenarios.md; copy that file over it instead of editing.`,
+      );
     return;
   }
   const other = ticketsIn(content).filter((id) => id !== g.ticket);
-  if (other.length) block(`This file is in tests/${g.ticket}/ but names ${other.join(", ")}; a ticket's tests live only in its own folder (tests/<TICKET>/).`);
+  if (other.length)
+    block(
+      `This file is in tests/${g.ticket}/ but names ${other.join(", ")}; a ticket's tests live only in its own folder (tests/<TICKET>/).`,
+    );
 }
-const MIGRATE = "node ${CLAUDE_PLUGIN_ROOT}/scripts/init/aisdlc-qa-init.js <workspace> --migrate-layout";
+const MIGRATE =
+  "node ${CLAUDE_PLUGIN_ROOT}/scripts/init/aisdlc-qa-init.js <workspace> --migrate-layout";
 
 // .env / .env.<name> (not .env.example) as a file argument, and commands that print or search file content.
-const DOT_ENV = /(^|[\s"'=/\\])\.env(?!\.example\b)(\.[\w-]+)?(?=$|[\s"'|;&)])/i;
-const READ_CMD = /(^|[|;&(]\s*|\s)(cat|type|get-content|gc|more|less|head|tail|select-string|sls|findstr|grep|rg|sed|awk|strings|copy-item|cp|import-csv)\b/i;
-const isSecretFile = (n) => /\/\.env(\.(?!example$)[\w.-]+)?$/.test(n) || n.startsWith(RROOT + "/.auth/");
-
+const DOT_ENV =
+  /(^|[\s"'=/\\])\.env(?!\.example\b)(\.[\w-]+)?(?=$|[\s"'|;&)])/i;
+const READ_CMD =
+  /(^|[|;&(]\s*|\s)(cat|type|get-content|gc|more|less|head|tail|select-string|sls|findstr|grep|rg|sed|awk|strings|copy-item|cp|import-csv)\b/i;
+const isSecretFile = (n) =>
+  /\/\.env(\.(?!example$)[\w.-]+)?$/.test(n) || n.startsWith(RROOT + "/.auth/");
 
 // Approvals and rejections are human decisions: Claude Code asks the person before the state CLI records one (the hook
 // answers "ask", which the harness always turns into a prompt), so nobody can approve without being asked.
 function askApproval(cmd, cwd) {
-  const m = cmd.match(/aisdlc-state\.js["']?\s+(approve|reject|seal)\s+([A-Z][A-Z0-9]*-\d+)(?:\s+([a-z_]+))?/);
+  const m = cmd.match(
+    /aisdlc-state\.js["']?\s+(approve|reject|seal)\s+([A-Z][A-Z0-9]*-\d+)(?:\s+([a-z_]+))?/,
+  );
   if (!m) return;
   let email = "unknown";
-  try { email = require("child_process").execSync("git config user.email", { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() || "unknown"; } catch { /* unset */ }
-  const reason = m[1] === "seal"
-    ? "Seal the state of " + m[2] + "? This is a human decision: it accepts the current content of the state file (approvals, approvers, state) as genuine, so check it with git diff first. Recorded under git user.email " + email + "."
-    : m[1] === "approve"
-    ? "Approve '" + m[3] + "' for " + m[2] + "? This is a human decision: it is recorded under git user.email " + email + " and pins the current file hash, so any later edit needs approval again."
-    : "Record a rejection of '" + m[3] + "' for " + m[2] + "? This is a human decision, recorded under git user.email " + email + ".";
-  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "ask", permissionDecisionReason: reason } }) + "\n");
+  try {
+    email =
+      require("child_process")
+        .execSync("git config user.email", {
+          cwd,
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "ignore"],
+        })
+        .trim() || "unknown";
+  } catch {
+    /* unset */
+  }
+  const reason =
+    m[1] === "seal"
+      ? "Seal the state of " +
+        m[2] +
+        "? This is a human decision: it accepts the current content of the state file (approvals, approvers, state) as genuine, so check it with git diff first. Recorded under git user.email " +
+        email +
+        "."
+      : m[1] === "approve"
+        ? "Approve '" +
+          m[3] +
+          "' for " +
+          m[2] +
+          "? This is a human decision: it is recorded under git user.email " +
+          email +
+          " and pins the current file hash, so any later edit needs approval again."
+        : "Record a rejection of '" +
+          m[3] +
+          "' for " +
+          m[2] +
+          "? This is a human decision, recorded under git user.email " +
+          email +
+          ".";
+  process.stdout.write(
+    JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: "PreToolUse",
+        permissionDecision: "ask",
+        permissionDecisionReason: reason,
+      },
+    }) + "\n",
+  );
   process.exit(0);
 }
 
 const raw = fs.readFileSync(0, "utf8");
-let ev; try { ev = JSON.parse(raw); } catch { process.exit(0); }
-const tool = ev.tool_name, input = ev.tool_input || {};
+let ev;
+try {
+  ev = JSON.parse(raw);
+} catch {
+  process.exit(0);
+}
+const tool = ev.tool_name,
+  input = ev.tool_input || {};
 const cwd = ev.cwd || process.cwd();
 
 if (tool === "Read" || tool === "Grep") {
   // Claude never reads the workspace's .env (QA credentials) or .auth/ (saved login sessions).
   const target = input.file_path || input.path;
   if (target && isSecretFile(norm(path.resolve(cwd, target))))
-    block(".env and .auth/ hold credentials and sessions; check credentials with scripts/qa/cred-check.js instead.");
+    block(
+      ".env and .auth/ hold credentials and sessions; check credentials with scripts/qa/cred-check.js instead.",
+    );
   process.exit(0);
 }
 
 if (["Write", "Edit", "NotebookEdit", "MultiEdit"].includes(tool)) {
-  const target = path.resolve(cwd, input.file_path || input.notebook_path || "");
+  const target = path.resolve(
+    cwd,
+    input.file_path || input.notebook_path || "",
+  );
   const n = norm(target);
-  if (/\/\.env(\.(?!example$)[\w.-]+)?$/.test(n)) block(".env holds the QA's credentials; the QA edits it by hand.");
-  if (/\/tasks\/[^/]+\/(?:task(?:\.[a-z]+)?\.yaml|execution-log(?:\.[a-z]+)?\.jsonl)$/.test(n)) block("task.yaml and execution logs may only be changed through scripts/state/aisdlc-state.js (audit lines: aisdlc-state.js audit <ticket> <event> [json]; they are hash-chained).");
+  if (/\/\.env(\.(?!example$)[\w.-]+)?$/.test(n))
+    block(".env holds the QA's credentials; the QA edits it by hand.");
+  if (
+    /\/tasks\/[^/]+\/(?:task(?:\.[a-z]+)?\.yaml|execution-log(?:\.[a-z]+)?\.jsonl)$/.test(
+      n,
+    )
+  )
+    block(
+      "task.yaml and execution logs may only be changed through scripts/state/aisdlc-state.js (audit lines: aisdlc-state.js audit <ticket> <event> [json]; they are hash-chained).",
+    );
   if (/\/\.git\//.test(n + "/")) block(".git is protected.");
-  if (/(^|\/)(credentials|secrets)\//.test(n) || /\.(pem|key)$/.test(n)) block("Protected path.");
-  if (n.startsWith(RROOT + "/.auth/")) block(".auth/ holds saved login sessions; it is written only by the Playwright setup project.");
-  const content = input.content ?? input.new_string ?? (input.edits || []).map((e) => e.new_string).join("\n");
+  if (/(^|\/)(credentials|secrets)\//.test(n) || /\.(pem|key)$/.test(n))
+    block("Protected path.");
+  if (n.startsWith(RROOT + "/.auth/"))
+    block(
+      ".auth/ holds saved login sessions; it is written only by the Playwright setup project.",
+    );
+  const content =
+    input.content ??
+    input.new_string ??
+    (input.edits || []).map((e) => e.new_string).join("\n");
   checkTestWrite(target, content, tool === "Write");
   process.exit(0);
 }
 
-if (tool === "mcp__playwright-test__generator_write_test" || tool === "mcp__playwright-test__planner_save_plan") {
+if (
+  tool === "mcp__playwright-test__generator_write_test" ||
+  tool === "mcp__playwright-test__planner_save_plan"
+) {
   // The Playwright generator and planner write files through their MCP server ({ fileName, code } / { fileName, ... },
   // relative to the workspace root); the same gate applies. The planner saving a plan into tests/ or specs/ is blocked.
-  const file = input.fileName || (tool.endsWith("save_plan") ? "specs/plan.md" : "tests/generated.spec.ts");
-  checkTestWrite(path.resolve(ROOT, file), input.code || "", tool.endsWith("write_test"));
+  const file =
+    input.fileName ||
+    (tool.endsWith("save_plan") ? "specs/plan.md" : "tests/generated.spec.ts");
+  checkTestWrite(
+    path.resolve(ROOT, file),
+    input.code || "",
+    tool.endsWith("write_test"),
+  );
   process.exit(0);
 }
 
@@ -193,99 +314,213 @@ if (tool === "Bash" || tool === "PowerShell") {
   askApproval(cmd, cwd);
 
   // dangerous operations
-  if (/git\s+push\b.*(--force\b|--force-with-lease|\s-f\b|\s\+\S+)/.test(cmd)) block("Force push is disabled.");
-  if (/git\s+(branch\s+-[dD]\s+main|push\s+\S+\s+:main|push\s+\S+\s+--delete\s+main)/.test(cmd)) block("Deleting main is disabled.");
-  if (/git\s+reset\s+--hard/.test(cmd) && /\bmain\b/.test(cmd)) block("Destructive reset on main is disabled.");
-  if (/git\s+(filter-branch|rebase\s+.*--root)/.test(cmd)) block("History rewrite is disabled.");
+  if (/git\s+push\b.*(--force\b|--force-with-lease|\s-f\b|\s\+\S+)/.test(cmd))
+    block("Force push is disabled.");
+  if (
+    /git\s+(branch\s+-[dD]\s+main|push\s+\S+\s+:main|push\s+\S+\s+--delete\s+main)/.test(
+      cmd,
+    )
+  )
+    block("Deleting main is disabled.");
+  if (/git\s+reset\s+--hard/.test(cmd) && /\bmain\b/.test(cmd))
+    block("Destructive reset on main is disabled.");
+  if (/git\s+(filter-branch|rebase\s+.*--root)/.test(cmd))
+    block("History rewrite is disabled.");
   // `env` / `printenv` as commands (start of command or after | ; &), not a file name such as `.env` at the end.
-  if (/(^|[|;&]\s*)(printenv|env)\s*($|[|;&>])/i.test(cmd) || /(^|[|;&]\s*)printenv\b/i.test(cmd) ||
-      /(get-childitem|gci|dir|ls)\s+env:|cat\s+.*\.(pem|key)\b|aws\s+secretsmanager\s+get-secret-value/i.test(cmd))
+  if (
+    /(^|[|;&]\s*)(printenv|env)\s*($|[|;&>])/i.test(cmd) ||
+    /(^|[|;&]\s*)printenv\b/i.test(cmd) ||
+    /(get-childitem|gci|dir|ls)\s+env:|cat\s+.*\.(pem|key)\b|aws\s+secretsmanager\s+get-secret-value/i.test(
+      cmd,
+    )
+  )
     block("Credential/secret extraction is disabled.");
-  if (READ_CMD.test(cmd) && DOT_ENV.test(cmd)) block(".env holds credentials; read whether a credential is set with scripts/qa/cred-check.js, never the file.");
-  if (/\b(echo|write-output|write-host|printf|cat|type|out-file|set-content)\b[^|;&\n]*(BITBUCKET_API_TOKEN|JIRA_API_TOKEN|QA_PASSWORD)/i.test(cmd) || /^\s*\$env:(BITBUCKET_API_TOKEN|JIRA_API_TOKEN|QA_PASSWORD)\s*$/i.test(cmd))
-    block("Credentials must not be printed or written; check only whether they are set.");
-  if (/(\bcat\b|\btype\b|get-content|\bgc\b|\bmore\b|\bless\b)[^|;&\n]*\.auth[\\/]/i.test(cmd)) block(".auth/ holds saved login sessions; do not print it.");
-  if (/git\s+add\b[^|;&\n]*(\.auth\b|claude\.env)/i.test(cmd)) block("Saved login sessions (.auth/) and claude.env are never committed.");
+  if (READ_CMD.test(cmd) && DOT_ENV.test(cmd))
+    block(
+      ".env holds credentials; read whether a credential is set with scripts/qa/cred-check.js, never the file.",
+    );
+  if (
+    /\b(echo|write-output|write-host|printf|cat|type|out-file|set-content)\b[^|;&\n]*(BITBUCKET_API_TOKEN|JIRA_API_TOKEN|QA_PASSWORD)/i.test(
+      cmd,
+    ) ||
+    /^\s*\$env:(BITBUCKET_API_TOKEN|JIRA_API_TOKEN|QA_PASSWORD)\s*$/i.test(cmd)
+  )
+    block(
+      "Credentials must not be printed or written; check only whether they are set.",
+    );
+  if (
+    /(\bcat\b|\btype\b|get-content|\bgc\b|\bmore\b|\bless\b)[^|;&\n]*\.auth[\\/]/i.test(
+      cmd,
+    )
+  )
+    block(".auth/ holds saved login sessions; do not print it.");
+  if (/git\s+add\b[^|;&\n]*(\.auth\b|claude\.env)/i.test(cmd))
+    block("Saved login sessions (.auth/) and claude.env are never committed.");
 
   // task state integrity
   // Only commands that write to task.yaml (a redirect into it, or a writing command naming it); reads such as
   // `git check-ignore -v tasks/<T>/task.yaml`, `cat` or `Get-Content` pass, and so do `2>&1` / `>$null`.
-  if (!/aisdlc-state\.js/.test(cmd) && (
-    />>?\s*["']?[^\s|;&>"']*(?:task(?:\.[a-z]+)?\.yaml|execution-log(?:\.[a-z]+)?\.jsonl)/i.test(cmd) ||
-    /(^|[|;&(]\s*|\s)(sed\s+-i|tee|set-content|add-content|out-file|clear-content|rm|del|remove-item|ri|mv|move-item|cp|copy-item|truncate|vi|vim|nano|notepad|code)\b[^|;&\n]*(?:task(?:\.[a-z]+)?\.yaml|execution-log(?:\.[a-z]+)?\.jsonl)/i.test(cmd)))
-    block("task.yaml and execution logs may only be changed through scripts/state/aisdlc-state.js (audit lines: aisdlc-state.js audit <ticket> <event> [json]; they are hash-chained).");
+  if (
+    !/aisdlc-state\.js/.test(cmd) &&
+    (/>>?\s*["']?[^\s|;&>"']*(?:task(?:\.[a-z]+)?\.yaml|execution-log(?:\.[a-z]+)?\.jsonl)/i.test(
+      cmd,
+    ) ||
+      /(^|[|;&(]\s*|\s)(sed\s+-i|tee|set-content|add-content|out-file|clear-content|rm|del|remove-item|ri|mv|move-item|cp|copy-item|truncate|vi|vim|nano|notepad|code)\b[^|;&\n]*(?:task(?:\.[a-z]+)?\.yaml|execution-log(?:\.[a-z]+)?\.jsonl)/i.test(
+        cmd,
+      ))
+  )
+    block(
+      "task.yaml and execution logs may only be changed through scripts/state/aisdlc-state.js (audit lines: aisdlc-state.js audit <ticket> <event> [json]; they are hash-chained).",
+    );
 
   // Jira: only through jira-attach.js, and only at the right point in the lifecycle.
-  if (/\b(curl|wget|invoke-restmethod|invoke-webrequest|irm|iwr)\b[^|;&\n]*(atlassian\.net|\/rest\/api\/)/i.test(cmd))
+  if (
+    /\b(curl|wget|invoke-restmethod|invoke-webrequest|irm|iwr)\b[^|;&\n]*(atlassian\.net|\/rest\/api\/)/i.test(
+      cmd,
+    )
+  )
     block("Call Jira through scripts/jira/jira-attach.js, not ad-hoc HTTP.");
-  const jira = cmd.match(/jira-attach\.js["']?\s+(\w+)\s+["']?([A-Za-z][A-Za-z0-9]*-\d+)["']?(?:\s+["']?(\w+))?/);
+  const jira = cmd.match(
+    /jira-attach\.js["']?\s+(\w+)\s+["']?([A-Za-z][A-Za-z0-9]*-\d+)["']?(?:\s+["']?(\w+))?/,
+  );
   if (jira && !/--dry-run\b/.test(cmd)) {
     const [, sub, id, arg] = jira;
     const t = taskOf(id.toUpperCase());
     const s = t && t.task.status;
     if (sub === "defect" && !["TESTS_EXECUTED", "AWAITING_DEV_FIX"].includes(s))
-      block(`A defect comment is posted only after a test run, while ${id} is in TESTS_EXECUTED or AWAITING_DEV_FIX (now ${s || "no active task"}).`);
-    if (sub === "reply" && !["TESTS_EXECUTED", "AWAITING_DEV_FIX", "AWAITING_RESULTS_SIGNOFF"].includes(s))
-      block(`A defect follow-up is posted only while ${id} is between TESTS_EXECUTED and AWAITING_RESULTS_SIGNOFF (now ${s || "no active task"}).`);
+      block(
+        `A defect comment is posted only after a test run, while ${id} is in TESTS_EXECUTED or AWAITING_DEV_FIX (now ${s || "no active task"}).`,
+      );
+    if (
+      sub === "reply" &&
+      ![
+        "TESTS_EXECUTED",
+        "AWAITING_DEV_FIX",
+        "AWAITING_RESULTS_SIGNOFF",
+      ].includes(s)
+    )
+      block(
+        `A defect follow-up is posted only while ${id} is between TESTS_EXECUTED and AWAITING_RESULTS_SIGNOFF (now ${s || "no active task"}).`,
+      );
     if ((sub === "attach" || sub === "comment") && !(t && gateOk(t, "signoff")))
-      block(`Evidence is attached to ${id} only after QA sign-off (approved, and tasks/${id}/results.md unchanged since).`);
-    if (sub === "transition" && arg === "defect_found" && !["TESTS_EXECUTED", "AWAITING_DEV_FIX"].includes(s))
-      block(`The defect_found transition is made only after a test run, while ${id} is in TESTS_EXECUTED or AWAITING_DEV_FIX (now ${s || "no active task"}).`);
-    if (sub === "transition" && arg === "verified" && !(t && gateOk(t, "signoff")))
-      block(`The verified transition is made on ${id} only after QA sign-off (approved, and tasks/${id}/results.md unchanged since).`);
+      block(
+        `Evidence is attached to ${id} only after QA sign-off (approved, and tasks/${id}/results.md unchanged since).`,
+      );
+    if (
+      sub === "transition" &&
+      arg === "defect_found" &&
+      !["TESTS_EXECUTED", "AWAITING_DEV_FIX"].includes(s)
+    )
+      block(
+        `The defect_found transition is made only after a test run, while ${id} is in TESTS_EXECUTED or AWAITING_DEV_FIX (now ${s || "no active task"}).`,
+      );
+    if (
+      sub === "transition" &&
+      arg === "verified" &&
+      !(t && gateOk(t, "signoff"))
+    )
+      block(
+        `The verified transition is made on ${id} only after QA sign-off (approved, and tasks/${id}/results.md unchanged since).`,
+      );
     if (sub === "transition" && !["defect_found", "verified"].includes(arg))
-      block("transition takes defect_found or verified (the keys of jira.write.status_transitions).");
+      block(
+        "transition takes defect_found or verified (the keys of jira.write.status_transitions).",
+      );
   }
 
   // Playwright never runs against production.
-  if (/(playwright(\.cmd)?|cli\.js|pw\.js)["']?\s+test\b/.test(cmd) && !/--list\b/.test(cmd)) {
+  if (
+    /(playwright(\.cmd)?|cli\.js|pw\.js)["']?\s+test\b/.test(cmd) &&
+    !/--list\b/.test(cmd)
+  ) {
     const named = (cmd.match(/QA_ENV\s*=\s*["']?([\w-]+)/i) || [])[1];
     const env = resolveEnv(ROOT, named);
     if (!env.ok) block(`Playwright target environment refused: ${env.reason}`);
   }
-  for (const m of cmd.matchAll(/playwright(?:\.cmd)?["']?\s+(?:codegen|open|cr|ff|wk)\b[^|;&\n]*?(https?:\/\/[^\s"']+)/gi)) {
-    let host = ""; try { host = new URL(m[1]).hostname.toLowerCase(); } catch {}
+  for (const m of cmd.matchAll(
+    /playwright(?:\.cmd)?["']?\s+(?:codegen|open|cr|ff|wk)\b[^|;&\n]*?(https?:\/\/[^\s"']+)/gi,
+  )) {
+    let host = "";
+    try {
+      host = new URL(m[1]).hostname.toLowerCase();
+    } catch {}
     const r = host && blockedReason(ROOT, host);
     if (r) block(r);
   }
 
   // git commit policy: <TICKET>: <summary> on branch <TICKET>, for a signed-off QA task
-  const commitDir = (cmd.match(/-C\s+("[^"]+"|\S+)/) || [])[1]?.replace(/"/g, "") || cwd;
+  const commitDir =
+    (cmd.match(/-C\s+("[^"]+"|\S+)/) || [])[1]?.replace(/"/g, "") || cwd;
   let hasHead = true;
   if (/git\s+(-C\s+\S+\s+)?commit\b/.test(cmd)) {
-    try { execSync("git rev-parse --verify -q HEAD", { cwd: commitDir, stdio: "ignore" }); } catch { hasHead = false; }
+    try {
+      execSync("git rev-parse --verify -q HEAD", {
+        cwd: commitDir,
+        stdio: "ignore",
+      });
+    } catch {
+      hasHead = false;
+    }
   }
   // The very first commit of a new QA repository (the scaffolded workspace) has no ticket to belong to.
-  if (/git\s+(-C\s+\S+\s+)?commit\b/.test(cmd) && hasHead && !rootCommit(cmd, cwd)) {
-    const msgs = [...cmd.matchAll(/-m\s+(?:"((?:[^"\\]|\\.)*)"|'([^']*)')/g)].map((m) => m[1] ?? m[2]);
+  if (
+    /git\s+(-C\s+\S+\s+)?commit\b/.test(cmd) &&
+    hasHead &&
+    !rootCommit(cmd, cwd)
+  ) {
+    const msgs = [
+      ...cmd.matchAll(/-m\s+(?:"((?:[^"\\]|\\.)*)"|'([^']*)')/g),
+    ].map((m) => m[1] ?? m[2]);
     const tasks = activeTasks();
     if (!tasks.length) block("No active QA task; commits are not allowed.");
-    if (msgs.length !== 1 || msgs[0].includes("\n")) block("Commit must have exactly one single-line -m message and no body.");
+    if (msgs.length !== 1 || msgs[0].includes("\n"))
+      block("Commit must have exactly one single-line -m message and no body.");
     const ids = tasks.map((t) => t.task.id);
     const m = msgs[0].match(/^([A-Z][A-Z0-9]*-\d+): (\S.*)$/);
-    if (!m || !ids.includes(m[1])) block(`Commit message must match '<ticket>: <summary>' for an active QA task (${ids.join(", ")}).`);
+    if (!m || !ids.includes(m[1]))
+      block(
+        `Commit message must match '<ticket>: <summary>' for an active QA task (${ids.join(", ")}).`,
+      );
     const t = tasks.find((x) => x.task.id === m[1]);
-    if (!gateOk(t, "scenarios") || !gateOk(t, "signoff")) block(`QA results for ${m[1]} are not signed off; cannot commit.`);
+    if (!gateOk(t, "scenarios") || !gateOk(t, "signoff"))
+      block(`QA results for ${m[1]} are not signed off; cannot commit.`);
     let branch = "";
-    try { branch = execSync("git rev-parse --abbrev-ref HEAD", { cwd: commitDir, encoding: "utf8" }).trim(); } catch {}
-    if (branch !== m[1]) block(`Active QA task requires branch ${m[1]} (current: ${branch || "unknown"}).`);
+    try {
+      branch = execSync("git rev-parse --abbrev-ref HEAD", {
+        cwd: commitDir,
+        encoding: "utf8",
+      }).trim();
+    } catch {}
+    if (branch !== m[1])
+      block(
+        `Active QA task requires branch ${m[1]} (current: ${branch || "unknown"}).`,
+      );
   }
 
   // Shell writes into tests/ or the ticket specs follow the same gate as Write/Edit: every tests/ or specs/ path, and
   // every tasks/<T>/spec.md, named by a writing command is checked. spec.md may only be copied from its scenarios.md.
   const isStateTool = /aisdlc-state\.js/.test(cmd);
-  const writeish = /(>>?\s|sed\s+-i|set-content|add-content|out-file|\btee\b|new-item|copy-item|move-item|\bmv\b|\bcp\b|\bni\b|\bcopy\b|\bmove\b)/i;
+  const writeish =
+    /(>>?\s|sed\s+-i|set-content|add-content|out-file|\btee\b|new-item|copy-item|move-item|\bmv\b|\bcp\b|\bni\b|\bcopy\b|\bmove\b)/i;
   if (!isStateTool && writeish.test(cmd)) {
     const lc = cmd.replace(/\\/g, "/");
-    for (const m of lc.matchAll(/(?:^|[\s"'=(])((?:\.\/)?(?:tests|specs)\/[^\s"'|;&)]+|(?:\.\/)?tasks\/[^\s"'/|;&)]+\/spec\.md)/gi)) {
+    for (const m of lc.matchAll(
+      /(?:^|[\s"'=(])((?:\.\/)?(?:tests|specs)\/[^\s"'|;&)]+|(?:\.\/)?tasks\/[^\s"'/|;&)]+\/spec\.md)/gi,
+    )) {
       const p = m[1].replace(/^\.\//, "");
       const g = gatedPath(norm(path.resolve(cwd, p)));
       if (!g) continue;
       if (g.kind === "spec") {
-        const copy = new RegExp(`(\\bcp|copy-item|\\bcopy)\\s+["']?(\\.\\/)?tasks\\/${g.ticket}\\/scenarios\\.md["']?\\s+["']?(\\.\\/)?tasks\\/${g.ticket}\\/spec\\.md`, "i");
+        const copy = new RegExp(
+          `(\\bcp|copy-item|\\bcopy)\\s+["']?(\\.\\/)?tasks\\/${g.ticket}\\/scenarios\\.md["']?\\s+["']?(\\.\\/)?tasks\\/${g.ticket}\\/spec\\.md`,
+          "i",
+        );
         const r = testWriteReason(g.ticket);
         if (r) block(r);
-        if (!copy.test(lc)) block(`tasks/${g.ticket}/spec.md is only ever a copy of the approved tasks/${g.ticket}/scenarios.md: cp tasks/${g.ticket}/scenarios.md tasks/${g.ticket}/spec.md`);
+        if (!copy.test(lc))
+          block(
+            `tasks/${g.ticket}/spec.md is only ever a copy of the approved tasks/${g.ticket}/scenarios.md: cp tasks/${g.ticket}/scenarios.md tasks/${g.ticket}/spec.md`,
+          );
         continue;
       }
       checkTestWrite(path.resolve(cwd, p), cmd, false);

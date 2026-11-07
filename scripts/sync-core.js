@@ -14,15 +14,43 @@ const CORE = path.join(REPO, "packages", "aisdlc-core");
 // Which files each plugin needs. aisdlc-dev and aisdlc-qa get the full core (lib + state engine; lifecycles and their
 // gates come from each plugin's config/task-types.yaml). aisdlc-design has no task lifecycle, so it only needs the
 // workspace-root helper.
-const FULL_CORE = ["lib/root.js", "lib/repo-paths.js", "lib/yaml.js", "lib/design-config.js", "lib/jira.js", "lib/auditlog.js", "state/aisdlc-state.js"];
+const FULL_CORE = [
+  "lib/root.js",
+  "lib/repo-paths.js",
+  "lib/yaml.js",
+  "lib/design-config.js",
+  "lib/jira.js",
+  "lib/auditlog.js",
+  "state/aisdlc-state.js",
+];
 const CORE_CONSUMERS = [
-  { dest: path.join(REPO, "plugins", "aisdlc-dev", "scripts"), files: FULL_CORE },
-  { dest: path.join(REPO, "plugins", "aisdlc-design", "scripts"), files: ["lib/root.js"] },
-  { dest: path.join(REPO, "plugins", "aisdlc-qa", "scripts"), files: FULL_CORE },
+  {
+    dest: path.join(REPO, "plugins", "aisdlc-dev", "scripts"),
+    files: FULL_CORE,
+  },
+  {
+    dest: path.join(REPO, "plugins", "aisdlc-design", "scripts"),
+    files: ["lib/root.js"],
+  },
+  {
+    dest: path.join(REPO, "plugins", "aisdlc-qa", "scripts"),
+    files: FULL_CORE,
+  },
   // pm keeps its own repo-paths, yaml and design-config; it shares the root helper, Jira client and state engine.
-  { dest: path.join(REPO, "plugins", "aisdlc-pm", "scripts"), files: ["lib/root.js", "lib/jira.js", "lib/auditlog.js", "state/aisdlc-state.js"] },
+  {
+    dest: path.join(REPO, "plugins", "aisdlc-pm", "scripts"),
+    files: [
+      "lib/root.js",
+      "lib/jira.js",
+      "lib/auditlog.js",
+      "state/aisdlc-state.js",
+    ],
+  },
   // aisdlc has no task lifecycle of its own: root helper and the JSON-YAML reader only.
-  { dest: path.join(REPO, "plugins", "aisdlc", "scripts"), files: ["lib/root.js", "lib/yaml.js", "lib/auditlog.js"] },
+  {
+    dest: path.join(REPO, "plugins", "aisdlc", "scripts"),
+    files: ["lib/root.js", "lib/yaml.js", "lib/auditlog.js"],
+  },
 ];
 
 const check = process.argv.includes("--check");
@@ -37,7 +65,9 @@ for (const { dest, files } of CORE_CONSUMERS) {
     const have = fs.existsSync(out) ? fs.readFileSync(out) : null;
     if (have && want.equals(have)) continue;
     if (check) {
-      console.error(`DRIFT ${path.relative(REPO, out)} differs from canonical ${rel}`);
+      console.error(
+        `DRIFT ${path.relative(REPO, out)} differs from canonical ${rel}`,
+      );
       drift++;
     } else {
       fs.mkdirSync(path.dirname(out), { recursive: true });
@@ -48,7 +78,11 @@ for (const { dest, files } of CORE_CONSUMERS) {
 }
 
 if (check) {
-  console.log(drift ? `\n${drift} vendored file(s) out of date; run: node scripts/sync-core.js` : "vendored core is up to date");
+  console.log(
+    drift
+      ? `\n${drift} vendored file(s) out of date; run: node scripts/sync-core.js`
+      : "vendored core is up to date",
+  );
   process.exit(drift ? 1 : 0);
 }
 console.log("done");

@@ -16,20 +16,26 @@ const CRC_TABLE = (() => {
 
 function crc32(buf) {
   let c = 0xffffffff;
-  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  for (let i = 0; i < buf.length; i++)
+    c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
   return (c ^ 0xffffffff) >>> 0;
 }
 
 function dosDateTime(d) {
   return {
-    time: (d.getHours() << 11) | (d.getMinutes() << 5) | Math.floor(d.getSeconds() / 2),
-    date: ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate(),
+    time:
+      (d.getHours() << 11) |
+      (d.getMinutes() << 5) |
+      Math.floor(d.getSeconds() / 2),
+    date:
+      ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate(),
   };
 }
 
 // entries: [{ name: "folder/file.ext", data: Buffer }] -> Buffer holding the .zip
 function zipEntries(entries) {
-  const parts = [], central = [];
+  const parts = [],
+    central = [];
   let offset = 0;
   const { time, date } = dosDateTime(new Date());
   for (const { name, data } of entries) {
@@ -85,7 +91,8 @@ function zipDir(dir, outFile, skip = () => false) {
       const p = path.join(d, e.name);
       const rel = path.relative(dir, p).replace(/\\/g, "/");
       if (e.isDirectory()) walk(p);
-      else if (!skip(rel)) entries.push({ name: `${top}/${rel}`, data: fs.readFileSync(p) });
+      else if (!skip(rel))
+        entries.push({ name: `${top}/${rel}`, data: fs.readFileSync(p) });
     }
   })(dir);
   fs.writeFileSync(outFile, zipEntries(entries));

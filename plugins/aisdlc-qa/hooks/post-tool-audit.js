@@ -5,23 +5,47 @@ const path = require("path");
 const { resolveRoot, workspaceKind } = require("../scripts/lib/root");
 const ROOT = resolveRoot();
 if (!ROOT || workspaceKind(ROOT) !== "qa") process.exit(0);
-let ev; try { ev = JSON.parse(fs.readFileSync(0, "utf8")); } catch { process.exit(0); }
-const SECRET = /(AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:token|secret|password|passwd|api[_-]?key)\s*[=:]\s*\S+|xox[bp]-\S+|ghp_\w+)/gi;
+let ev;
+try {
+  ev = JSON.parse(fs.readFileSync(0, "utf8"));
+} catch {
+  process.exit(0);
+}
+const SECRET =
+  /(AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:token|secret|password|passwd|api[_-]?key)\s*[=:]\s*\S+|xox[bp]-\S+|ghp_\w+)/gi;
 const input = ev.tool_input || {};
 const cmd = String(input.command || "");
-const cls = /git\s+commit/.test(cmd) ? "git-commit" : /git\s+push/.test(cmd) ? "git-push" : /git\b/.test(cmd) ? "git"
-  : /jira-attach\.js/.test(cmd) ? "jira-write" : /run-tests\.js|playwright\S*\s+test\b/.test(cmd) ? "test-run" : ev.tool_name;
+const cls = /git\s+commit/.test(cmd)
+  ? "git-commit"
+  : /git\s+push/.test(cmd)
+    ? "git-push"
+    : /git\b/.test(cmd)
+      ? "git"
+      : /jira-attach\.js/.test(cmd)
+        ? "jira-write"
+        : /run-tests\.js|playwright\S*\s+test\b/.test(cmd)
+          ? "test-run"
+          : ev.tool_name;
 const rec = {
   timestamp: new Date().toISOString(),
   session: ev.session_id || null,
   tool: ev.tool_name,
   class: cls,
-  target: input.file_path ? path.basename(String(input.file_path)) : input.fileName ? path.basename(String(input.fileName)) : undefined,
+  target: input.file_path
+    ? path.basename(String(input.file_path))
+    : input.fileName
+      ? path.basename(String(input.fileName))
+      : undefined,
   command: cmd ? cmd.slice(0, 200).replace(SECRET, "[REDACTED]") : undefined,
-  success: ev.tool_response ? !(ev.tool_response.is_error || ev.tool_response.error) : null,
+  success: ev.tool_response
+    ? !(ev.tool_response.is_error || ev.tool_response.error)
+    : null,
 };
 try {
   fs.mkdirSync(path.join(ROOT, "logs"), { recursive: true });
-  fs.appendFileSync(path.join(ROOT, "logs", "audit.jsonl"), JSON.stringify(rec) + "\n");
+  fs.appendFileSync(
+    path.join(ROOT, "logs", "audit.jsonl"),
+    JSON.stringify(rec) + "\n",
+  );
 } catch {}
 process.exit(0);

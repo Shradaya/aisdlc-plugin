@@ -1,269 +1,1001 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>aisdlc-qa flow</title>
-<style>
-  :root {
-    --bg: #fbfaf8; --surface: #ffffff; --text: #1d1d1f; --muted: #5f6368; --line: #d9d6d0; --arrow: #6b6f76;
-    --claude: #2563eb; --claude-bg: #eaf1fe;
-    --qa: #b45309; --qa-bg: #fdf3e4;
-    --dev: #7c3aed; --dev-bg: #f2ecfe;
-    --done: #15803d; --done-bg: #e8f6ec;
-    --code-bg: #f1efeb;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #151618; --surface: #1d1f22; --text: #e8e6e3; --muted: #a2a6ad; --line: #3a3d42; --arrow: #9aa0a8;
-      --claude: #7aa7ff; --claude-bg: #1c2840;
-      --qa: #f0a64a; --qa-bg: #3a2a14;
-      --dev: #b794ff; --dev-bg: #2a2140;
-      --done: #5cc98a; --done-bg: #173323;
-      --code-bg: #26292d;
-    }
-  }
-  :root[data-theme="dark"] {
-    --bg: #151618; --surface: #1d1f22; --text: #e8e6e3; --muted: #a2a6ad; --line: #3a3d42; --arrow: #9aa0a8;
-    --claude: #7aa7ff; --claude-bg: #1c2840;
-    --qa: #f0a64a; --qa-bg: #3a2a14;
-    --dev: #b794ff; --dev-bg: #2a2140;
-    --done: #5cc98a; --done-bg: #173323;
-    --code-bg: #26292d;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  main { max-width: 980px; margin: 0 auto; padding: 40px 16px 80px; }
-  h1 { font-size: 30px; line-height: 1.2; margin: 0 0 8px; }
-  h2 { font-size: 21px; margin: 48px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
-  h3 { font-size: 16px; margin: 24px 0 6px; }
-  p, li { max-width: 72ch; }
-  .lede { color: var(--muted); font-size: 17px; margin: 0 0 20px; }
-  code { font: 0.88em ui-monospace, SFMono-Regular, Consolas, monospace; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
-  pre { background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; font: 13px/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; }
-  pre code { background: none; padding: 0; }
-  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0 0 12px; font-size: 13px; color: var(--muted); }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .sw { width: 14px; height: 14px; border-radius: 3px; border: 2px solid; display: inline-block; }
-  .sw.claude { background: var(--claude-bg); border-color: var(--claude); }
-  .sw.qa { background: var(--qa-bg); border-color: var(--qa); }
-  .sw.dev { background: var(--dev-bg); border-color: var(--dev); }
-  .sw.done { background: var(--done-bg); border-color: var(--done); }
-  .sw.gate { background: var(--qa-bg); border-color: var(--qa); border-width: 3px; }
-  figure { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; overflow-x: auto; }
-  figure svg { display: block; width: 100%; min-width: 660px; height: auto; }
-  figcaption { font-size: 13px; color: var(--muted); margin-top: 8px; }
-  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
-  table { border-collapse: collapse; width: 100%; font-size: 14px; }
-  th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
-  th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; }
-  tr:last-child td { border-bottom: none; }
-  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
-  .who { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 99px; white-space: nowrap; }
-  .who.claude { color: var(--claude); background: var(--claude-bg); }
-  .who.qa { color: var(--qa); background: var(--qa-bg); }
-  .who.dev { color: var(--dev); background: var(--dev-bg); }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-  .card { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--qa); border-radius: 10px; padding: 12px 14px; }
-  .card h3 { margin: 0 0 4px; }
-  .card p { margin: 0 0 6px; font-size: 14px; }
-  .card .opts { font-size: 13px; color: var(--muted); }
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>aisdlc-qa flow</title>
+    <style>
+      :root {
+        --bg: #fbfaf8;
+        --surface: #ffffff;
+        --text: #1d1d1f;
+        --muted: #5f6368;
+        --line: #d9d6d0;
+        --arrow: #6b6f76;
+        --claude: #2563eb;
+        --claude-bg: #eaf1fe;
+        --qa: #b45309;
+        --qa-bg: #fdf3e4;
+        --dev: #7c3aed;
+        --dev-bg: #f2ecfe;
+        --done: #15803d;
+        --done-bg: #e8f6ec;
+        --code-bg: #f1efeb;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #151618;
+          --surface: #1d1f22;
+          --text: #e8e6e3;
+          --muted: #a2a6ad;
+          --line: #3a3d42;
+          --arrow: #9aa0a8;
+          --claude: #7aa7ff;
+          --claude-bg: #1c2840;
+          --qa: #f0a64a;
+          --qa-bg: #3a2a14;
+          --dev: #b794ff;
+          --dev-bg: #2a2140;
+          --done: #5cc98a;
+          --done-bg: #173323;
+          --code-bg: #26292d;
+        }
+      }
+      :root[data-theme="dark"] {
+        --bg: #151618;
+        --surface: #1d1f22;
+        --text: #e8e6e3;
+        --muted: #a2a6ad;
+        --line: #3a3d42;
+        --arrow: #9aa0a8;
+        --claude: #7aa7ff;
+        --claude-bg: #1c2840;
+        --qa: #f0a64a;
+        --qa-bg: #3a2a14;
+        --dev: #b794ff;
+        --dev-bg: #2a2140;
+        --done: #5cc98a;
+        --done-bg: #173323;
+        --code-bg: #26292d;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          15px/1.6 system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          sans-serif;
+      }
+      main {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 40px 16px 80px;
+      }
+      h1 {
+        font-size: 30px;
+        line-height: 1.2;
+        margin: 0 0 8px;
+      }
+      h2 {
+        font-size: 21px;
+        margin: 48px 0 12px;
+        padding-top: 8px;
+        border-top: 1px solid var(--line);
+      }
+      h3 {
+        font-size: 16px;
+        margin: 24px 0 6px;
+      }
+      p,
+      li {
+        max-width: 72ch;
+      }
+      .lede {
+        color: var(--muted);
+        font-size: 17px;
+        margin: 0 0 20px;
+      }
+      code {
+        font:
+          0.88em ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+        background: var(--code-bg);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      pre {
+        background: var(--code-bg);
+        padding: 14px 16px;
+        border-radius: 8px;
+        overflow-x: auto;
+        font:
+          13px/1.55 ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+      }
+      pre code {
+        background: none;
+        padding: 0;
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 18px;
+        margin: 0 0 12px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .sw {
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        border: 2px solid;
+        display: inline-block;
+      }
+      .sw.claude {
+        background: var(--claude-bg);
+        border-color: var(--claude);
+      }
+      .sw.qa {
+        background: var(--qa-bg);
+        border-color: var(--qa);
+      }
+      .sw.dev {
+        background: var(--dev-bg);
+        border-color: var(--dev);
+      }
+      .sw.done {
+        background: var(--done-bg);
+        border-color: var(--done);
+      }
+      .sw.gate {
+        background: var(--qa-bg);
+        border-color: var(--qa);
+        border-width: 3px;
+      }
+      figure {
+        margin: 0;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 16px;
+        overflow-x: auto;
+      }
+      figure svg {
+        display: block;
+        width: 100%;
+        min-width: 660px;
+        height: auto;
+      }
+      figcaption {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 8px;
+      }
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--surface);
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 14px;
+      }
+      th,
+      td {
+        text-align: left;
+        vertical-align: top;
+        padding: 9px 12px;
+        border-bottom: 1px solid var(--line);
+      }
+      th {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+        font-weight: 600;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      td.num {
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        font-weight: 600;
+      }
+      .who {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 1px 8px;
+        border-radius: 99px;
+        white-space: nowrap;
+      }
+      .who.claude {
+        color: var(--claude);
+        background: var(--claude-bg);
+      }
+      .who.qa {
+        color: var(--qa);
+        background: var(--qa-bg);
+      }
+      .who.dev {
+        color: var(--dev);
+        background: var(--dev-bg);
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 12px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-left: 4px solid var(--qa);
+        border-radius: 10px;
+        padding: 12px 14px;
+      }
+      .card h3 {
+        margin: 0 0 4px;
+      }
+      .card p {
+        margin: 0 0 6px;
+        font-size: 14px;
+      }
+      .card .opts {
+        font-size: 13px;
+        color: var(--muted);
+      }
 
-  /* diagram */
-  .node rect.box { stroke-width: 1.6; }
-  .node.claude rect.box { fill: var(--claude-bg); stroke: var(--claude); }
-  .node.qa rect.box { fill: var(--qa-bg); stroke: var(--qa); }
-  .node.dev rect.box { fill: var(--dev-bg); stroke: var(--dev); }
-  .node.done rect.box { fill: var(--done-bg); stroke: var(--done); }
-  .node.start rect.box { fill: var(--surface); stroke: var(--arrow); }
-  .node.gate rect.box { stroke-width: 3; }
-  .node .t1 { fill: var(--text); font: 600 13.5px system-ui, -apple-system, "Segoe UI", sans-serif; }
-  .node .t2 { fill: var(--muted); font: 10.5px ui-monospace, SFMono-Regular, Consolas, monospace; }
-  .node .mono { fill: var(--text); font: 600 12.5px ui-monospace, SFMono-Regular, Consolas, monospace; }
-  .badge rect { fill: var(--qa); }
-  .badge text { fill: var(--surface); font: 700 9px system-ui, sans-serif; letter-spacing: 0.06em; }
-  .edge { fill: none; stroke: var(--arrow); stroke-width: 1.6; }
-  .edge.loop { stroke-dasharray: 5 4; }
-  .edge.dev { stroke: var(--dev); }
-  .edge.defect { stroke: var(--qa); }
-  .halo { fill: none; stroke: var(--surface); stroke-width: 7; }
-  .lbl { fill: var(--muted); font: 11px system-ui, -apple-system, "Segoe UI", sans-serif; }
-  .lbl.dev { fill: var(--dev); }
-  .lbl.defect { fill: var(--qa); }
-  .note rect { fill: none; stroke: var(--line); stroke-dasharray: 4 3; stroke-width: 1.4; }
-  .note text { fill: var(--muted); font: 11px system-ui, -apple-system, "Segoe UI", sans-serif; }
-  .ah { fill: var(--arrow); }
-  .ah.dev { fill: var(--dev); }
-  .ah.defect { fill: var(--qa); }
-</style>
-</head>
-<body>
-<main>
-  <h1>aisdlc-qa flow</h1>
-  <p class="lede">How the QA plugin takes one Jira ticket from acceptance criteria to approved scenarios, to Playwright tests you watch run, through the defect loop with the developer, to signed-off evidence on the ticket and tests in the regression suite.</p>
+      /* diagram */
+      .node rect.box {
+        stroke-width: 1.6;
+      }
+      .node.claude rect.box {
+        fill: var(--claude-bg);
+        stroke: var(--claude);
+      }
+      .node.qa rect.box {
+        fill: var(--qa-bg);
+        stroke: var(--qa);
+      }
+      .node.dev rect.box {
+        fill: var(--dev-bg);
+        stroke: var(--dev);
+      }
+      .node.done rect.box {
+        fill: var(--done-bg);
+        stroke: var(--done);
+      }
+      .node.start rect.box {
+        fill: var(--surface);
+        stroke: var(--arrow);
+      }
+      .node.gate rect.box {
+        stroke-width: 3;
+      }
+      .node .t1 {
+        fill: var(--text);
+        font:
+          600 13.5px system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      .node .t2 {
+        fill: var(--muted);
+        font:
+          10.5px ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+      }
+      .node .mono {
+        fill: var(--text);
+        font:
+          600 12.5px ui-monospace,
+          SFMono-Regular,
+          Consolas,
+          monospace;
+      }
+      .badge rect {
+        fill: var(--qa);
+      }
+      .badge text {
+        fill: var(--surface);
+        font:
+          700 9px system-ui,
+          sans-serif;
+        letter-spacing: 0.06em;
+      }
+      .edge {
+        fill: none;
+        stroke: var(--arrow);
+        stroke-width: 1.6;
+      }
+      .edge.loop {
+        stroke-dasharray: 5 4;
+      }
+      .edge.dev {
+        stroke: var(--dev);
+      }
+      .edge.defect {
+        stroke: var(--qa);
+      }
+      .halo {
+        fill: none;
+        stroke: var(--surface);
+        stroke-width: 7;
+      }
+      .lbl {
+        fill: var(--muted);
+        font:
+          11px system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      .lbl.dev {
+        fill: var(--dev);
+      }
+      .lbl.defect {
+        fill: var(--qa);
+      }
+      .note rect {
+        fill: none;
+        stroke: var(--line);
+        stroke-dasharray: 4 3;
+        stroke-width: 1.4;
+      }
+      .note text {
+        fill: var(--muted);
+        font:
+          11px system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      .ah {
+        fill: var(--arrow);
+      }
+      .ah.dev {
+        fill: var(--dev);
+      }
+      .ah.defect {
+        fill: var(--qa);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>aisdlc-qa flow</h1>
+      <p class="lede">
+        How the QA plugin takes one Jira ticket from acceptance criteria to
+        approved scenarios, to Playwright tests you watch run, through the
+        defect loop with the developer, to signed-off evidence on the ticket and
+        tests in the regression suite.
+      </p>
 
-  <p>One command drives the whole thing: <code>/aisdlc-qa:test &lt;TICKET&gt;</code>. It is resumable: run it again at any point and it picks up from the ticket's current state. Claude does the drafting, generating and running; the QA engineer makes every decision that matters, and the plugin's hooks and state engine refuse anything that skips a decision.</p>
+      <p>
+        One command drives the whole thing:
+        <code>/aisdlc-qa:test &lt;TICKET&gt;</code>. It is resumable: run it
+        again at any point and it picks up from the ticket's current state.
+        Claude does the drafting, generating and running; the QA engineer makes
+        every decision that matters, and the plugin's hooks and state engine
+        refuse anything that skips a decision.
+      </p>
 
-  <h2 id="diagram">The flow</h2>
-  <div class="legend">
-    <span><i class="sw claude"></i>Claude does it</span>
-    <span><i class="sw qa"></i>QA decides</span>
-    <span><i class="sw gate"></i>Hard gate (hash-pinned approval)</span>
-    <span><i class="sw dev"></i>Developer</span>
-    <span><i class="sw done"></i>Done</span>
-    <span>- - - loop back</span>
-  </div>
-  <figure>
-    <svg viewBox="0 0 860 952" role="img" aria-labelledby="dgTitle dgDesc">
-      <title id="dgTitle">aisdlc-qa lifecycle</title>
-      <desc id="dgDesc">Eleven checkpoints from loading the Jira ticket to the regression suite, with two QA approval gates, a triage step, a defect loop through the developer, and loops for scenario changes, healing and re-runs.</desc>
-      <defs>
-        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
-        <marker id="ahDev" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah dev" d="M0,0 L10,5 L0,10 z"/></marker>
-        <marker id="ahDefect" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah defect" d="M0,0 L10,5 L0,10 z"/></marker>
-      </defs>
+      <h2 id="diagram">The flow</h2>
+      <div class="legend">
+        <span><i class="sw claude"></i>Claude does it</span>
+        <span><i class="sw qa"></i>QA decides</span>
+        <span><i class="sw gate"></i>Hard gate (hash-pinned approval)</span>
+        <span><i class="sw dev"></i>Developer</span>
+        <span><i class="sw done"></i>Done</span>
+        <span>- - - loop back</span>
+      </div>
+      <figure>
+        <svg viewBox="0 0 860 952" role="img" aria-labelledby="dgTitle dgDesc">
+          <title id="dgTitle">aisdlc-qa lifecycle</title>
+          <desc id="dgDesc">
+            Eleven checkpoints from loading the Jira ticket to the regression
+            suite, with two QA approval gates, a triage step, a defect loop
+            through the developer, and loops for scenario changes, healing and
+            re-runs.
+          </desc>
+          <defs>
+            <marker
+              id="ah"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path class="ah" d="M0,0 L10,5 L0,10 z" />
+            </marker>
+            <marker
+              id="ahDev"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path class="ah dev" d="M0,0 L10,5 L0,10 z" />
+            </marker>
+            <marker
+              id="ahDefect"
+              viewBox="0 0 10 10"
+              refX="9"
+              refY="5"
+              markerWidth="7"
+              markerHeight="7"
+              orient="auto-start-reverse"
+            >
+              <path class="ah defect" d="M0,0 L10,5 L0,10 z" />
+            </marker>
+          </defs>
 
-      <!-- main spine -->
-      <path class="edge" marker-end="url(#ah)" d="M420,52 V88"/>
-      <path class="edge" marker-end="url(#ah)" d="M420,142 V168"/>
-      <path class="edge" marker-end="url(#ah)" d="M420,222 V248"/>
-      <path class="edge" marker-end="url(#ah)" d="M420,302 V328"/>
-      <path class="edge" marker-end="url(#ah)" d="M420,382 V408"/>
-      <path class="edge" marker-end="url(#ah)" d="M420,462 V488"/>
-      <path class="edge" marker-end="url(#ah)" d="M420,542 V568"/>
-      <path class="edge" marker-end="url(#ah)" d="M420,622 V648"/>
-      <text class="lbl" x="428" y="640">all pass, or defects fixed / waived</text>
-      <path class="edge" marker-end="url(#ah)" d="M420,702 V728"/>
-      <path class="edge" marker-end="url(#ah)" d="M420,782 V808"/>
-      <path class="edge" marker-end="url(#ah)" d="M420,862 V888"/>
+          <!-- main spine -->
+          <path class="edge" marker-end="url(#ah)" d="M420,52 V88" />
+          <path class="edge" marker-end="url(#ah)" d="M420,142 V168" />
+          <path class="edge" marker-end="url(#ah)" d="M420,222 V248" />
+          <path class="edge" marker-end="url(#ah)" d="M420,302 V328" />
+          <path class="edge" marker-end="url(#ah)" d="M420,382 V408" />
+          <path class="edge" marker-end="url(#ah)" d="M420,462 V488" />
+          <path class="edge" marker-end="url(#ah)" d="M420,542 V568" />
+          <path class="edge" marker-end="url(#ah)" d="M420,622 V648" />
+          <text class="lbl" x="428" y="640">
+            all pass, or defects fixed / waived
+          </text>
+          <path class="edge" marker-end="url(#ah)" d="M420,702 V728" />
+          <path class="edge" marker-end="url(#ah)" d="M420,782 V808" />
+          <path class="edge" marker-end="url(#ah)" d="M420,862 V888" />
 
-      <!-- left loops -->
-      <path class="edge loop" marker-end="url(#ah)" d="M290,356 H245 V276 H288"/>
-      <text class="lbl" x="237" y="312" text-anchor="end">request changes</text>
-      <text class="lbl" x="237" y="326" text-anchor="end">(redraft, approve again)</text>
+          <!-- left loops -->
+          <path
+            class="edge loop"
+            marker-end="url(#ah)"
+            d="M290,356 H245 V276 H288"
+          />
+          <text class="lbl" x="237" y="312" text-anchor="end">
+            request changes
+          </text>
+          <text class="lbl" x="237" y="326" text-anchor="end">
+            (redraft, approve again)
+          </text>
 
-      <path class="edge loop" marker-end="url(#ah)" d="M290,604 H170 V508 H288"/>
-      <path class="edge loop" d="M290,676 H170 V604"/>
-      <text class="lbl" x="162" y="566" text-anchor="end">env / data problem,</text>
-      <text class="lbl" x="162" y="580" text-anchor="end">or re-run before</text>
-      <text class="lbl" x="162" y="594" text-anchor="end">sign-off</text>
+          <path
+            class="edge loop"
+            marker-end="url(#ah)"
+            d="M290,604 H170 V508 H288"
+          />
+          <path class="edge loop" d="M290,676 H170 V604" />
+          <text class="lbl" x="162" y="566" text-anchor="end">
+            env / data problem,
+          </text>
+          <text class="lbl" x="162" y="580" text-anchor="end">
+            or re-run before
+          </text>
+          <text class="lbl" x="162" y="594" text-anchor="end">sign-off</text>
 
-      <path class="halo" d="M245,500 V516"/>
-      <path class="edge loop" marker-end="url(#ah)" d="M290,588 H245 V436 H288"/>
-      <text class="lbl" x="238" y="470" text-anchor="end">test issue:</text>
-      <text class="lbl" x="238" y="484" text-anchor="end">healer fixes</text>
+          <path class="halo" d="M245,500 V516" />
+          <path
+            class="edge loop"
+            marker-end="url(#ah)"
+            d="M290,588 H245 V436 H288"
+          />
+          <text class="lbl" x="238" y="470" text-anchor="end">test issue:</text>
+          <text class="lbl" x="238" y="484" text-anchor="end">
+            healer fixes
+          </text>
 
-      <!-- defect loop (right) -->
-      <path class="edge defect" marker-end="url(#ahDefect)" d="M550,596 H608"/>
-      <text class="lbl defect" x="579" y="588" text-anchor="middle">app defect</text>
-      <path class="edge dev" marker-end="url(#ahDev)" d="M715,622 V648"/>
-      <path class="edge loop dev" marker-end="url(#ahDev)" d="M820,676 H842 V500 H552"/>
-      <text class="lbl dev" x="830" y="492" text-anchor="end">7c · fix deployed: re-verify (failing first, then all)</text>
+          <!-- defect loop (right) -->
+          <path
+            class="edge defect"
+            marker-end="url(#ahDefect)"
+            d="M550,596 H608"
+          />
+          <text class="lbl defect" x="579" y="588" text-anchor="middle">
+            app defect
+          </text>
+          <path class="edge dev" marker-end="url(#ahDev)" d="M715,622 V648" />
+          <path
+            class="edge loop dev"
+            marker-end="url(#ahDev)"
+            d="M820,676 H842 V500 H552"
+          />
+          <text class="lbl dev" x="830" y="492" text-anchor="end">
+            7c · fix deployed: re-verify (failing first, then all)
+          </text>
 
-      <!-- publish skipped -->
-      <path class="edge loop" marker-end="url(#ah)" d="M550,690 H580 V836 H552"/>
-      <text class="lbl" x="588" y="770">Jira writes off:</text>
-      <text class="lbl" x="588" y="784">skip publishing</text>
+          <!-- publish skipped -->
+          <path
+            class="edge loop"
+            marker-end="url(#ah)"
+            d="M550,690 H580 V836 H552"
+          />
+          <text class="lbl" x="588" y="770">Jira writes off:</text>
+          <text class="lbl" x="588" y="784">skip publishing</text>
 
-      <!-- Jira drift note -->
-      <g class="note">
-        <rect x="610" y="322" width="220" height="68" rx="8"/>
-        <text x="622" y="342">Ticket changed after approval?</text>
-        <text x="622" y="358">JIRA_CHANGED → scenarios revised</text>
-        <text x="622" y="374">→ approved again (checked at 5 and 9)</text>
-      </g>
-      <path class="edge loop" marker-end="url(#ah)" d="M610,356 H552"/>
+          <!-- Jira drift note -->
+          <g class="note">
+            <rect x="610" y="322" width="220" height="68" rx="8" />
+            <text x="622" y="342">Ticket changed after approval?</text>
+            <text x="622" y="358">JIRA_CHANGED → scenarios revised</text>
+            <text x="622" y="374">→ approved again (checked at 5 and 9)</text>
+          </g>
+          <path class="edge loop" marker-end="url(#ah)" d="M610,356 H552" />
 
-      <!-- nodes -->
-      <g class="node start"><rect class="box" x="300" y="16" width="240" height="36" rx="18"/><text class="mono" x="420" y="39" text-anchor="middle">/aisdlc-qa:test &lt;TICKET&gt;</text></g>
+          <!-- nodes -->
+          <g class="node start">
+            <rect class="box" x="300" y="16" width="240" height="36" rx="18" />
+            <text class="mono" x="420" y="39" text-anchor="middle">
+              /aisdlc-qa:test &lt;TICKET&gt;
+            </text>
+          </g>
 
-      <g class="node claude"><rect class="box" x="290" y="90" width="260" height="52" rx="8"/><text class="t1" x="304" y="112">1 · Ticket loaded</text><text class="t2" x="304" y="130">TICKET_READY · ACs extracted</text></g>
-      <g class="node claude"><rect class="box" x="290" y="170" width="260" height="52" rx="8"/><text class="t1" x="304" y="192">2 · Environment ready</text><text class="t2" x="304" y="210">ENVIRONMENT_READY · QA confirms</text></g>
-      <g class="node claude"><rect class="box" x="290" y="250" width="260" height="52" rx="8"/><text class="t1" x="304" y="272">3 · Scenarios drafted</text><text class="t2" x="304" y="290">SCENARIOS_DRAFTED</text></g>
+          <g class="node claude">
+            <rect class="box" x="290" y="90" width="260" height="52" rx="8" />
+            <text class="t1" x="304" y="112">1 · Ticket loaded</text>
+            <text class="t2" x="304" y="130">TICKET_READY · ACs extracted</text>
+          </g>
+          <g class="node claude">
+            <rect class="box" x="290" y="170" width="260" height="52" rx="8" />
+            <text class="t1" x="304" y="192">2 · Environment ready</text>
+            <text class="t2" x="304" y="210">
+              ENVIRONMENT_READY · QA confirms
+            </text>
+          </g>
+          <g class="node claude">
+            <rect class="box" x="290" y="250" width="260" height="52" rx="8" />
+            <text class="t1" x="304" y="272">3 · Scenarios drafted</text>
+            <text class="t2" x="304" y="290">SCENARIOS_DRAFTED</text>
+          </g>
 
-      <g class="node qa gate"><rect class="box" x="290" y="330" width="260" height="52" rx="8"/><text class="t1" x="304" y="352">4 · Scenario approval</text><text class="t2" x="304" y="370">SCENARIOS_APPROVED · hash-pinned</text>
-        <g class="badge"><rect x="506" y="337" width="36" height="14" rx="3"/><text x="524" y="347.5" text-anchor="middle">GATE</text></g></g>
+          <g class="node qa gate">
+            <rect class="box" x="290" y="330" width="260" height="52" rx="8" />
+            <text class="t1" x="304" y="352">4 · Scenario approval</text>
+            <text class="t2" x="304" y="370">
+              SCENARIOS_APPROVED · hash-pinned
+            </text>
+            <g class="badge">
+              <rect x="506" y="337" width="36" height="14" rx="3" />
+              <text x="524" y="347.5" text-anchor="middle">GATE</text>
+            </g>
+          </g>
 
-      <g class="node claude"><rect class="box" x="290" y="410" width="260" height="52" rx="8"/><text class="t1" x="304" y="432">5 · Tests generated</text><text class="t2" x="304" y="450">TESTS_GENERATED · tests/&lt;T&gt;/</text></g>
-      <g class="node claude"><rect class="box" x="290" y="490" width="260" height="52" rx="8"/><text class="t1" x="304" y="512">6 · Run in a visible browser</text><text class="t2" x="304" y="530">TESTS_EXECUTED · QA watches</text></g>
-      <g class="node qa"><rect class="box" x="290" y="570" width="260" height="52" rx="8"/><text class="t1" x="304" y="592">7 · Triage each failure</text><text class="t2" x="304" y="610">analyst suggests, QA decides</text></g>
+          <g class="node claude">
+            <rect class="box" x="290" y="410" width="260" height="52" rx="8" />
+            <text class="t1" x="304" y="432">5 · Tests generated</text>
+            <text class="t2" x="304" y="450">
+              TESTS_GENERATED · tests/&lt;T&gt;/
+            </text>
+          </g>
+          <g class="node claude">
+            <rect class="box" x="290" y="490" width="260" height="52" rx="8" />
+            <text class="t1" x="304" y="512">6 · Run in a visible browser</text>
+            <text class="t2" x="304" y="530">TESTS_EXECUTED · QA watches</text>
+          </g>
+          <g class="node qa">
+            <rect class="box" x="290" y="570" width="260" height="52" rx="8" />
+            <text class="t1" x="304" y="592">7 · Triage each failure</text>
+            <text class="t2" x="304" y="610">analyst suggests, QA decides</text>
+          </g>
 
-      <g class="node qa gate"><rect class="box" x="290" y="650" width="260" height="52" rx="8"/><text class="t1" x="304" y="672">8 · Results sign-off</text><text class="t2" x="304" y="690">RESULTS_SIGNED_OFF · hash-pinned</text>
-        <g class="badge"><rect x="506" y="657" width="36" height="14" rx="3"/><text x="524" y="667.5" text-anchor="middle">GATE</text></g></g>
+          <g class="node qa gate">
+            <rect class="box" x="290" y="650" width="260" height="52" rx="8" />
+            <text class="t1" x="304" y="672">8 · Results sign-off</text>
+            <text class="t2" x="304" y="690">
+              RESULTS_SIGNED_OFF · hash-pinned
+            </text>
+            <g class="badge">
+              <rect x="506" y="657" width="36" height="14" rx="3" />
+              <text x="524" y="667.5" text-anchor="middle">GATE</text>
+            </g>
+          </g>
 
-      <g class="node claude"><rect class="box" x="290" y="730" width="260" height="52" rx="8"/><text class="t1" x="304" y="752">9 · Evidence to Jira</text><text class="t2" x="304" y="770">EVIDENCE_PUBLISHED</text></g>
-      <g class="node claude"><rect class="box" x="290" y="810" width="260" height="52" rx="8"/><text class="t1" x="304" y="832">10 · Commit tests</text><text class="t2" x="304" y="850">COMMITTED · branch &lt;T&gt;</text></g>
-      <g class="node done"><rect class="box" x="290" y="890" width="260" height="52" rx="8"/><text class="t1" x="304" y="912">11 · In the regression suite</text><text class="t2" x="304" y="930">COMPLETED · PR merged</text></g>
+          <g class="node claude">
+            <rect class="box" x="290" y="730" width="260" height="52" rx="8" />
+            <text class="t1" x="304" y="752">9 · Evidence to Jira</text>
+            <text class="t2" x="304" y="770">EVIDENCE_PUBLISHED</text>
+          </g>
+          <g class="node claude">
+            <rect class="box" x="290" y="810" width="260" height="52" rx="8" />
+            <text class="t1" x="304" y="832">10 · Commit tests</text>
+            <text class="t2" x="304" y="850">COMMITTED · branch &lt;T&gt;</text>
+          </g>
+          <g class="node done">
+            <rect class="box" x="290" y="890" width="260" height="52" rx="8" />
+            <text class="t1" x="304" y="912">11 · In the regression suite</text>
+            <text class="t2" x="304" y="930">COMPLETED · PR merged</text>
+          </g>
 
-      <g class="node qa"><rect class="box" x="610" y="570" width="210" height="52" rx="8"/><text class="t1" x="622" y="592">7a · Defect on Jira</text><text class="t2" x="622" y="610">QA approves the comment</text></g>
-      <g class="node dev"><rect class="box" x="610" y="650" width="210" height="52" rx="8"/><text class="t1" x="622" y="672">7b · Wait for developer</text><text class="t2" x="622" y="690">AWAITING_DEV_FIX</text></g>
-    </svg>
-    <figcaption>Solid arrows are the forward path. Dashed arrows are loops the state engine allows backwards. Sign-off is refused while any defect is still open.</figcaption>
-  </figure>
+          <g class="node qa">
+            <rect class="box" x="610" y="570" width="210" height="52" rx="8" />
+            <text class="t1" x="622" y="592">7a · Defect on Jira</text>
+            <text class="t2" x="622" y="610">QA approves the comment</text>
+          </g>
+          <g class="node dev">
+            <rect class="box" x="610" y="650" width="210" height="52" rx="8" />
+            <text class="t1" x="622" y="672">7b · Wait for developer</text>
+            <text class="t2" x="622" y="690">AWAITING_DEV_FIX</text>
+          </g>
+        </svg>
+        <figcaption>
+          Solid arrows are the forward path. Dashed arrows are loops the state
+          engine allows backwards. Sign-off is refused while any defect is still
+          open.
+        </figcaption>
+      </figure>
 
-  <h2 id="checkpoints">Checkpoints</h2>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>#</th><th>Checkpoint</th><th>Who</th><th>What happens</th><th>Leaves behind</th></tr></thead>
-    <tbody>
-      <tr><td class="num">1</td><td>Ticket loaded</td><td><span class="who claude">Claude</span></td><td>Fetches the Jira ticket and numbers its acceptance criteria AC1…ACn. If Jira is unreachable, asks you for the details rather than guessing.</td><td><code>tasks/&lt;T&gt;/jira.md</code> (hashed)</td></tr>
-      <tr><td class="num">2</td><td>Environment ready</td><td><span class="who claude">Claude</span> <span class="who qa">QA</span></td><td>Picks the environment (qa/uat), refuses production hosts, checks it is reachable, signs in once and saves the session. You confirm the environment, the build under test and that the data is synthetic.</td><td>environment in task state, <code>.auth/&lt;env&gt;.json</code></td></tr>
-      <tr><td class="num">3</td><td>Scenarios drafted</td><td><span class="who claude">Claude</span></td><td>The <code>scenario-writer</code> agent turns the ACs into scenarios. Optionally the Playwright planner explores the live app to make steps concrete. Expected results come only from the ticket; where the app disagrees, that is an open question.</td><td><code>tasks/&lt;T&gt;/scenarios.md</code></td></tr>
-      <tr><td class="num">4</td><td><strong>Scenario approval</strong></td><td><span class="who qa">QA</span></td><td>You see the scenario ↔ AC table and open questions, then approve, ask for changes or reject. Approval is pinned to the file's hash: editing it afterwards cancels the approval.</td><td><code>approvals.scenarios</code></td></tr>
-      <tr><td class="num">5</td><td>Tests generated</td><td><span class="who claude">Claude</span></td><td>Copies the approved scenarios to <code>spec.md</code>. The Playwright generator runs each step live in a visible browser and writes one test per scenario. <code>qa-test-reviewer</code> checks coverage and quality.</td><td><code>tests/&lt;T&gt;/s&lt;n&gt;-*.spec.ts</code>, <code>tasks/&lt;T&gt;/spec.md</code></td></tr>
-      <tr><td class="num">6</td><td>Run, QA watches</td><td><span class="who claude">Claude</span></td><td>Runs the ticket's tests headed and slowed down (or in UI mode). Every step gets a screenshot; trace and HTML report are kept per run.</td><td><code>tasks/&lt;T&gt;/evidence/run-&lt;N&gt;/</code></td></tr>
-      <tr><td class="num">7</td><td>Failure triage</td><td><span class="who qa">QA</span></td><td><code>results-analyst</code> suggests a cause for each failure; you decide: <em>app defect</em> → 7a, <em>test issue</em> → the healer fixes the test (never by loosening an assertion) and you review the diff, <em>env/data</em> → re-run.</td><td><code>tasks/&lt;T&gt;/results.md</code></td></tr>
-      <tr><td class="num">7a</td><td><strong>Defect on Jira</strong></td><td><span class="who claude">Claude</span> <span class="who qa">QA</span></td><td>Claude drafts one comment for all defects in the run: scenario, AC, steps, expected vs actual, environment, build, failure screenshots. You preview it and choose post, edit or don't post.</td><td><code>defects.D&lt;k&gt;</code> (open), Jira comment</td></tr>
-      <tr><td class="num">7b</td><td>Wait for developer</td><td><span class="who dev">Developer</span></td><td>The task stops. <code>/aisdlc-qa:status</code> or resuming <code>test</code> shows developer replies and status changes since the defect comment.</td><td>—</td></tr>
-      <tr><td class="num">7c</td><td>Re-verify the fix</td><td><span class="who qa">QA</span> <span class="who claude">Claude</span></td><td>You confirm the fix is deployed and give the new build. <code>/aisdlc-qa:run &lt;T&gt;</code> runs the failing scenarios first, then the full ticket suite. Fixed defects get a "verified fixed on build X" reply once you confirm.</td><td><code>defects.D&lt;k&gt;</code> fixed, new run</td></tr>
-      <tr><td class="num">8</td><td><strong>Results sign-off</strong></td><td><span class="who qa">QA</span></td><td>Allowed only when every scenario passes or each defect is fixed or explicitly waived with a reason. You review <code>results.md</code> and the report, then sign off, re-run or reject. Pinned to the hash of <code>results.md</code>.</td><td><code>approvals.signoff</code></td></tr>
-      <tr><td class="num">9</td><td>Evidence to Jira</td><td><span class="who claude">Claude</span> <span class="who qa">QA</span></td><td><code>/aisdlc-qa:publish</code> uploads screenshots and the report zip and posts the results comment, after you confirm. Re-publishing doesn't duplicate attachments.</td><td>Jira attachments + comment</td></tr>
-      <tr><td class="num">10</td><td>Commit tests</td><td><span class="who claude">Claude</span> <span class="who qa">QA</span></td><td><code>/aisdlc-qa:commit</code> stages <code>tests/&lt;T&gt;/</code> and <code>tasks/&lt;T&gt;/spec.md</code> only, and commits <code>&lt;T&gt;: &lt;summary&gt;</code> on branch <code>&lt;T&gt;</code>.</td><td>commit on branch <code>&lt;T&gt;</code></td></tr>
-      <tr><td class="num">11</td><td>Done</td><td><span class="who qa">QA</span></td><td>You push and open the PR; once merged the tests are part of the regression suite.</td><td>—</td></tr>
-    </tbody>
-  </table>
-  </div>
+      <h2 id="checkpoints">Checkpoints</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Checkpoint</th>
+              <th>Who</th>
+              <th>What happens</th>
+              <th>Leaves behind</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="num">1</td>
+              <td>Ticket loaded</td>
+              <td><span class="who claude">Claude</span></td>
+              <td>
+                Fetches the Jira ticket and numbers its acceptance criteria
+                AC1…ACn. If Jira is unreachable, asks you for the details rather
+                than guessing.
+              </td>
+              <td><code>tasks/&lt;T&gt;/jira.md</code> (hashed)</td>
+            </tr>
+            <tr>
+              <td class="num">2</td>
+              <td>Environment ready</td>
+              <td>
+                <span class="who claude">Claude</span>
+                <span class="who qa">QA</span>
+              </td>
+              <td>
+                Picks the environment (qa/uat), refuses production hosts, checks
+                it is reachable, signs in once and saves the session. You
+                confirm the environment, the build under test and that the data
+                is synthetic.
+              </td>
+              <td>
+                environment in task state, <code>.auth/&lt;env&gt;.json</code>
+              </td>
+            </tr>
+            <tr>
+              <td class="num">3</td>
+              <td>Scenarios drafted</td>
+              <td><span class="who claude">Claude</span></td>
+              <td>
+                The <code>scenario-writer</code> agent turns the ACs into
+                scenarios. Optionally the Playwright planner explores the live
+                app to make steps concrete. Expected results come only from the
+                ticket; where the app disagrees, that is an open question.
+              </td>
+              <td><code>tasks/&lt;T&gt;/scenarios.md</code></td>
+            </tr>
+            <tr>
+              <td class="num">4</td>
+              <td><strong>Scenario approval</strong></td>
+              <td><span class="who qa">QA</span></td>
+              <td>
+                You see the scenario ↔ AC table and open questions, then
+                approve, ask for changes or reject. Approval is pinned to the
+                file's hash: editing it afterwards cancels the approval.
+              </td>
+              <td><code>approvals.scenarios</code></td>
+            </tr>
+            <tr>
+              <td class="num">5</td>
+              <td>Tests generated</td>
+              <td><span class="who claude">Claude</span></td>
+              <td>
+                Copies the approved scenarios to <code>spec.md</code>. The
+                Playwright generator runs each step live in a visible browser
+                and writes one test per scenario.
+                <code>qa-test-reviewer</code> checks coverage and quality.
+              </td>
+              <td>
+                <code>tests/&lt;T&gt;/s&lt;n&gt;-*.spec.ts</code>,
+                <code>tasks/&lt;T&gt;/spec.md</code>
+              </td>
+            </tr>
+            <tr>
+              <td class="num">6</td>
+              <td>Run, QA watches</td>
+              <td><span class="who claude">Claude</span></td>
+              <td>
+                Runs the ticket's tests headed and slowed down (or in UI mode).
+                Every step gets a screenshot; trace and HTML report are kept per
+                run.
+              </td>
+              <td><code>tasks/&lt;T&gt;/evidence/run-&lt;N&gt;/</code></td>
+            </tr>
+            <tr>
+              <td class="num">7</td>
+              <td>Failure triage</td>
+              <td><span class="who qa">QA</span></td>
+              <td>
+                <code>results-analyst</code> suggests a cause for each failure;
+                you decide: <em>app defect</em> → 7a, <em>test issue</em> → the
+                healer fixes the test (never by loosening an assertion) and you
+                review the diff, <em>env/data</em> → re-run.
+              </td>
+              <td><code>tasks/&lt;T&gt;/results.md</code></td>
+            </tr>
+            <tr>
+              <td class="num">7a</td>
+              <td><strong>Defect on Jira</strong></td>
+              <td>
+                <span class="who claude">Claude</span>
+                <span class="who qa">QA</span>
+              </td>
+              <td>
+                Claude drafts one comment for all defects in the run: scenario,
+                AC, steps, expected vs actual, environment, build, failure
+                screenshots. You preview it and choose post, edit or don't post.
+              </td>
+              <td><code>defects.D&lt;k&gt;</code> (open), Jira comment</td>
+            </tr>
+            <tr>
+              <td class="num">7b</td>
+              <td>Wait for developer</td>
+              <td><span class="who dev">Developer</span></td>
+              <td>
+                The task stops. <code>/aisdlc-qa:status</code> or resuming
+                <code>test</code> shows developer replies and status changes
+                since the defect comment.
+              </td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td class="num">7c</td>
+              <td>Re-verify the fix</td>
+              <td>
+                <span class="who qa">QA</span>
+                <span class="who claude">Claude</span>
+              </td>
+              <td>
+                You confirm the fix is deployed and give the new build.
+                <code>/aisdlc-qa:run &lt;T&gt;</code> runs the failing scenarios
+                first, then the full ticket suite. Fixed defects get a "verified
+                fixed on build X" reply once you confirm.
+              </td>
+              <td><code>defects.D&lt;k&gt;</code> fixed, new run</td>
+            </tr>
+            <tr>
+              <td class="num">8</td>
+              <td><strong>Results sign-off</strong></td>
+              <td><span class="who qa">QA</span></td>
+              <td>
+                Allowed only when every scenario passes or each defect is fixed
+                or explicitly waived with a reason. You review
+                <code>results.md</code> and the report, then sign off, re-run or
+                reject. Pinned to the hash of <code>results.md</code>.
+              </td>
+              <td><code>approvals.signoff</code></td>
+            </tr>
+            <tr>
+              <td class="num">9</td>
+              <td>Evidence to Jira</td>
+              <td>
+                <span class="who claude">Claude</span>
+                <span class="who qa">QA</span>
+              </td>
+              <td>
+                <code>/aisdlc-qa:publish</code> uploads screenshots and the
+                report zip and posts the results comment, after you confirm.
+                Re-publishing doesn't duplicate attachments.
+              </td>
+              <td>Jira attachments + comment</td>
+            </tr>
+            <tr>
+              <td class="num">10</td>
+              <td>Commit tests</td>
+              <td>
+                <span class="who claude">Claude</span>
+                <span class="who qa">QA</span>
+              </td>
+              <td>
+                <code>/aisdlc-qa:commit</code> stages
+                <code>tests/&lt;T&gt;/</code> and
+                <code>tasks/&lt;T&gt;/spec.md</code> only, and commits
+                <code>&lt;T&gt;: &lt;summary&gt;</code> on branch
+                <code>&lt;T&gt;</code>.
+              </td>
+              <td>commit on branch <code>&lt;T&gt;</code></td>
+            </tr>
+            <tr>
+              <td class="num">11</td>
+              <td>Done</td>
+              <td><span class="who qa">QA</span></td>
+              <td>
+                You push and open the PR; once merged the tests are part of the
+                regression suite.
+              </td>
+              <td>—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-  <h2 id="decisions">Decisions you make</h2>
-  <div class="cards">
-    <div class="card"><h3>Scenario approval (4)</h3><p>Does every AC have a scenario, are the expected results the ticket's, are the open questions answered?</p><p class="opts">Approve · Request changes · Reject task</p></div>
-    <div class="card"><h3>Triage (7)</h3><p>For each failure: is it the app, the test, or the environment?</p><p class="opts">App defect · Test issue (heal) · Env/data (re-run)</p></div>
-    <div class="card"><h3>Defect comment (7a)</h3><p>Nothing is posted to Jira until you have seen the exact comment and screenshots.</p><p class="opts">Post · Edit · Don't post</p></div>
-    <div class="card"><h3>Results sign-off (8)</h3><p>Every scenario passed, or each remaining defect is waived with a reason you give.</p><p class="opts">Sign off · Re-run · Reject</p></div>
-  </div>
-  <p>You also confirm the environment and build (2), that the developer's fix is deployed (7c), publishing to Jira (9) and the commit (10).</p>
+      <h2 id="decisions">Decisions you make</h2>
+      <div class="cards">
+        <div class="card">
+          <h3>Scenario approval (4)</h3>
+          <p>
+            Does every AC have a scenario, are the expected results the
+            ticket's, are the open questions answered?
+          </p>
+          <p class="opts">Approve · Request changes · Reject task</p>
+        </div>
+        <div class="card">
+          <h3>Triage (7)</h3>
+          <p>For each failure: is it the app, the test, or the environment?</p>
+          <p class="opts">App defect · Test issue (heal) · Env/data (re-run)</p>
+        </div>
+        <div class="card">
+          <h3>Defect comment (7a)</h3>
+          <p>
+            Nothing is posted to Jira until you have seen the exact comment and
+            screenshots.
+          </p>
+          <p class="opts">Post · Edit · Don't post</p>
+        </div>
+        <div class="card">
+          <h3>Results sign-off (8)</h3>
+          <p>
+            Every scenario passed, or each remaining defect is waived with a
+            reason you give.
+          </p>
+          <p class="opts">Sign off · Re-run · Reject</p>
+        </div>
+      </div>
+      <p>
+        You also confirm the environment and build (2), that the developer's fix
+        is deployed (7c), publishing to Jira (9) and the commit (10).
+      </p>
 
-  <h2 id="commands">Commands</h2>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>Command</th><th>Use it to</th></tr></thead>
-    <tbody>
-      <tr><td><code>/aisdlc-qa:init</code></td><td>Scaffold the QA workspace (the Playwright test repo), install Playwright and its test agents. Offers <code>--migrate-layout</code> for older workspaces.</td></tr>
-      <tr><td><code>/aisdlc-qa:test &lt;T&gt;</code></td><td>Drive checkpoints 1–8; resumable from any state.</td></tr>
-      <tr><td><code>/aisdlc-qa:run &lt;T&gt;</code></td><td>Re-run at any test stage, e.g. on a new build. <code>--ui</code>, <code>--headless</code>, <code>--only S1,S3</code>, <code>--video</code>.</td></tr>
-      <tr><td><code>/aisdlc-qa:publish &lt;T&gt;</code></td><td>Attach the signed-off evidence to Jira (9).</td></tr>
-      <tr><td><code>/aisdlc-qa:commit &lt;T&gt;</code></td><td>Commit the ticket's tests and spec (10), then mark complete once pushed (11).</td></tr>
-      <tr><td><code>/aisdlc-qa:status</code></td><td>Where every ticket stands, including developer replies on open defects.</td></tr>
-      <tr><td><code>/aisdlc-qa:add-env &lt;name&gt; &lt;url&gt;</code></td><td>Add a test environment, or block a production host.</td></tr>
-      <tr><td><code>/aisdlc-qa:check "&lt;what&gt;"</code></td><td>A quick check without a ticket; stays in <code>checks/</code>, never in Jira or the suite.</td></tr>
-    </tbody>
-  </table>
-  </div>
+      <h2 id="commands">Commands</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Command</th>
+              <th>Use it to</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>/aisdlc-qa:init</code></td>
+              <td>
+                Scaffold the QA workspace (the Playwright test repo), install
+                Playwright and its test agents. Offers
+                <code>--migrate-layout</code> for older workspaces.
+              </td>
+            </tr>
+            <tr>
+              <td><code>/aisdlc-qa:test &lt;T&gt;</code></td>
+              <td>Drive checkpoints 1–8; resumable from any state.</td>
+            </tr>
+            <tr>
+              <td><code>/aisdlc-qa:run &lt;T&gt;</code></td>
+              <td>
+                Re-run at any test stage, e.g. on a new build.
+                <code>--ui</code>, <code>--headless</code>,
+                <code>--only S1,S3</code>, <code>--video</code>.
+              </td>
+            </tr>
+            <tr>
+              <td><code>/aisdlc-qa:publish &lt;T&gt;</code></td>
+              <td>Attach the signed-off evidence to Jira (9).</td>
+            </tr>
+            <tr>
+              <td><code>/aisdlc-qa:commit &lt;T&gt;</code></td>
+              <td>
+                Commit the ticket's tests and spec (10), then mark complete once
+                pushed (11).
+              </td>
+            </tr>
+            <tr>
+              <td><code>/aisdlc-qa:status</code></td>
+              <td>
+                Where every ticket stands, including developer replies on open
+                defects.
+              </td>
+            </tr>
+            <tr>
+              <td><code>/aisdlc-qa:add-env &lt;name&gt; &lt;url&gt;</code></td>
+              <td>Add a test environment, or block a production host.</td>
+            </tr>
+            <tr>
+              <td><code>/aisdlc-qa:check "&lt;what&gt;"</code></td>
+              <td>
+                A quick check without a ticket; stays in <code>checks/</code>,
+                never in Jira or the suite.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-  <h2 id="guards">What is enforced, not just advised</h2>
-  <ul>
-    <li><strong>No tests without approved scenarios.</strong> The hook blocks writes to <code>tests/&lt;T&gt;/</code> and <code>tasks/&lt;T&gt;/spec.md</code> unless the scenarios are approved and unchanged since; this covers Write/Edit, shell writes and the Playwright generator.</li>
-    <li><strong>One folder per ticket.</strong> A file in <code>tests/&lt;T&gt;/</code> that names another ticket is blocked. <code>spec.md</code> can only be an exact copy of the approved <code>scenarios.md</code>.</li>
-    <li><strong>No sign-off with open defects.</strong> The state engine refuses it; waiving needs your choice and a reason.</li>
-    <li><strong>Healing never weakens a test.</strong> A loosened assertion or changed expected value is a scenario change and needs re-approval.</li>
-    <li><strong>Never production.</strong> Environments must allow automation, and blocked or production-looking hosts are refused by the runner, the hook and the Playwright config. Data is synthetic.</li>
-    <li><strong>Credentials stay out of reach.</strong> <code>QA_USERNAME</code>/<code>QA_PASSWORD</code> and <code>JIRA_*</code> are environment variables (QA login may be in the workspace <code>.env</code>). Claude can't read <code>.env</code> or <code>.auth/</code>; secrets are never printed, logged, committed or in evidence.</li>
-    <li><strong>Jira writes only on your say-so</strong>, only through <code>jira-attach.js</code>, only when switched on in <code>config/integrations.yaml</code>, and final evidence only after sign-off.</li>
-    <li><strong>State only through the state CLI</strong>; <code>task.yaml</code> is never edited by hand.</li>
-  </ul>
+      <h2 id="guards">What is enforced, not just advised</h2>
+      <ul>
+        <li>
+          <strong>No tests without approved scenarios.</strong> The hook blocks
+          writes to <code>tests/&lt;T&gt;/</code> and
+          <code>tasks/&lt;T&gt;/spec.md</code> unless the scenarios are approved
+          and unchanged since; this covers Write/Edit, shell writes and the
+          Playwright generator.
+        </li>
+        <li>
+          <strong>One folder per ticket.</strong> A file in
+          <code>tests/&lt;T&gt;/</code> that names another ticket is blocked.
+          <code>spec.md</code> can only be an exact copy of the approved
+          <code>scenarios.md</code>.
+        </li>
+        <li>
+          <strong>No sign-off with open defects.</strong> The state engine
+          refuses it; waiving needs your choice and a reason.
+        </li>
+        <li>
+          <strong>Healing never weakens a test.</strong> A loosened assertion or
+          changed expected value is a scenario change and needs re-approval.
+        </li>
+        <li>
+          <strong>Never production.</strong> Environments must allow automation,
+          and blocked or production-looking hosts are refused by the runner, the
+          hook and the Playwright config. Data is synthetic.
+        </li>
+        <li>
+          <strong>Credentials stay out of reach.</strong>
+          <code>QA_USERNAME</code>/<code>QA_PASSWORD</code> and
+          <code>JIRA_*</code> are environment variables (QA login may be in the
+          workspace <code>.env</code>). Claude can't read <code>.env</code> or
+          <code>.auth/</code>; secrets are never printed, logged, committed or
+          in evidence.
+        </li>
+        <li>
+          <strong>Jira writes only on your say-so</strong>, only through
+          <code>jira-attach.js</code>, only when switched on in
+          <code>config/integrations.yaml</code>, and final evidence only after
+          sign-off.
+        </li>
+        <li>
+          <strong>State only through the state CLI</strong>;
+          <code>task.yaml</code> is never edited by hand.
+        </li>
+      </ul>
 
-  <h2 id="files">Where things live</h2>
-<pre><code>tests/
+      <h2 id="files">Where things live</h2>
+      <pre><code>tests/
   auth.setup.ts            sign in once, session reused
   seed.spec.ts             starting page for the Playwright agents
   &lt;T&gt;/
@@ -276,7 +1008,12 @@ tasks/&lt;T&gt;/
   evidence/run-&lt;N&gt;/        screenshots/, report/, traces, results.json
 checks/                    ad-hoc checks (gitignored)
 config/                    environments.yaml, integrations.yaml, workspace.yaml</code></pre>
-  <p>Run one ticket by hand with <code>npx playwright test tests/&lt;T&gt;</code>; <code>npx playwright test</code> runs the whole regression suite. Per-step screenshots are the proof; video only when you ask for it.</p>
-</main>
-</body>
+      <p>
+        Run one ticket by hand with
+        <code>npx playwright test tests/&lt;T&gt;</code>;
+        <code>npx playwright test</code> runs the whole regression suite.
+        Per-step screenshots are the proof; video only when you ask for it.
+      </p>
+    </main>
+  </body>
 </html>
