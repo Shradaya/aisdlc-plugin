@@ -47,6 +47,8 @@ Hand-offs can also go back: any role can return a ticket to an earlier role with
 6. **Review loop.** After a PR is open, the developer runs `/aisdlc-dev:pr-comments <TICKET>`: it reads the reviewers' comments, triages them with the developer, fixes the valid ones under the normal rules, asks before committing and pushing, then replies.
 7. **Changes requested.** `/aisdlc:return <TICKET> <role> <reason>` adds an open item to `tasks/<TICKET>/changes.md` (a local view generated from the shared hand-off events). The receiver sees it after `/aisdlc:pull`, fixes it with their role's usual commands, and resolves it with their next `/aisdlc:handoff`.
 
+For the exact commands used from the PM role to the production release, in order, see the [command flow](doc/aisdlc-command-flow.html) (a walkthrough of a real run; download it and open it in a browser).
+
 ## Install
 
 Add the marketplace once per machine:
