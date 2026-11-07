@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>aisdlc git flow</title>
+    <style>
+      :root {
+        --bg: #f7f8fa;
+        --card: #ffffff;
+        --text: #1b2230;
+        --muted: #5b6577;
+        --line: #d5dae3;
+        --base: #475569;
+        --s10: #2563eb;
+        --s11: #0f766e;
+        --pm: #2563eb;
+        --design: #7c3aed;
+        --dev: #0f766e;
+        --qa: #c2410c;
+        --warn: #b45309;
+        --warn-bg: #fef3c7;
+        --ok: #15803d;
+        --code-bg: #eef1f6;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0e1116;
+          --card: #161b22;
+          --text: #e6e9ef;
+          --muted: #9aa4b5;
+          --line: #2c3442;
+          --base: #94a3b8;
+          --s10: #60a5fa;
+          --s11: #2dd4bf;
+          --pm: #60a5fa;
+          --design: #a78bfa;
+          --dev: #2dd4bf;
+          --qa: #fb923c;
+          --warn: #fbbf24;
+          --warn-bg: #3a2f10;
+          --ok: #4ade80;
+          --code-bg: #20262f;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          15px/1.55 system-ui,
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+      }
+      header,
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 0 16px;
+      }
+      header {
+        padding-top: 32px;
+      }
+      h1 {
+        font-size: 26px;
+        margin: 0 0 6px;
+      }
+      h2 {
+        font-size: 17px;
+        margin: 0 0 4px;
+      }
+      p {
+        margin: 0 0 10px;
+      }
+      .lead {
+        color: var(--muted);
+        max-width: 760px;
+      }
+      section {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 18px;
+        margin: 18px 0;
+      }
+      .note {
+        color: var(--muted);
+        font-size: 13.5px;
+        margin-bottom: 12px;
+      }
+      svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
+      svg text {
+        fill: var(--text);
+        font-family: inherit;
+      }
+      svg .muted {
+        fill: var(--muted);
+      }
+      svg .small {
+        font-size: 12px;
+      }
+      svg .label {
+        font-size: 13px;
+        font-weight: 650;
+      }
+      svg .box {
+        fill: var(--card);
+        stroke: var(--line);
+        stroke-width: 1.5;
+      }
+      svg .lane {
+        stroke-width: 4;
+        fill: none;
+        stroke-linecap: round;
+      }
+      svg .branch {
+        stroke-width: 3;
+        fill: none;
+      }
+      svg .dash {
+        stroke-dasharray: 6 5;
+      }
+      svg .arrow {
+        stroke: var(--muted);
+        stroke-width: 2;
+        fill: none;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+      }
+      code {
+        background: var(--code-bg);
+        padding: 1px 6px;
+        border-radius: 5px;
+        font-size: 13px;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 11.5px;
+        font-weight: 650;
+        padding: 0 8px;
+        border-radius: 99px;
+        border: 1px solid currentColor;
+        white-space: nowrap;
+      }
+      .tag.auto {
+        color: var(--ok);
+      }
+      .tag.manual {
+        color: var(--warn);
+      }
+      .callout {
+        background: var(--warn-bg);
+        border: 1px solid var(--warn);
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-size: 14px;
+      }
+      footer {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 4px 16px 40px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>aisdlc git flow</h1>
+      <p class="lead">
+        One shared workflow repository. <b>base</b> stays as it is. Each sprint gets its own branch created from
+        <b>base</b>, and the whole team works on it. The next sprint starts again from <b>base</b>.
+      </p>
+    </header>
+
+    <main>
+      <section>
+        <h2>1. Branches across sprints</h2>
+        <p class="note">
+          Workflow repository (<code>tasks/</code>, <code>designs/</code>, <code>system/</code>,
+          <code>repositories/</code>, <code>config/</code>). Sprint branches are created by hand.
+        </p>
+        <svg viewBox="0 0 1040 470" role="img" aria-label="base branch with sprint branches S10 and S11 created from it">
+          <defs>
+            <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" style="fill: var(--muted)" />
+            </marker>
+          </defs>
+
+          <!-- base lane -->
+          <text class="label" x="24" y="40" style="fill: var(--base)">base</text>
+          <text class="small muted" x="64" y="40">protected: unchanged unless repository details or config are added</text>
+          <line class="lane" x1="30" y1="70" x2="1010" y2="70" style="stroke: var(--base)" />
+          <circle cx="60" cy="70" r="8" style="fill: var(--base)" />
+          <text class="small" x="60" y="94" text-anchor="middle">setup</text>
+          <circle cx="560" cy="70" r="8" style="fill: var(--base)" />
+          <text class="small" x="560" y="52" text-anchor="middle">new repository</text>
+          <text class="small" x="560" y="94" text-anchor="middle">details added</text>
+          <text class="small muted" x="560" y="108" text-anchor="middle">(deliberate, rare)</text>
+
+          <!-- S10 -->
+          <path class="branch" d="M110,70 C110,110 150,150 190,170" style="stroke: var(--s10)" />
+          <line class="lane" x1="190" y1="170" x2="500" y2="170" style="stroke: var(--s10)" />
+          <text class="label" x="190" y="150" style="fill: var(--s10)">S10</text>
+          <text class="small muted" x="228" y="150">created from base, whole team works here</text>
+          <circle cx="110" cy="70" r="5" style="fill: var(--base)" />
+          <text class="small muted" x="124" y="104">branch S10 from base</text>
+
+          <circle cx="225" cy="170" r="7" style="fill: var(--pm)" />
+          <text class="small" x="225" y="196" text-anchor="middle">PM</text>
+          <circle cx="285" cy="170" r="7" style="fill: var(--design)" />
+          <text class="small" x="285" y="196" text-anchor="middle">Design</text>
+          <circle cx="345" cy="170" r="7" style="fill: var(--dev)" />
+          <text class="small" x="345" y="196" text-anchor="middle">Dev</text>
+          <circle cx="405" cy="170" r="7" style="fill: var(--qa)" />
+          <text class="small" x="405" y="196" text-anchor="middle">QA</text>
+          <circle cx="465" cy="170" r="7" style="fill: var(--dev)" />
+          <text class="small" x="465" y="196" text-anchor="middle">unreleased</text>
+          <text class="small" x="465" y="210" text-anchor="middle">ticket</text>
+          <text class="small muted" x="345" y="236" text-anchor="middle">every push and pull keeps the team in sync on this branch</text>
+          <path d="M215,246 L475,246" class="arrow" marker-start="url(#ah)" marker-end="url(#ah)" />
+
+          <text class="small muted" x="505" y="176">sprint ends</text>
+
+          <!-- S11 -->
+          <path class="branch" d="M610,70 C610,150 650,300 690,330" style="stroke: var(--s11)" />
+          <line class="lane" x1="690" y1="330" x2="1010" y2="330" style="stroke: var(--s11)" />
+          <text class="label" x="690" y="310" style="fill: var(--s11)">S11</text>
+          <text class="small muted" x="728" y="310">next sprint, again created from base</text>
+          <circle cx="610" cy="70" r="5" style="fill: var(--base)" />
+          <text class="small muted" x="624" y="134">branch S11 from base</text>
+          <text class="small muted" x="624" y="148">(includes the new details)</text>
+
+          <circle cx="740" cy="330" r="7" style="fill: var(--dev)" />
+          <text class="small" x="740" y="356" text-anchor="middle">cherry-picked</text>
+          <text class="small" x="740" y="370" text-anchor="middle">ticket</text>
+          <circle cx="810" cy="330" r="7" style="fill: var(--pm)" />
+          <text class="small" x="810" y="356" text-anchor="middle">PM</text>
+          <circle cx="870" cy="330" r="7" style="fill: var(--design)" />
+          <text class="small" x="870" y="356" text-anchor="middle">Design</text>
+          <circle cx="930" cy="330" r="7" style="fill: var(--dev)" />
+          <text class="small" x="930" y="356" text-anchor="middle">Dev</text>
+          <circle cx="990" cy="330" r="7" style="fill: var(--qa)" />
+          <text class="small" x="990" y="356" text-anchor="middle">QA</text>
+
+          <!-- cherry pick -->
+          <path d="M465,177 C560,250 640,300 733,325" class="arrow dash" marker-end="url(#ah)" />
+          <text class="small" x="330" y="296" style="fill: var(--warn)">cherry-pick</text>
+          <text class="small muted" x="330" y="310">only the tickets not released in S10</text>
+
+          <!-- never merged -->
+          <text class="small muted" x="30" y="420">Sprint branches are not merged into base or into each other. Work never reaches another branch;</text>
+          <text class="small muted" x="30" y="438">what carries over is moved by hand with a cherry-pick.</text>
+        </svg>
+      </section>
+
+      <section>
+        <h2>2. What each person does on the sprint branch</h2>
+        <p class="note">The same loop for every role. Each role's own plugin does the real work in the middle step.</p>
+        <svg viewBox="0 0 1040 330" role="img" aria-label="pull, work, push after branch confirmation, hand off">
+          <!-- loop boxes -->
+          <rect class="box" x="20" y="30" width="190" height="86" rx="10" />
+          <text class="label" x="115" y="58" text-anchor="middle">1. Get the latest</text>
+          <text class="small" x="115" y="80" text-anchor="middle"><tspan>/aisdlc:pull</tspan></text>
+          <text class="small muted" x="115" y="98" text-anchor="middle">what is waiting for me</text>
+
+          <rect class="box" x="265" y="30" width="230" height="86" rx="10" />
+          <text class="label" x="380" y="58" text-anchor="middle">2. Do my part</text>
+          <text class="small" x="380" y="80" text-anchor="middle">/aisdlc-pm | design | dev | qa</text>
+          <text class="small muted" x="380" y="98" text-anchor="middle">documents, designs, tests</text>
+
+          <rect class="box" x="550" y="30" width="230" height="86" rx="10" />
+          <text class="label" x="665" y="58" text-anchor="middle">3. Share it</text>
+          <text class="small" x="665" y="80" text-anchor="middle">/aisdlc:push</text>
+          <text class="small muted" x="665" y="98" text-anchor="middle">pull first, confirm the branch</text>
+
+          <rect class="box" x="835" y="30" width="190" height="86" rx="10" />
+          <text class="label" x="930" y="58" text-anchor="middle">4. Pass it on</text>
+          <text class="small" x="930" y="80" text-anchor="middle">/aisdlc:handoff</text>
+          <text class="small muted" x="930" y="98" text-anchor="middle">or /aisdlc:return</text>
+
+          <path class="arrow" d="M210,73 L262,73" marker-end="url(#ah)" />
+          <path class="arrow" d="M495,73 L547,73" marker-end="url(#ah)" />
+          <path class="arrow" d="M780,73 L832,73" marker-end="url(#ah)" />
+
+          <!-- roles -->
+          <text class="label" x="20" y="170">Ticket moves between roles (all on the same sprint branch)</text>
+          <rect class="box" x="20" y="190" width="150" height="56" rx="10" style="stroke: var(--pm)" />
+          <text class="label" x="95" y="216" text-anchor="middle" style="fill: var(--pm)">PM</text>
+          <text class="small muted" x="95" y="234" text-anchor="middle">requirements, AC</text>
+          <rect class="box" x="250" y="190" width="150" height="56" rx="10" style="stroke: var(--design)" />
+          <text class="label" x="325" y="216" text-anchor="middle" style="fill: var(--design)">Design</text>
+          <text class="small muted" x="325" y="234" text-anchor="middle">designs/&lt;TICKET&gt;</text>
+          <rect class="box" x="480" y="190" width="150" height="56" rx="10" style="stroke: var(--dev)" />
+          <text class="label" x="555" y="216" text-anchor="middle" style="fill: var(--dev)">Dev</text>
+          <text class="small muted" x="555" y="234" text-anchor="middle">spec, plan, code</text>
+          <rect class="box" x="710" y="190" width="150" height="56" rx="10" style="stroke: var(--qa)" />
+          <text class="label" x="785" y="216" text-anchor="middle" style="fill: var(--qa)">QA</text>
+          <text class="small muted" x="785" y="234" text-anchor="middle">scenarios, results</text>
+          <path class="arrow" d="M170,218 L247,218" marker-end="url(#ah)" />
+          <path class="arrow" d="M400,218 L477,218" marker-end="url(#ah)" />
+          <path class="arrow" d="M630,218 L707,218" marker-end="url(#ah)" />
+          <path class="arrow dash" d="M785,248 C785,290 555,290 555,250" marker-end="url(#ah)" />
+          <text class="small" x="670" y="304" text-anchor="middle" style="fill: var(--warn)">return with a reason (defect, change request)</text>
+          <text class="small muted" x="890" y="212">Bug fix: PM and Design</text>
+          <text class="small muted" x="890" y="228">are skipped, Dev goes</text>
+          <text class="small muted" x="890" y="244">straight to QA.</text>
+        </svg>
+      </section>
+
+      <section>
+        <h2>3. Where the code lives</h2>
+        <p class="note">The workflow repository holds documents only. Application code stays in its own repositories.</p>
+        <svg viewBox="0 0 1040 300" role="img" aria-label="workflow repository versus application repositories">
+          <rect class="box" x="20" y="20" width="440" height="250" rx="12" style="stroke: var(--s10)" />
+          <text class="label" x="40" y="48" style="fill: var(--s10)">Workflow repository (this one)</text>
+          <text class="small muted" x="40" y="68">branches: base, S10, S11, ...</text>
+          <text class="small" x="40" y="104">tasks/&lt;TICKET&gt;: requirements, spec, plan, results</text>
+          <text class="small" x="40" y="126">designs/&lt;TICKET&gt;: synced design pages</text>
+          <text class="small" x="40" y="148">system/, repositories/: product and repository knowledge</text>
+          <text class="small" x="40" y="170">config/: registry of the application repositories</text>
+          <text class="small" x="40" y="192">hand-offs, returns, approvals, audit logs</text>
+          <text class="small muted" x="40" y="236">QA tests and screenshots stay on the QA's machine</text>
+
+          <rect class="box" x="580" y="20" width="440" height="250" rx="12" style="stroke: var(--dev)" />
+          <text class="label" x="600" y="48" style="fill: var(--dev)">Application repositories (as the dev plugin works today)</text>
+          <text class="small" x="600" y="86">1. branch named after the ticket, from main</text>
+          <text class="small" x="600" y="110">2. commits as TICKET: summary</text>
+          <text class="small" x="600" y="134">3. pull request, merged by a person</text>
+          <text class="small" x="600" y="158">4. merge to the UAT branch counts as the release</text>
+          <text class="small muted" x="600" y="204">Not part of the sprint branch: the application code</text>
+          <text class="small muted" x="600" y="222">has its own branches and pull requests.</text>
+
+          <path class="arrow" d="M580,120 L462,120" marker-end="url(#ah)" />
+          <text class="small muted" x="521" y="108" text-anchor="middle">dev reads</text>
+          <path class="arrow dash" d="M462,176 L578,176" marker-end="url(#ah)" />
+          <text class="small muted" x="521" y="196" text-anchor="middle">PR links</text>
+        </svg>
+      </section>
+
+      <section>
+        <h2>4. Who enforces what</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Rule</th>
+              <th>How</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Create the sprint branch from <code>base</code> (<code>git switch -c S10 base</code>) and have everyone check it out</td>
+              <td><span class="tag manual">by hand</span></td>
+            </tr>
+            <tr>
+              <td>Keep <code>base</code> unchanged, except when repository details or config are added</td>
+              <td><span class="tag manual">by hand</span></td>
+            </tr>
+            <tr>
+              <td>Move unreleased tickets to the next sprint with a cherry-pick</td>
+              <td><span class="tag manual">by hand</span></td>
+            </tr>
+            <tr>
+              <td><code>/aisdlc:push</code> pulls first, shows the branch and asks you to confirm it</td>
+              <td><span class="tag auto">plugin</span></td>
+            </tr>
+            <tr>
+              <td>Merge conflicts are left to you; no force push</td>
+              <td><span class="tag auto">plugin</span></td>
+            </tr>
+            <tr>
+              <td>Only <code>tasks/</code>, <code>designs/</code>, <code>system/</code>, <code>repositories/</code>, <code>config/</code> are committed; commits read <code>TICKET: summary</code></td>
+              <td><span class="tag auto">plugin</span></td>
+            </tr>
+            <tr>
+              <td>Nothing is pushed to <code>main</code></td>
+              <td><span class="tag auto">plugin</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="margin-top: 12px" class="callout">
+          <b>Gap to be aware of:</b> the plugin protects a branch named <code>main</code>. It does not know about
+          <code>base</code>, so a push to <code>base</code> is not blocked yet. Until that is decided, keeping
+          <code>base</code> untouched is a team habit, not a check.
+        </p>
+      </section>
+    </main>
+    <footer>aisdlc-plugin, branch combined. Diagram of the agreed flow; sprint branch handling is manual for now.</footer>
+  </body>
+</html>
