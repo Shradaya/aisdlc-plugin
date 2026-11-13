@@ -23,7 +23,7 @@ const repoRoots = Object.entries(REPOS)
   .map(([name, r]) => ({ name, loc: resolveRepoPath(name, r, ROOT) }))
   .filter((r) => r.loc)
   .map((r) => ({ name: r.name, root: norm(r.loc.path), dir: r.loc.path }));
-// A ticket's environment branches (<TICKET>-<env>), which /aisdlc-dev:promote creates to resolve conflicts with a target.
+// A ticket's environment branches (<TICKET>-<env>), which /aisdlc-dev:create-pr creates to resolve conflicts with a target.
 const envBr = require("../scripts/lib/env-branches");
 const HOSTING = envBr.gitHostingConfig(ROOT);
 const BASE = envBr.baseBranch(ROOT);
@@ -57,7 +57,7 @@ function envBranchMergeAllowed(repo) {
   try {
     parsed = envBr.parseEnvBranch(HOSTING, g("rev-parse", "--abbrev-ref", "HEAD"));
     if (!parsed) return false;
-    // The merge in progress must be one promote starts: the target branch into the env branch, or the task branch into it.
+    // The merge in progress must be one create-pr starts: the target branch into the env branch, or the task branch into it.
     const head = g("rev-parse", "-q", "--verify", "MERGE_HEAD");
     const sameCommit = (ref) => { try { return g("rev-parse", "-q", "--verify", `${ref}^{commit}`) === head; } catch { return false; } };
     if (![`origin/${parsed.target}`, parsed.ticket].some(sameCommit)) return false;
@@ -247,7 +247,7 @@ if (tool === "Bash" || tool === "PowerShell") {
       const m = msgs[0].match(/^([A-Z][A-Z0-9]*-\d+): (\S.*)$/);
       if (!m || !ids.includes(m[1])) block(`Commit message must match '<ticket-number>: <changes summary>' for an active task (${ids.join(", ")}).`);
       // The task branch is exactly the ticket; the one other branch a ticket's commits may land on is its environment
-      // branch (<TICKET>-<env>), which /aisdlc-dev:promote creates to resolve conflicts with a target branch.
+      // branch (<TICKET>-<env>), which /aisdlc-dev:create-pr creates to resolve conflicts with a target branch.
       if (branch !== m[1] && !(envBranchesOf(m[1]).includes(branch)))
         block(`Active aisdlc task requires branch ${m[1]}${envBranchesOf(m[1]).length ? ` (or one of its environment branches: ${envBranchesOf(m[1]).join(", ")})` : ""} (current: ${branch || "unknown"}).`);
     }

@@ -37,7 +37,7 @@
       "SPEC_APPROVED": ["claude", "Draft the implementation plan. (Approve the spec with /aisdlc-dev:approve {T} specification; source edits stay blocked until approved.)"],
       "PLAN_APPROVED": ["claude", "Implement in small steps, running tests and review as you go (validation and review are sub-steps of implementation)."],
       "IMPLEMENTING": ["claude", "Implement, validate (test matrix -> validation.md) and run independent review. You: review progress; confirm the commit when ready."],
-      "COMMITTED": ["you", "Create the pull request(s) with /aisdlc-dev:pr {T} (target the UAT branch for release)."],
+      "COMMITTED": ["you", "Create the pull request(s) with /aisdlc-dev:create-pr {T} (merging the UAT branch PR counts as release)."],
       "PR_CREATED": ["you", "Wait for CI, then review and merge the PR(s) to the UAT branch. Merge is human-controlled."],
       "MERGED": ["you", "Merged to UAT counts as released. Run /aisdlc-dev:post-release {T}."],
       "RELEASED": ["claude", "Consolidate released behavior into system/product/. You: answer any reconciliation questions."],
@@ -50,7 +50,7 @@
       "ROOT_CAUSE_CONFIRMED": ["you", "Confirm the root cause, then Claude identifies and prepares the affected repositories."],
       "REPOSITORIES_PREPARED": ["claude", "Implement the minimal fix and add a regression test; validate and review as sub-steps."],
       "IMPLEMENTING": ["claude", "Implement the fix and regression test; run tests and review. You: review, then confirm the commit."],
-      "COMMITTED": ["you", "Create the pull request(s) with /aisdlc-dev:pr {T}."],
+      "COMMITTED": ["you", "Create the pull request(s) with /aisdlc-dev:create-pr {T}."],
       "PR_CREATED": ["you", "When CI passes, merge the PR(s); then /aisdlc-dev:finish {T} to complete the bug task."]
     },
     "investigation": {

@@ -38,7 +38,7 @@ Design (`--set design`): `aisdlc-design-init`, `aisdlc-design-design`, `aisdlc-d
 Dev (`--set dev`): `aisdlc-dev-init`, `aisdlc-dev-feature`, `aisdlc-dev-bug`, `aisdlc-dev-investigate`, `aisdlc-dev-status`, `aisdlc-dev-resume`, `aisdlc-dev-add-repo`, `aisdlc-dev-pr-review`.
 Shared: `aisdlc-lifecycle-reference` (conventions, state CLI, stage procedures, gate rules) — installed with every set; the entry skills defer to it.
 
-These are **entry-point** skills (the lifecycle commands a person invokes). The detailed per-stage procedures (impact-analysis, feature-specification, testing, code-review, design-link, commit, pull-request, post-release, finish) are read on demand from the plugin's own SKILL files under `%AI_SDLC_PLUGIN_HOME%\plugins\aisdlc-dev\skills\<stage>\SKILL.md`, so they stay in one place.
+These are **entry-point** skills (the lifecycle commands a person invokes). The detailed per-stage procedures (impact-analysis, feature-specification, testing, code-review, design-link, commit, create-pr, post-release, finish) are read on demand from the plugin's own SKILL files under `%AI_SDLC_PLUGIN_HOME%\plugins\aisdlc-dev\skills\<stage>\SKILL.md`, so they stay in one place.
 
 ## Updating
 

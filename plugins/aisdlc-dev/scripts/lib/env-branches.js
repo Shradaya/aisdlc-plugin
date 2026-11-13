@@ -1,4 +1,4 @@
-// Environment branch names for a ticket: the branches /aisdlc-dev:promote creates when the task branch cannot merge
+// Environment branch names for a ticket: the branches /aisdlc-dev:create-pr creates when the task branch cannot merge
 // cleanly into a target (lf-develop, lf-qa, lf-uat). Plugin-specific (not part of the vendored core).
 //
 // Settings, from config/integrations.yaml "git_hosting":
@@ -6,7 +6,7 @@
 //   environments         target branch -> short environment name      { "lf-develop": "dev", "lf-qa": "qa", ... }
 //                        (a target missing from the map uses its own branch name)
 //   env_branch_format    how a ticket's env branch is named           "{ticket}-{env}"  (default)
-// So EL-5739 promoted to lf-qa becomes EL-5739-qa.
+// So EL-5739's branch for lf-qa is EL-5739-qa.
 //
 // The same module names the post-release sync branches (/aisdlc-dev:sync-main), which are not tied to a ticket:
 //   sync_branch_format   "{base}-{env}-{date}"   {base} = the base branch (workspace.yaml git.base_branch, "main"),
@@ -28,7 +28,7 @@ function envName(cfg, target) {
   return String((cfg.environments || {})[target] || target);
 }
 
-// The env branch for a ticket promoted to `target`.
+// The env branch for a ticket's PR into `target`.
 function envBranchName(cfg, ticket, target) {
   const fmt = String(cfg.env_branch_format || DEFAULT_FORMAT);
   return fmt.split("{ticket}").join(ticket).split("{env}").join(envName(cfg, target));

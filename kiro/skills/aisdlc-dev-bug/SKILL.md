@@ -23,7 +23,7 @@ Append audit events to `tasks/<TICKET>/execution-log.jsonl`.
 7. `%STATE% transition <TICKET> IMPLEMENTING` (absorbs validation and review as sub-steps). First run the testing stage in `write` mode: the regression test is written from `jira.md` plus the black-box section of `root-cause.md` only (never the implementation). Then implement the minimal fix on branch `<TICKET>`. Do not edit or delete the regression test.
    a. Validation sub-step: testing stage `run` mode; record in `validation.md`. Do not close without regression coverage unless technically impossible and an explicit waiver is recorded.
    b. Review sub-step: code-review stage; documentation stage for technical-doc impact. Note any user-visible product-behavior change in `documentation.md` as pending.
-8. Commit and PR: confirm with the developer, commit stage, `%STATE% transition <TICKET> COMMITTED`; then the pull-request stage (targeting the UAT branch), `%STATE% transition <TICKET> PR_CREATED` (this state covers CI validation).
+8. Commit and PR: confirm with the developer, commit stage, `%STATE% transition <TICKET> COMMITTED`; then the create-pr stage (PRs into the configured target branches, `git_hosting.pr_target_branches`), which transitions to PR_CREATED; this state covers CI validation, and a later create-pr run tracks CI and records the merge.
 9. When CI passes and the PR is merged, the developer finishes the task and it becomes COMPLETED.
 
 ## Outputs

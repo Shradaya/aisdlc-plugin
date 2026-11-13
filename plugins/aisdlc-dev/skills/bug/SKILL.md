@@ -17,7 +17,7 @@ Explicit `/aisdlc-dev:bug <ticket-number>`. `$ARGUMENTS` = `<ticket-number>`.
 Ticket matching `^[A-Z][A-Z0-9]*-\d+$`; `${CLAUDE_PLUGIN_ROOT}/config/policies.yaml` (`bug.require_regression_test`, `bug.require_plan_for_cross_repo`).
 
 ## Prerequisites
-Valid ticket; no existing task (`node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js get <TICKET>` fails) - otherwise direct to `/aisdlc-dev:resume`. Stage skills marked `disable-model-invocation` (repository-preparation, commit, pull-request) are performed by reading their `SKILL.md` after developer confirmation, as in the feature skill.
+Valid ticket; no existing task (`node ${CLAUDE_PLUGIN_ROOT}/scripts/state/aisdlc-state.js get <TICKET>` fails) - otherwise direct to `/aisdlc-dev:resume`. Stage skills marked `disable-model-invocation` (repository-preparation, commit, create-pr) are performed by reading their `SKILL.md` after developer confirmation, as in the feature skill.
 
 ## Procedure
 Append audit events to `tasks/<TICKET>/execution-log.jsonl` as stages complete.
@@ -30,7 +30,7 @@ Append audit events to `tasks/<TICKET>/execution-log.jsonl` as stages complete.
 7. `transition <TICKET> IMPLEMENTING` (absorbs validation and review as sub-steps). First run the testing skill in `write` mode: `test-writer` writes the regression test from `jira.md` plus the black-box section of `root-cause.md` only (never the implementation). Then implement the minimal fix on branch `<TICKET>`. MUST NOT edit or delete the regression test.
    a. Validation sub-step: testing skill `run` mode; record in `validation.md`. A bug MUST NOT be closed without regression coverage unless technically impossible and an explicit waiver is recorded (`${CLAUDE_PLUGIN_ROOT}/config/policies.yaml`).
    b. Review sub-step: code-review skill; documentation skill for technical documentation impact. If user-visible product behavior changed, note it in `documentation.md` as a `pending` product-knowledge update (the bug lifecycle has no release/consolidation states).
-8. Commit and PR: ask the developer to confirm, follow the commit skill, `transition <TICKET> COMMITTED`; then the pull-request skill (targeting the UAT branch), `transition <TICKET> PR_CREATED` (this state covers CI validation).
+8. Commit and PR: ask the developer to confirm, follow the commit skill, `transition <TICKET> COMMITTED`; then the create-pr skill (PRs into the configured target branches, `git_hosting.pr_target_branches`), which transitions to PR_CREATED; this state covers CI validation, and a later `/aisdlc-dev:create-pr <TICKET>` run tracks CI and records the merge.
 9. When CI passes and the PR is merged, the developer runs `/aisdlc-dev:finish <TICKET>` and the task becomes COMPLETED.
 
 ## Outputs

@@ -53,6 +53,6 @@ The full stage procedures live in the plugin's own SKILL files under `%AI_SDLC_P
 - **design-link** (UI features) — read the authored design for `<DESIGN-TICKET>` from a registered design repository (`kind: design`), snapshot and hash it under `system/designs/<DESIGN-TICKET>/`, and pin it into the specification.
 - **testing** — black-box tests written from the approved spec by the test author, then run; evidence to `validation.md`.
 - **code-review** — independent review against spec, plan, and diff; security review where applicable.
-- **commit / pull-request / post-release / finish** — commit on the ticket branch, open the PR, then release hand-off and knowledge consolidation.
+- **commit / create-pr / post-release / finish** — commit on the ticket branch, open the PR, then release hand-off and knowledge consolidation.
 
 Read the corresponding plugin SKILL.md for the authoritative detail of each stage rather than reproducing it here.
