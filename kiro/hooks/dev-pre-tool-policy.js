@@ -34,7 +34,7 @@ const repoRoots = Object.entries(REPOS)
   .map(([name, r]) => ({ name, kind: r.kind, loc: resolveRepoPath(name, r, ROOT) }))
   .filter((r) => r.loc)
   .map((r) => ({ name: r.name, kind: r.kind, root: norm(r.loc.path), dir: r.loc.path }));
-// A ticket's environment branches (<TICKET>-<env>), which promote creates to resolve conflicts with a target branch.
+// A ticket's environment branches (<TICKET>-<env>), which create-pr creates to resolve conflicts with a target branch.
 const HOSTING = envBr.gitHostingConfig(ROOT);
 const BASE = envBr.baseBranch(ROOT);
 const envBranchesOf = (ticket) => envBr.envBranches(HOSTING, ticket).map((e) => e.branch);
@@ -66,7 +66,7 @@ function envBranchMergeAllowed(repo) {
   try {
     parsed = envBr.parseEnvBranch(HOSTING, g("rev-parse", "--abbrev-ref", "HEAD"));
     if (!parsed) return false;
-    // The merge in progress must be one promote starts: the target branch into the env branch, or the task branch into it.
+    // The merge in progress must be one create-pr starts: the target branch into the env branch, or the task branch into it.
     const head = g("rev-parse", "-q", "--verify", "MERGE_HEAD");
     const sameCommit = (ref) => { try { return g("rev-parse", "-q", "--verify", `${ref}^{commit}`) === head; } catch { return false; } };
     if (![`origin/${parsed.target}`, parsed.ticket].some(sameCommit)) return false;

@@ -87,7 +87,7 @@ state("transition", "FEAT-2", "PR_CREATED");
 const sh = (c) => execSync(c, { cwd: repo, stdio: "ignore" });
 sh("git checkout -q main");
 sh("git checkout -q -b lf-qa"); fs.writeFileSync(path.join(repo, "conflict.txt"), "qa side\n"); sh("git add -A && git commit -q -m 'qa change'");
-sh("git update-ref refs/remotes/origin/lf-qa lf-qa"); // the repo has no remote; promote merges origin/<target>
+sh("git update-ref refs/remotes/origin/lf-qa lf-qa"); // the repo has no remote; create-pr merges origin/<target>
 sh("git checkout -q main");
 sh("git checkout -q -b FEAT-2"); fs.writeFileSync(path.join(repo, "conflict.txt"), "feature side\n"); sh("git add -A && git commit -q -m 'FEAT-2: feature change'");
 const ticketBranchEdit = write(src);

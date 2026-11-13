@@ -53,9 +53,8 @@ Run the `--scope project` and `--scope local` forms from inside the workspace fo
 | `/aisdlc-dev:refactor` · `api-change` · `database-change` · `dependency-upgrade` · `documentation` `<TICKET>` | Specialised workflows that use the feature lifecycle |
 | `/aisdlc-dev:approve` · `reject <TICKET> <gate>` | Record a human decision on the specification or plan gate |
 | `/aisdlc-dev:commit <TICKET>` | Compliant commit `<TICKET>: <summary>` on branch `<TICKET>` |
-| `/aisdlc-dev:pr` · `pull-request` · `create-pr <TICKET>` | Push the branch, create the PRs (to `lf-develop`, `lf-qa`, `lf-uat`), track CI and merge |
+| `/aisdlc-dev:create-pr <TICKET> [targets] [--draft]` | The one PR command: dry-run each target, open PRs from the task branch into `lf-develop`, `lf-qa`, `lf-uat` (or a subset; `main` only when you name it) with the repository's default reviewers, resolve a conflicting target on the ticket's environment branch (`<TICKET>-<env>`), on a later run track CI and record the merge, and decline or replace one of the ticket's PRs when you ask |
 | `/aisdlc-dev:sync-main [repo ...] [targets]` | After a release: bring `main` back into `lf-develop`, `lf-qa` and `lf-uat` (one PR per repository and environment; a dated sync branch only where there are conflicts) |
-| `/aisdlc-dev:promote <TICKET> [targets]` | For a target `create-pr` found conflicts in: resolve them on the ticket's environment branch (`<TICKET>-<env>`) and open the PR from there |
 | `/aisdlc-dev:pr-review <repo> <pr>` | Review any pull request against its requirement and the repository's knowledge |
 | `/aisdlc-dev:post-release <TICKET>` | After release: consolidate product knowledge into `system/product/` and clean up task artifacts |
 | `/aisdlc-dev:finish <TICKET>` | Final completion gate |

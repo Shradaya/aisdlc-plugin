@@ -29,7 +29,7 @@ BLOCKED
 Reason: Active aisdlc task requires branch FEAT-1234 (current: main).
 ```
 
-**Do:** switch to the branch named exactly like the ticket (`git checkout FEAT-1234`). If the branch does not exist, the task has not reached repository preparation; `/aisdlc-dev:resume FEAT-1234` will do that safely. Do not commit on `main`. The one other branch a ticket's commits may land on is its environment branch (for example `FEAT-1234-qa`; the message then lists it), created by `/aisdlc-dev:promote` to resolve a conflict with a target branch. The post-release sync has its own branches, `main-<env>-<date>`, and commits there read `Sync main into <target>: <summary>`.
+**Do:** switch to the branch named exactly like the ticket (`git checkout FEAT-1234`). If the branch does not exist, the task has not reached repository preparation; `/aisdlc-dev:resume FEAT-1234` will do that safely. Do not commit on `main`. The one other branch a ticket's commits may land on is its environment branch (for example `FEAT-1234-qa`; the message then lists it), created by `/aisdlc-dev:create-pr` to resolve a conflict with a target branch. The post-release sync has its own branches, `main-<env>-<date>`, and commits there read `Sync main into <target>: <summary>`.
 
 ### Post-release before production release is verified
 

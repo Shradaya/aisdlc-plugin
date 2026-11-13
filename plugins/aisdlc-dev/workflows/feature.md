@@ -22,8 +22,8 @@ Failure states (reachable from any state): BLOCKED, WAITING_FOR_INPUT, WAITING_F
 | Plan + approve | -> PLAN_APPROVED | implementation-planner | `implementation-plan.md` |
 | Implement (incl. validate + review) | -> IMPLEMENTING | testing (write/run), implementation, code-review, documentation, adr | tests, code, `validation.md`, `code-review.md`, `documentation.md` |
 | Commit | -> COMMITTED | commit | commits |
-| PR / CI | -> PR_CREATED | pull-request (targets the UAT branch) | PR, `ci` state |
-| Merge | -> MERGED | pull-request | merge to UAT |
+| PR / CI | -> PR_CREATED | create-pr (PRs into `pr_target_branches`; conflicts resolved on `<TICKET>-<env>`) | PRs, `ci` state |
+| Merge | -> MERGED | create-pr (re-run records the merge) | merge to UAT |
 | Release | -> RELEASED | post-release | `release.yaml` (release = UAT merge) |
 | Consolidate | -> KNOWLEDGE_CONSOLIDATED | product-knowledge-consolidation, product-knowledge-analyst | `system/product/`, artifacts deleted |
 | Finish | -> COMPLETED | finish | - |

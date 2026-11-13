@@ -12,7 +12,7 @@
 # Products, or <site>/_edge/tenant_info) skips the lookup the gateway route makes on first use; "gateway_url"
 # overrides https://api.atlassian.com (Jira Data Center's "bearer" scheme always uses the site URL; this never applies).
 # "git_hosting.environments" maps each target branch to a short environment name, and "env_branch_format" names the
-# branch /aisdlc-dev:promote creates for a ticket whose task branch conflicts with a target (EL-5739 -> EL-5739-qa).
+# branch /aisdlc-dev:create-pr creates for a ticket whose task branch conflicts with a target (EL-5739 -> EL-5739-qa).
 # "sync_branch_format" names the branch /aisdlc-dev:sync-main uses when the base branch conflicts with a target
 # ({base}-{env}-{date}, date as YYYYMMDD: main-qa-20261105).
 # Jira workflow transitions MUST be configured explicitly (spec §20.1): an empty "status_transitions" map means none are allowed.
