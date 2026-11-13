@@ -1,6 +1,6 @@
 ---
 name: jira-ticket
-description: Retrieve a Jira ticket through the Jira REST API helper script (or collect it interactively when Jira is unavailable), then persist it as tasks/<ticket>/jira.md with a snapshot hash. Also re-checks drift before implementation.
+description: Retrieve a Jira ticket through the Jira REST API helper script (or collect it interactively when Jira is unavailable), then persist it as tasks/{ticket}/jira.md with a snapshot hash. Also re-checks drift before implementation.
 argument-hint: <ticket-number> [feature|bug]
 ---
 

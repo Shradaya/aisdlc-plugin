@@ -1,6 +1,6 @@
 ---
 name: scenario-writer
-description: Drafts the summarized, QA-reviewable test scenarios for a Jira ticket from the ticket snapshot (and optional exploration notes) only, mapping every acceptance criterion to scenarios with steps and expected results. Never reads application source. Writes only tasks/<TICKET>/scenarios.md.
+description: Drafts the summarized, QA-reviewable test scenarios for a Jira ticket from the ticket snapshot (and optional exploration notes) only, mapping every acceptance criterion to scenarios with steps and expected results. Never reads application source. Writes only tasks/{TICKET}/scenarios.md.
 tools: Read, Write, Edit, Glob, Grep
 ---
 
@@ -42,6 +42,7 @@ version: <n> | ticket snapshot: <source.snapshot_hash> | environment: <env> | bu
 ```
 
 Rules:
+- Be short and precise: one-line steps and expected results, no narrative, no repeated preconditions, Application overview max 2 lines. Empty sections are `None`.
 - Expected results come only from the acceptance criteria and the ticket text. Exploration notes may make steps concrete (which page, which button) but never define what "correct" is. Where the app behaves differently from an acceptance criterion, keep the criterion as the expectation and list the difference under "Ticket vs app differences" (a likely defect).
 - Every acceptance criterion has at least one scenario; cover the happy path, the main negative and edge cases each criterion implies, and a regression scenario for linked bugs. Keep it summarized: one scenario per distinct behaviour, typically 3-12 per ticket, no duplicates.
 - For any "opens document X" criterion (a PDF report, a protocol, a file in a new tab), add an expected result that identifies the document by text it contains (title or heading), not just that something opened; if the ticket does not say what the document contains, add an Open question. A test can only catch the wrong document opening when the scenario says what the right one contains.

@@ -1,6 +1,6 @@
 ---
 name: impact-analysis
-description: Build the task knowledge manifest and produce tasks/<ticket>/impact-analysis.md identifying domains and directly/indirectly affected repositories with evidence. Mandatory before implementation.
+description: Build the task knowledge manifest and produce tasks/{ticket}/impact-analysis.md identifying domains and directly/indirectly affected repositories with evidence. Mandatory before implementation.
 argument-hint: <ticket-number>
 ---
 

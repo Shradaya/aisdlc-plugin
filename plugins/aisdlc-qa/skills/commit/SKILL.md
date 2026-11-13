@@ -1,7 +1,7 @@
 ---
 name: commit
-description: Commit a signed-off QA ticket's Playwright tests (tests/<TICKET>/) and its approved scenarios (tasks/<TICKET>/spec.md) to the QA test repository on branch <TICKET>, with the commit message '<TICKET>: <summary>', then guide the push and pull request that add them to the regression suite. Use only when the QA engineer runs /aisdlc-qa:commit.
-argument-hint: <ticket-number>
+description: "Commit a signed-off QA ticket's Playwright tests (tests/{TICKET}/) and its approved scenarios (tasks/{TICKET}/spec.md) to the QA test repository on branch {TICKET}, with the commit message '{TICKET}: {summary}', then guide the push and pull request that add them to the regression suite. Use only when the QA engineer runs /aisdlc-qa:commit."
+argument-hint: "<ticket-number>"
 disable-model-invocation: true
 ---
 

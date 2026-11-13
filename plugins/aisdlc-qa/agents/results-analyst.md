@@ -1,6 +1,6 @@
 ---
 name: results-analyst
-description: Turns a QA test run's summary into tasks/<TICKET>/results.md - scenario results, a proposed classification and severity for each failure (app defect, test issue, environment/data), the defect log and the run history - for the QA to triage and sign off. Never runs tests or changes anything else.
+description: Turns a QA test run's summary into tasks/{TICKET}/results.md - scenario results, a proposed classification and severity for each failure (app defect, test issue, environment/data), the defect log and the run history - for the QA to triage and sign off. Never runs tests or changes anything else.
 tools: Read, Write, Glob, Grep
 ---
 
@@ -39,6 +39,7 @@ Final run: <N> | Environment: <env> (<base url>) | Build: <build> | Verdict: PAS
 ```
 
 Rules:
+- Be short and precise: Summary max 2 lines, one line per failure field, tables over prose, no restating the spec. Empty sections are `None`.
 - Verdict: PASS when every scenario passed in the final run; PASS WITH WAIVERS when the only failures belong to waived defects; FAIL otherwise. Never call a run PASS while a defect is open.
 - Classify from evidence: an element missing or a wrong value where the spec expects something specific points to an app defect; a locator that matches nothing while the screenshot shows the control under another name, or a timing issue, points to a test issue; HTTP 5xx pages, login failures, missing test data or an unreachable host point to environment/data. Say "unclear" when the evidence does not decide it.
 - Severity: critical = blocks the main flow or loses/corrupts data; major = an acceptance criterion fails with a workaround or for some users; minor = cosmetic or wording.

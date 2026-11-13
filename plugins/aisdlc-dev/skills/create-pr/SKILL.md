@@ -1,6 +1,6 @@
 ---
 name: create-pr
-description: The one pull-request command for a ticket - open a PR from the task branch into each target branch (default lf-develop, lf-qa, lf-uat; main only when the developer names it) of every affected repository with the repository's default reviewers, resolve a conflicting target on the ticket's environment branch (<TICKET>-<env>), on a later run track CI and record the merge, and decline or replace one of the ticket's PRs when explicitly asked. Use only when the developer runs /aisdlc-dev:create-pr or confirms the PR stage of a workflow.
+description: The one pull-request command for a ticket - open a PR from the task branch into each target branch (default lf-develop, lf-qa, lf-uat; main only when the developer names it) of every affected repository with the repository's default reviewers, resolve a conflicting target on the ticket's environment branch ({TICKET}-{env}), on a later run track CI and record the merge, and decline or replace one of the ticket's PRs when explicitly asked. Use only when the developer runs /aisdlc-dev:create-pr or confirms the PR stage of a workflow.
 argument-hint: <ticket-number> [target-branches] [--draft]
 disable-model-invocation: true
 ---
@@ -221,7 +221,7 @@ for background. State test results in one line at most.
 
 <UI change: a placeholder for the developer to attach the screenshot. Otherwise "N/A (no UI change)".>
 
-Design: <for a ticket with a pinned design (specification section 11 "Design references"): design ticket, pinned version and artifact URL. Otherwise omit this line.>
+Design: <for a ticket with a pinned design (specification section 11 "Design references"): pinned version and source commit, for example `v2, <short sha>`. Otherwise omit this line.>
 
 ## Before
 

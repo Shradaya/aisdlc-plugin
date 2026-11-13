@@ -1,6 +1,6 @@
 {
   "name": "aisdlc-dev",
-  "version": "2.0.0",
+  "version": "4.0.0",
   "description": "AI-SDLC engineering lifecycle and governance plugin (developer side): tickets, specifications, implementation, review, commit, PR and release gates.",
   "author": { "name": "Evoke Medical Care" }
 }

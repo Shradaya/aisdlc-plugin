@@ -1,7 +1,7 @@
 ---
 name: status-page
-description: Open the live QA status page in the browser - every QA ticket with its past, current and upcoming lifecycle states, approvals, defects, every test run with its step screenshots and Playwright report, history and all its documents, plus environments and credentials (names only). Read-only local web server. Use when the QA engineer runs /aisdlc-qa:status-page.
-argument-hint: [--port <n>] [--stop]
+description: "Open the live QA status page in the browser - every QA ticket with its past, current and upcoming lifecycle states, approvals, defects, every test run with its step screenshots and Playwright report, history and all its documents, plus environments and credentials (names only). Read-only local web server. Use when the QA engineer runs /aisdlc-qa:status-page."
+argument-hint: "[--port <n>] [--stop]"
 disable-model-invocation: true
 ---
 

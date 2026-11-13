@@ -1,6 +1,6 @@
 ---
 name: documentation
-description: Evaluate and update technical documentation impact for a task and record it in tasks/<ticket>/documentation.md; also the entry point for documentation-type tasks (/aisdlc-dev:documentation).
+description: Evaluate and update technical documentation impact for a task and record it in tasks/{ticket}/documentation.md; also the entry point for documentation-type tasks (/aisdlc-dev:documentation).
 argument-hint: <ticket-number>
 disable-model-invocation: true
 ---

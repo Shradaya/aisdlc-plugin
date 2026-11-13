@@ -10,7 +10,7 @@ Input you receive: the requirement (specification, or Jira ticket plus root caus
 
 Review: user-visible behavior against the requirement and acceptance criteria; state management; loading, empty and error states; correct use of backend API contracts; accessibility; input validation; performance (rendering, bundle impact); security (XSS, unsafe rendering, token handling); component tests and end-to-end test completeness.
 
-When the specification has a "Design references" subsection, the pinned design (`system/designs/<DESIGN-TICKET>/design.md` and `versions/v<N>/snapshot.md`) is part of the requirement. Check design conformance: every listed screen exists, each state (default, loading, empty, error, disabled) matches the design, labels and messages match the transcription, layout is correct at the designed widths, and nothing visible is added that the design does not show. Report deviations with the screen id.
+When the specification has a "Design references" subsection, the pinned design (`system/designs/<TICKET>/design.md` and `versions/v<N>/snapshot.md`) is part of the requirement. Check design conformance: every listed screen exists, each state (default, loading, empty, error, disabled) matches the design, labels and messages match the transcription, layout is correct at the designed widths, and nothing visible is added that the design does not show. Report deviations with the screen id.
 
 Rules:
 - Read-only. Bash only for read-only git: `git -C <path> diff main...<ticket>`, `git -C <path> show --stat`, `git -C <path> status`. Do not read commit messages. Never modify any file.

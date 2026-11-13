@@ -1,0 +1,48 @@
+# PM (project-manager) task type and state machine. Consumed by the pm plugin's scripts/state/aisdlc-state.js and hooks.
+# JSON-compatible YAML (full-line '#' comments only) so scripts parse it without dependencies.
+#
+# Jira is the source of truth on this branch; there is no AISDLC server. The single approval of the acceptance criteria
+# is a LOCAL config-driven gate "acceptance_criteria" (artifact acceptance-criteria.md), decided by a human who runs
+# /aisdlc-pm:approve <T> acceptance_criteria. The state engine creates one pending approval for the gate at init, records
+# the human approver + timestamp + artifact hash on approve, and refuses a hand-off transition unless the gate is
+# approved and acceptance-criteria.md is unchanged since approval (see "requires_approval" below). The model never
+# self-approves; /aisdlc-pm:handoff points the human at the approve command but never runs it.
+#
+# Rework (skip edges below): a local rework from HANDED_OFF_TO_DESIGN / HANDED_OFF_TO_DEV / COMPLETED back to a PM-owned
+# state (/aisdlc-pm:refine) only unlocks editing the artifacts again (6.3 write-window gate). Editing acceptance-criteria.md
+# after approval invalidates the recorded hash, so the human must re-approve the gate before handing off again.
+{
+  "pm": {
+    "states": ["CREATED","REQUIREMENT_GATHERING","ACCEPTANCE_CRITERIA_DEFINED","HANDED_OFF_TO_DESIGN","HANDED_OFF_TO_DEV","COMPLETED"],
+    "skip": {
+      "ACCEPTANCE_CRITERIA_DEFINED": ["HANDED_OFF_TO_DEV"],
+      "HANDED_OFF_TO_DESIGN": ["COMPLETED","REQUIREMENT_GATHERING","ACCEPTANCE_CRITERIA_DEFINED"],
+      "HANDED_OFF_TO_DEV": ["REQUIREMENT_GATHERING","ACCEPTANCE_CRITERIA_DEFINED"],
+      "COMPLETED": ["REQUIREMENT_GATHERING","ACCEPTANCE_CRITERIA_DEFINED"]
+    },
+    "source_edit_min_state": "REQUIREMENT_GATHERING",
+    "source_edit_max_state": "ACCEPTANCE_CRITERIA_DEFINED",
+    "gates": { "acceptance_criteria": { "artifact": "acceptance-criteria.md", "on_approve": "Next (You): /aisdlc-pm:handoff {T} dev|design.", "on_reject": "Next (You): revise with /aisdlc-pm:refine {T}, then re-approve." } },
+    "requires_approval": { "HANDED_OFF_TO_DESIGN": "acceptance_criteria", "HANDED_OFF_TO_DEV": "acceptance_criteria" }
+  },
+  "failure_states": ["BLOCKED","WAITING_FOR_INPUT","WAITING_FOR_APPROVAL","CONFLICTED","FAILED","CANCELLED"],
+  "other_types_use": "pm",
+  "next_steps": {
+    "default": {
+      "CREATED": ["claude", "Load the Jira ticket for {T} (or ask for a brief) with /aisdlc-pm:requirements {T}."],
+      "REQUIREMENT_GATHERING": ["claude", "Draft tasks/{T}/requirements.md and tasks/{T}/acceptance-criteria.md; ask the PM about gaps."],
+      "ACCEPTANCE_CRITERIA_DEFINED": ["you", "Review the files, approve the acceptance criteria with /aisdlc-pm:approve {T} acceptance_criteria (this plugin never approves). Optionally /aisdlc-pm:jira-sync {T}. Then /aisdlc-pm:handoff {T} dev|design."],
+      "HANDED_OFF_TO_DESIGN": ["you", "The designer owns {T} now. Nothing to do until design hands it to development; mark COMPLETED once development has it."],
+      "HANDED_OFF_TO_DEV": ["you", "Development owns {T}. If it is sent back, /aisdlc-pm:refine {T} and move to ACCEPTANCE_CRITERIA_DEFINED or REQUIREMENT_GATHERING; otherwise mark COMPLETED."],
+      "COMPLETED": ["none", "Nothing further for the PM. If the ticket is sent back, /aisdlc-pm:refine {T} (it moves the task back to ACCEPTANCE_CRITERIA_DEFINED or REQUIREMENT_GATHERING)."]
+    },
+    "failure": {
+      "BLOCKED": ["you", "Read the reason (tasks/{T}/task.yaml 'reason'), fix the cause, then resume."],
+      "WAITING_FOR_INPUT": ["you", "Answer the open questions, then resume."],
+      "WAITING_FOR_APPROVAL": ["you", "Approve the acceptance criteria with /aisdlc-pm:approve {T} acceptance_criteria, then resume."],
+      "CONFLICTED": ["you", "The task state differs from the record. Inspect by hand, resolve, then resume."],
+      "FAILED": ["you", "Read the failure in the log, fix the cause, then resume."],
+      "CANCELLED": ["none", "The PM task was cancelled."]
+    }
+  }
+}

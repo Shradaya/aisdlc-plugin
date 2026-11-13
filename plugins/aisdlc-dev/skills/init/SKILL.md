@@ -1,7 +1,7 @@
 ---
 name: init
-description: Set up an aisdlc workspace in a folder - the .claude/ config, web/ docs site, config/, repositories/, system/, tasks/ and logs/ where the plugin stores everything. Use only when the developer runs /aisdlc-dev:init.
-argument-hint: [target-folder] [--only claude|web|workspace] [--dry-run] [--force]
+description: "Set up an aisdlc workspace in a folder - the .claude/ config, web/ docs site, config/, repositories/, system/, tasks/ and logs/ where the plugin stores everything. Use only when the developer runs /aisdlc-dev:init."
+argument-hint: "[target-folder] [--only claude|web|workspace] [--dry-run] [--force]"
 disable-model-invocation: true
 ---
 

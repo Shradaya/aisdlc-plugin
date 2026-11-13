@@ -70,12 +70,11 @@
     }
   },
   "design": {
-    "adapter": "claude-design-artifact",
-    "tool": "Artifact (type: Design)",
+    "adapter": "git-design-repo",
+    "source": "designs/<TICKET>/ in the repository registered with kind design (synced by /aisdlc-design:sync)",
     "access": "read-only",
-    "operations": ["find_design", "read_design"],
-    "title_contains": "<DESIGN-TICKET>",
-    "storage": "system/designs/<DESIGN-TICKET>/"
+    "operations": ["read_pages", "read_commit"],
+    "storage": "system/designs/<TICKET>/"
   },
   "ci": {
     "adapter": "mcp",

@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>aisdlc PM status</title>
+<style>
+  :root {
+    --bg: #f7f6f3; --surface: #ffffff; --surface-2: #f1efea; --text: #1c1d1f; --muted: #62666d; --line: #dedad3;
+    --accent: #2457d6; --accent-soft: #e8eefc;
+    --ok: #1d7a43; --ok-soft: #e4f4ea; --warn: #a15c00; --warn-soft: #fcf0dc; --bad: #b42318; --bad-soft: #fde8e6;
+    --you: #a15c00; --you-soft: #fcf0dc; --claude: #2457d6; --claude-soft: #e8eefc;
+    --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131416; --surface: #1b1d20; --surface-2: #23262a; --text: #e7e5e2; --muted: #a0a4ab; --line: #34373c;
+      --accent: #7ea6ff; --accent-soft: #1d2a45;
+      --ok: #5fcb8b; --ok-soft: #173525; --warn: #f0ad4e; --warn-soft: #3a2b13; --bad: #ff7b6e; --bad-soft: #401c19;
+      --you: #f0ad4e; --you-soft: #3a2b13; --claude: #7ea6ff; --claude-soft: #1d2a45;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #131416; --surface: #1b1d20; --surface-2: #23262a; --text: #e7e5e2; --muted: #a0a4ab; --line: #34373c;
+    --accent: #7ea6ff; --accent-soft: #1d2a45;
+    --ok: #5fcb8b; --ok-soft: #173525; --warn: #f0ad4e; --warn-soft: #3a2b13; --bad: #ff7b6e; --bad-soft: #401c19;
+    --you: #f0ad4e; --you-soft: #3a2b13; --claude: #7ea6ff; --claude-soft: #1d2a45;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14.5px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, pre, .mono { font-family: var(--mono); }
+  header.top { position: sticky; top: 0; z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .top-in { padding: 10px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .brand { font-weight: 700; font-size: 16px; color: var(--text); }
+  .brand small { font-weight: 500; color: var(--muted); margin-left: 6px; }
+  .live { margin-left: auto; font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); display: inline-block; }
+  .dot.off { background: var(--bad); }
+  main { padding: 20px 16px 60px; }
+  h1 { font-size: 22px; margin: 0; line-height: 1.25; }
+  h2 { font-size: 15px; margin: 0 0 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 650; }
+  section.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; min-width: 0; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .stat b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .stat span { font-size: 12.5px; color: var(--muted); }
+  .stat.you b { color: var(--you); } .stat.bad b { color: var(--bad); }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr.click { cursor: pointer; }
+  tbody tr.click:hover td { background: var(--surface-2); }
+  .chip { display: inline-block; font: 600 11.5px/1.6 var(--mono); padding: 0 7px; border-radius: 5px; background: var(--surface-2); color: var(--text); white-space: nowrap; }
+  .chip.gate { background: var(--warn-soft); color: var(--warn); }
+  .chip.bad { background: var(--bad-soft); color: var(--bad); }
+  .chip.ok { background: var(--ok-soft); color: var(--ok); }
+  .chip.accent { background: var(--accent-soft); color: var(--accent); }
+  .who { display: inline-block; font-size: 11.5px; font-weight: 700; padding: 0 7px; border-radius: 99px; line-height: 1.7; white-space: nowrap; }
+  .who.you { background: var(--you-soft); color: var(--you); }
+  .who.claude { background: var(--claude-soft); color: var(--claude); }
+  .who.none { background: var(--surface-2); color: var(--muted); }
+  .bar { height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; min-width: 90px; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  .bar.bad i { background: var(--bad); }
+  .muted { color: var(--muted); }
+  .small { font-size: 12.5px; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+  .tabs button { font: inherit; font-size: 13px; padding: 4px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--surface); color: var(--text); cursor: pointer; }
+  .tabs button.on { background: var(--text); color: var(--surface); border-color: var(--text); }
+  ul.plain { list-style: none; margin: 0; padding: 0; }
+  ul.plain li { padding: 6px 0; border-bottom: 1px solid var(--line); }
+  ul.plain li:last-child { border-bottom: none; }
+  .empty { color: var(--muted); font-style: italic; }
+
+  /* task detail */
+  .crumb { font-size: 13px; margin-bottom: 10px; }
+  .task-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 6px; }
+  .task-head .sub { color: var(--muted); font-size: 13px; width: 100%; }
+  .banner { border-radius: 10px; padding: 12px 14px; margin: 12px 0 16px; border: 1px solid; }
+  .banner.bad { background: var(--bad-soft); border-color: var(--bad); color: var(--text); }
+  .banner.next { background: var(--surface); border-color: var(--line); }
+  .banner .lbl { font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 650; display: block; margin-bottom: 2px; }
+  .grid { display: grid; grid-template-columns: minmax(280px, 380px) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .grid > * { min-width: 0; }
+  @media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  ol.flow { list-style: none; margin: 0; padding: 0; position: relative; }
+  ol.flow li { position: relative; padding: 4px 0 10px 28px; }
+  ol.flow li::before { content: ""; position: absolute; left: 8px; top: 18px; bottom: -4px; width: 2px; background: var(--line); }
+  ol.flow li:last-child::before { display: none; }
+  ol.flow li.done::before, ol.flow li.skipped::before { background: var(--accent); }
+  .node { position: absolute; left: 1px; top: 7px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--line); background: var(--surface); }
+  li.done .node { background: var(--accent); border-color: var(--accent); }
+  li.done .node::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid var(--surface); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  li.skipped .node { border-style: dashed; border-color: var(--accent); }
+  li.current .node { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); background: var(--accent-soft); }
+  li.current .node::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--accent); }
+  li.interrupted .node { border-color: var(--bad); background: var(--bad-soft); box-shadow: 0 0 0 4px var(--bad-soft); }
+  li.revisited .node { border-color: var(--accent); border-style: dotted; }
+  li.gatestep .node { border-radius: 3px; }
+  .st-name { font: 600 12.5px var(--mono); }
+  li.future .st-name, li.revisited .st-name { color: var(--muted); font-weight: 500; }
+  li.skipped .st-name { color: var(--muted); text-decoration: line-through; font-weight: 500; }
+  li.current .st-name { color: var(--accent); }
+  li.interrupted .st-name { color: var(--bad); }
+  .st-meta { font-size: 12px; color: var(--muted); }
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--muted); margin: 0 0 12px; }
+  dl.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0; font-size: 13.5px; }
+  dl.kv dt { color: var(--muted); }
+  dl.kv dd { margin: 0; overflow-wrap: anywhere; }
+  .docs { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+  @media (max-width: 760px) { .docs { grid-template-columns: minmax(0, 1fr); } .doclist { border-right: none; border-bottom: 1px solid var(--line); max-height: 220px; } }
+  .doclist { border-right: 1px solid var(--line); background: var(--surface-2); max-height: 760px; overflow: auto; }
+  .doclist a { display: block; padding: 7px 12px; color: var(--text); font-size: 13px; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+  .doclist a.on { background: var(--surface); color: var(--accent); font-weight: 600; box-shadow: inset 3px 0 0 var(--accent); }
+  .doclist a small { display: block; color: var(--muted); font-size: 11.5px; font-weight: 400; }
+  .viewer { padding: 18px 22px; min-width: 0; max-height: 760px; overflow: auto; }
+  .viewer pre { background: var(--surface-2); padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; }
+  .viewer pre.raw { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .viewer img { max-width: 100%; border: 1px solid var(--line); border-radius: 6px; }
+  .md h1 { font-size: 21px; margin: 0 0 12px; } .md h2 { font-size: 17px; text-transform: none; letter-spacing: 0; color: var(--text); margin: 22px 0 8px; }
+  .md h3 { font-size: 15px; margin: 18px 0 6px; } .md h4, .md h5, .md h6 { font-size: 14px; margin: 14px 0 4px; }
+  .md table { width: auto; margin: 10px 0; font-size: 13px; } .md th, .md td { border: 1px solid var(--line); }
+  .md blockquote { margin: 10px 0; padding: 4px 14px; border-left: 3px solid var(--line); color: var(--muted); }
+  .md code { background: var(--surface-2); padding: 1px 4px; border-radius: 4px; font-size: .9em; } .md pre code { background: none; padding: 0; }
+  .md hr { border: none; border-top: 1px solid var(--line); margin: 18px 0; }
+  .doc-head { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  .doc-head b { font-family: var(--mono); font-size: 13.5px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin-left: auto; }
+  .seg button { font: inherit; font-size: 12px; padding: 2px 10px; border: none; background: var(--surface); color: var(--muted); cursor: pointer; }
+  .seg button.on { background: var(--surface-2); color: var(--text); font-weight: 600; }
+  .ev td { font-size: 13px; }
+</style>
+</head>
+<body>
+<header class="top"><div class="top-in">
+  <a class="brand" href="#/">aisdlc PM status<small id="ws"></small></a>
+  <span class="live"><i class="dot" id="dot"></i><span id="updated">connecting…</span></span>
+</div></header>
+<main id="app"><p class="muted">Loading…</p></main>
+
+<script>
+"use strict";
+const $app = document.getElementById("app");
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const enc = encodeURIComponent;
+const WHO = { you: "You", claude: "Claude", none: "Done" };
+const BLOCKING = ["BLOCKED", "CONFLICTED", "FAILED", "WAITING_FOR_INPUT"];
+const state = { filter: "active", docView: "rendered", lastDoc: null };
+try { state.filter = localStorage.getItem("aisdlc-pm-status-filter") || "active"; } catch {}
+
+function ago(iso) {
+  if (!iso) return "—";
+  const s = Math.round((Date.now() - Date.parse(iso)) / 1000);
+  if (s < 60) return "just now";
+  const m = Math.round(s / 60); if (m < 60) return m + " min ago";
+  const h = Math.round(m / 60); if (h < 48) return h + " h ago";
+  return Math.round(h / 24) + " days ago";
+}
+const when = (iso) => iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "—";
+const bytes = (n) => n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(1) + " KB" : (n / 1048576).toFixed(1) + " MB";
+function statusChip(s) {
+  const cls = BLOCKING.includes(s) || s === "CANCELLED" ? "bad" : /APPROVAL$/.test(s) ? "gate" : s === "COMPLETED" ? "ok" : "accent";
+  return `<span class="chip ${cls}">${esc(s)}</span>`;
+}
+const awaitingChip = (t) => t.awaiting_approval ? `<div><span class="chip gate">awaiting ${esc(t.awaiting_approval)} approval</span></div>` : "";
+const whoChip = (n) => n ? `<span class="who ${esc(n.who)}">${esc(WHO[n.who] || n.who)}</span>` : "";
+
+async function getJSON(url) {
+  const r = await fetch(url, { cache: "no-store" });
+  if (!r.ok) throw Object.assign(new Error((await r.json().catch(() => ({}))).error || r.statusText), { status: r.status });
+  return r.json();
+}
+function live(ok, at) {
+  if (window.AISDLC_SNAPSHOT) {
+    document.getElementById("dot").className = "dot off";
+    document.getElementById("updated").textContent = "snapshot · taken " + when(window.AISDLC_SNAPSHOT.generated_at) + " · not live";
+    return;
+  }
+  document.getElementById("dot").className = "dot" + (ok ? "" : " off");
+  document.getElementById("updated").textContent = ok ? "live · updated " + new Date(at).toLocaleTimeString() : "server not reachable (is the status page still running?)";
+}
+
+// ---------- overview ----------
+function overview(d) {
+  document.getElementById("ws").textContent = d.workspace.name;
+  const active = d.tasks.filter((t) => !["COMPLETED", "CANCELLED"].includes(t.status));
+  const yours = active.filter((t) => t.next && t.next.who === "you");
+  const blocked = active.filter((t) => t.failure);
+  const shown = state.filter === "all" ? d.tasks : state.filter === "you" ? yours : active;
+  const rows = shown.map((t) => t.unreadable
+    ? `<tr><td class="mono">${esc(t.id)}</td><td colspan="5" class="muted">task.yaml cannot be read</td></tr>`
+    : `<tr class="click" data-href="#/task/${enc(t.id)}">
+        <td><a class="mono" href="#/task/${enc(t.id)}">${esc(t.id)}</a><div class="small muted">${esc(t.title || "")}</div></td>
+        <td>${esc(t.type)}</td>
+        <td>${statusChip(t.status)}${t.failure && t.resume_state ? `<div class="small muted">left ${esc(t.resume_state)}</div>` : ""}${awaitingChip(t)}</td>
+        <td><div class="bar ${t.failure ? "bad" : ""}" title="${t.position} of ${t.total}"><i style="width:${t.total ? Math.round((t.position / t.total) * 100) : 0}%"></i></div><div class="small muted">${t.position} / ${t.total}</div></td>
+        <td>${whoChip(t.next)} <span class="small">${esc(t.next ? t.next.text : "")}</span></td>
+        <td class="small muted" title="${esc(when(t.updated_at))}">${esc(ago(t.updated_at))}</td></tr>`).join("");
+  $app.innerHTML = `
+    <div class="stats">
+      <div class="stat"><b>${active.length}</b><span>active tickets</span></div>
+      <div class="stat you"><b>${yours.length}</b><span>waiting on you</span></div>
+      <div class="stat"><b>${d.pending_approvals.length}</b><span>pending approvals</span></div>
+      <div class="stat bad"><b>${blocked.length}</b><span>blocked or failed</span></div>
+      <div class="stat"><b>${d.tasks.length - active.length}</b><span>completed or cancelled</span></div>
+    </div>
+    <section class="card"><h2>Tickets</h2>
+      <div class="tabs">${[["active", "Active"], ["you", "Waiting on you"], ["all", "All"]].map(([k, l]) => `<button data-filter="${k}" class="${state.filter === k ? "on" : ""}">${l}</button>`).join("")}</div>
+      ${shown.length ? `<div class="table-wrap"><table><thead><tr><th>Ticket</th><th>Type</th><th>State</th><th>Progress</th><th>Next step</th><th>Updated</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<p class="empty">No tickets here. Start one with /aisdlc-pm:requirements &lt;TICKET&gt; (or /aisdlc-pm:ticket-new).</p>`}
+    </section>
+    <section class="card"><h2>Blocking issues</h2>
+      ${d.issues.length ? `<ul class="plain">${d.issues.map((i) => `<li>${i.kind === "task" ? `<a class="mono" href="#/task/${enc(i.ref)}">${esc(i.ref)}</a>` : `<b>${esc(i.ref)}</b>`} — ${esc(i.text)}</li>`).join("")}</ul>` : `<p class="empty">None.</p>`}
+    </section>
+    <section class="card"><h2>Credentials and integrations</h2>
+      <p class="small">${d.credentials.map((c) => `<span class="chip ${c.set ? "ok" : "bad"}">${esc(c.name)}: ${c.set ? "set" : "missing"}</span>`).join(" ")}</p>
+      <p class="small muted">As seen by the status page process (names only, never values). Jira is the source of truth for PM work; whether Jira is connected in your Claude Code session is shown by /aisdlc-pm:status there.</p>
+    </section>`;
+  $app.querySelectorAll("[data-filter]").forEach((b) => b.onclick = () => { state.filter = b.dataset.filter; try { localStorage.setItem("aisdlc-pm-status-filter", state.filter); } catch {} render(); });
+  $app.querySelectorAll("tr.click").forEach((tr) => tr.onclick = (e) => { if (!e.target.closest("a")) location.hash = tr.dataset.href; });
+}
+
+// ---------- task detail ----------
+function flow(d) {
+  return `<ol class="flow">${d.timeline.map((s) => {
+    const visits = s.visits.filter(Boolean);
+    const meta = s.status === "future" ? "" : s.status === "skipped" ? "skipped" :
+      visits.length ? visits.map((v) => when(v)).join(" · ") + (visits.length > 1 ? ` (${visits.length}×)` : "") : "";
+    const extra = s.status === "current" ? " — now" : s.status === "interrupted" ? ` — interrupted: ${esc(d.summary.status)}` : s.status === "revisited" ? " — visited before a loop back" : "";
+    return `<li class="${s.status}${s.gate ? " gatestep" : ""}"><span class="node"></span>
+      <span class="st-name">${esc(s.state)}</span>${s.gate ? ' <span class="chip gate">gate</span>' : ""}
+      <div class="st-meta">${esc(meta)}${extra}</div></li>`;
+  }).join("")}</ol>`;
+}
+
+function infoCard(d) {
+  const t = d.task, s = d.summary;
+  return `<dl class="kv">
+    <dt>Type</dt><dd>${esc(s.type)} <span class="muted">(${esc(d.lifecycle.name)} lifecycle)</span></dd>
+    <dt>Created</dt><dd>${esc(when(s.created_at))}</dd>
+    <dt>Updated</dt><dd>${esc(when(s.updated_at))} <span class="muted">(${esc(ago(s.updated_at))})</span></dd>
+    ${t.source && t.source.type ? `<dt>Ticket source</dt><dd>${esc(t.source.type)}${t.source.snapshot_hash ? ` <span class="mono small muted">${esc(String(t.source.snapshot_hash).slice(0, 19))}</span>` : ""}</dd>` : ""}
+    ${t.handoff && t.handoff.to ? `<dt>Handed off to</dt><dd>${esc(t.handoff.to)}${t.handoff.at ? " · " + esc(when(t.handoff.at)) : ""}</dd>` : ""}
+  </dl>`;
+}
+
+function approvalsCard(d) {
+  if (!d.approvals.length) return `<p class="empty">No approval recorded yet.</p>`;
+  return `<ul class="plain">${d.approvals.map((a) => {
+    const cls = a.status === "approved" ? (a.changed_since_approval ? "gate" : "ok") : a.status === "rejected" ? "bad" : "";
+    return `<li><b>${esc(a.gate)}</b> <span class="chip ${cls}">${esc(a.status)}${a.version ? " v" + esc(a.version) : ""}</span>
+      ${a.changed_since_approval ? ' <span class="chip bad">changed since approval</span>' : ""}
+      <div class="small muted">${a.artifact ? `pins <a href="#/task/${enc(d.summary.id)}/doc/${enc(a.artifact)}">${esc(a.artifact)}</a>` : "no pinned artifact"}${a.approved_by ? ` · by ${esc(a.approved_by)} ${esc(when(a.approved_at))}` : ""}${a.status === "rejected" ? ` · rejected ${esc(when(a.rejected_at))}: ${esc(a.reason || "")}` : ""}</div></li>`;
+  }).join("")}</ul>`;
+}
+
+function historyCard(d) {
+  if (!d.history.length) return `<p class="empty">No audit events recorded.</p>`;
+  const rows = d.history.slice().reverse().map((e) => {
+    const detail = e.event === "state-transition" ? `${esc(e.from)} → <b>${esc(e.to)}</b>` :
+      [e.gate && "gate " + e.gate, e.approver && "by " + e.approver, e.type, e.result, e.from && e.to && `${e.from} → ${e.to}`, e.reason && "“" + e.reason + "”"].filter(Boolean).map(esc).join(" · ");
+    return `<tr><td class="small muted" title="${esc(e.timestamp)}">${esc(when(e.timestamp))}</td><td><span class="chip">${esc(e.event)}</span></td><td class="small">${detail}</td></tr>`;
+  }).join("");
+  return `<div class="table-wrap" style="max-height:420px;overflow:auto"><table class="ev"><thead><tr><th>When</th><th>Event</th><th>Detail</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function docsCard(d, docPath) {
+  if (!d.documents.length) return `<p class="empty">No documents in tasks/${esc(d.summary.id)}/ yet.</p>`;
+  const current = docPath || (d.documents.find((x) => x.path === "jira.md") || d.documents.find((x) => x.kind === "text") || d.documents[0]).path;
+  const list = d.documents.map((x) => `<a href="#/task/${enc(d.summary.id)}/doc/${enc(x.path)}" class="${x.path === current ? "on" : ""}">${esc(x.path)}<small>${esc(bytes(x.size))} · ${esc(ago(x.modified))}</small></a>`).join("");
+  return `<div class="docs"><nav class="doclist">${list}</nav><div class="viewer" id="viewer" data-path="${esc(current)}"><p class="muted">Loading…</p></div></div>`;
+}
+
+async function loadDoc(d) {
+  const v = document.getElementById("viewer");
+  if (!v) return;
+  const p = v.dataset.path, doc = d.documents.find((x) => x.path === p);
+  if (!doc) { v.innerHTML = `<p class="empty">${esc(p)} is not in this task.</p>`; return; }
+  const key = d.summary.id + "/" + p + "@" + doc.modified + "/" + state.docView;
+  if (state.lastDoc && state.lastDoc.key === key) { v.innerHTML = state.lastDoc.html; wireDoc(d); return; }
+  const url = `/api/tasks/${enc(d.summary.id)}/doc?path=${enc(p)}`;
+  const isMd = /\.(md|markdown)$/i.test(p);
+  const head = `<div class="doc-head"><b>${esc(p)}</b><span class="small muted">${esc(bytes(doc.size))} · modified ${esc(when(doc.modified))}</span>
+    ${isMd ? `<span class="seg"><button data-view="rendered" class="${state.docView === "rendered" ? "on" : ""}">Rendered</button><button data-view="source" class="${state.docView === "source" ? "on" : ""}">Source</button></span>` : ""}</div>`;
+  let body;
+  if (window.AISDLC_SNAPSHOT && doc.kind !== "text") body = `<p class="empty">Images and binary files are not included in a snapshot.</p>`;
+  else if (doc.kind === "image") body = `<img src="${url}" alt="${esc(p)}">`;
+  else if (doc.kind === "binary") body = `<p>Binary file. <a href="${url}">Download</a></p>`;
+  else {
+    const r = await fetch(url, { cache: "no-store" });
+    const text = r.ok ? await r.text() : null;
+    if (text === null) body = `<p class="empty">${esc((await r.json().catch(() => ({}))).error || "Cannot show this document.")}</p>`;
+    else if (isMd && state.docView === "rendered") body = `<div class="md">${markdown(text, d.summary.id, p)}</div>`;
+    else if (/\.jsonl?$/i.test(p) && !/\.jsonl$/i.test(p)) { try { body = `<pre class="raw">${esc(JSON.stringify(JSON.parse(text), null, 2))}</pre>`; } catch { body = `<pre class="raw">${esc(text)}</pre>`; } }
+    else body = `<pre class="raw">${esc(text)}</pre>`;
+  }
+  state.lastDoc = { key, html: head + body };
+  if (document.getElementById("viewer") === v) { v.innerHTML = head + body; wireDoc(d); }
+}
+function wireDoc(d) {
+  document.querySelectorAll("#viewer [data-view]").forEach((b) => b.onclick = () => { state.docView = b.dataset.view; state.lastDoc = null; loadDoc(d); });
+}
+
+let lastTaskKey = null;
+function detail(d, docPath, focusDocs) {
+  const s = d.summary;
+  document.title = `${s.id} · aisdlc PM status`;
+  const key = JSON.stringify([d.summary, d.timeline, d.approvals, d.history.length, d.documents, docPath]);
+  if (key === lastTaskKey && document.getElementById("viewer")) return; // nothing changed; keep scroll and the open document
+  lastTaskKey = key;
+  const y = window.scrollY;
+  $app.innerHTML = `
+    <div class="crumb"><a href="#/">← All tickets</a></div>
+    <div class="task-head"><h1 class="mono">${esc(s.id)}</h1>${statusChip(s.status)}<span class="chip">${esc(s.type)}</span>
+      <span class="small muted">state ${s.position} of ${s.total}</span>${s.awaiting_approval ? `<span class="chip gate">awaiting ${esc(s.awaiting_approval)} approval</span>` : ""}
+      ${s.title ? `<div class="sub">${esc(s.title)}</div>` : ""}</div>
+    ${s.failure ? `<div class="banner bad"><span class="lbl">Interrupted</span><b>${esc(s.status)}</b>${s.resume_state ? ` while in <span class="mono">${esc(s.resume_state)}</span>` : ""}${s.reason ? `<div>${esc(s.reason)}</div>` : ""}</div>` : ""}
+    ${s.next ? `<div class="banner next"><span class="lbl">Next step</span>${whoChip(s.next)} ${esc(s.next.text)}</div>` : ""}
+    <div class="grid">
+      <section class="card"><h2>Lifecycle</h2>
+        <div class="legend"><span>● done</span><span>◉ now</span><span>○ ahead</span><span>◌ skipped</span><span>■ approval gate</span></div>
+        ${flow(d)}</section>
+      <div>
+        <section class="card"><h2>Details</h2>${infoCard(d)}</section>
+        <section class="card"><h2>Approvals</h2>${approvalsCard(d)}</section>
+        <section class="card" id="documents"><h2>Documents</h2>${docsCard(d, docPath)}</section>
+        <section class="card"><h2>History</h2>${historyCard(d)}</section>
+      </div>
+    </div>`;
+  window.scrollTo(0, y);
+  if (focusDocs) document.getElementById("documents").scrollIntoView({ block: "start" });
+  loadDoc(d);
+}
+
+// ---------- markdown (escape first, then a small safe subset) ----------
+function inline(s, id, from) {
+  const codes = [];
+  s = s.replace(/`([^`]+)`/g, (_, c) => (codes.push(`<code>${c}</code>`), `\u0000${codes.length - 1}\u0000`));
+  s = s.replace(/!\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g, (_, alt) => `[image: ${alt}]`);
+  s = s.replace(/\[([^\]]+)\]\(([^)\s]+)[^)]*\)/g, (_, text, href) => {
+    const h = href.replace(/&amp;/g, "&");
+    if (/^https?:\/\//i.test(h)) return `<a href="${h.replace(/"/g, "&quot;")}" target="_blank" rel="noopener">${text}</a>`;
+    if (/^[^:#?]+$/.test(h) && !h.startsWith("/")) {
+      const parts = (from.includes("/") ? from.replace(/[^/]*$/, "") : "") + h;
+      const norm = []; for (const seg of parts.split("/")) { if (seg === "..") norm.pop(); else if (seg && seg !== ".") norm.push(seg); }
+      return `<a href="#/task/${enc(id)}/doc/${enc(norm.join("/"))}">${text}</a>`;
+    }
+    return text;
+  });
+  s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/__([^_]+)__/g, "<strong>$1</strong>")
+       .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>").replace(/~~([^~]+)~~/g, "<del>$1</del>");
+  return s.replace(/\u0000(\d+)\u0000/g, (_, i) => codes[i]);
+}
+function markdown(src, id, from) {
+  const lines = esc(src).replace(/\r\n?/g, "\n").split("\n");
+  const out = []; let i = 0;
+  const isTableSep = (l) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(l);
+  const cells = (l) => l.trim().replace(/^\||\|$/g, "").split("|").map((c) => inline(c.trim(), id, from));
+  while (i < lines.length) {
+    const l = lines[i];
+    let m;
+    if ((m = l.match(/^\s*(```|~~~)/))) {
+      const fence = m[1], buf = []; i++;
+      while (i < lines.length && !lines[i].trim().startsWith(fence)) buf.push(lines[i++]);
+      i++; out.push(`<pre><code>${buf.join("\n")}</code></pre>`); continue;
+    }
+    if ((m = l.match(/^(#{1,6})\s+(.*?)\s*#*\s*$/))) { out.push(`<h${m[1].length}>${inline(m[2], id, from)}</h${m[1].length}>`); i++; continue; }
+    if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(l)) { out.push("<hr>"); i++; continue; }
+    if (l.includes("|") && i + 1 < lines.length && isTableSep(lines[i + 1])) {
+      const head = cells(l); i += 2; const body = [];
+      while (i < lines.length && lines[i].includes("|") && lines[i].trim()) body.push(cells(lines[i++]));
+      out.push(`<div class="table-wrap"><table><thead><tr>${head.map((c) => `<th>${c}</th>`).join("")}</tr></thead><tbody>${body.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`);
+      continue;
+    }
+    if (/^\s*&gt;\s?/.test(l)) {
+      const buf = []; while (i < lines.length && /^\s*&gt;\s?/.test(lines[i])) buf.push(lines[i++].replace(/^\s*&gt;\s?/, ""));
+      out.push(`<blockquote>${markdown(buf.join("\n").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'"), id, from)}</blockquote>`); continue;
+    }
+    if (/^\s*([-*+]|\d+[.)])\s+/.test(l)) {
+      const stack = [];
+      while (i < lines.length && (/^\s*([-*+]|\d+[.)])\s+/.test(lines[i]) || (/^\s{2,}\S/.test(lines[i]) && stack.length))) {
+        const li = lines[i].match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/);
+        if (!li) { out.push(" " + inline(lines[i].trim(), id, from)); i++; continue; }
+        const depth = Math.floor(li[1].replace(/\t/g, "    ").length / 2), tag = /\d/.test(li[2]) ? "ol" : "ul";
+        while (stack.length && stack[stack.length - 1].depth > depth) out.push(`</li></${stack.pop().tag}>`);
+        if (!stack.length || stack[stack.length - 1].depth < depth) { out.push(`<${tag}>`); stack.push({ depth, tag }); }
+        else out.push("</li>");
+        const task = li[3].match(/^\[([ xX])\]\s+(.*)$/);
+        out.push(`<li>${task ? (task[1] === " " ? "☐ " : "☑ ") + inline(task[2], id, from) : inline(li[3], id, from)}`);
+        i++;
+      }
+      while (stack.length) out.push(`</li></${stack.pop().tag}>`);
+      continue;
+    }
+    if (!l.trim()) { i++; continue; }
+    const buf = [];
+    while (i < lines.length && lines[i].trim() && !/^(#{1,6}\s|\s*(```|~~~)|\s*&gt;|\s*([-*+]|\d+[.)])\s+)/.test(lines[i]) && !(lines[i].includes("|") && i + 1 < lines.length && isTableSep(lines[i + 1]))) buf.push(lines[i++]);
+    out.push(`<p>${inline(buf.join(" "), id, from)}</p>`);
+  }
+  return out.join("\n");
+}
+
+// ---------- routing and polling ----------
+let timer = null;
+async function render() {
+  clearTimeout(timer);
+  const h = location.hash.replace(/^#/, "");
+  const m = h.match(/^\/task\/([^/]+)(?:\/doc\/(.+))?$/);
+  try {
+    if (m) {
+      const id = decodeURIComponent(m[1]);
+      const doc = m[2] ? decodeURIComponent(m[2]) : null;
+      const d = await getJSON(`/api/tasks/${enc(id)}`);
+      const fresh = render.lastRoute !== h;
+      detail(d, doc, fresh && Boolean(doc) && render.lastRouteTask === id);
+      render.lastRoute = h; render.lastRouteTask = id;
+      live(true, Date.now());
+      if (!document.getElementById("ws").textContent) getJSON("/api/status").then((s) => document.getElementById("ws").textContent = s.workspace.name).catch(() => {});
+    } else {
+      lastTaskKey = null; render.lastRoute = h; render.lastRouteTask = null;
+      document.title = "aisdlc PM status";
+      const d = await getJSON("/api/status");
+      overview(d);
+      live(true, d.generated_at);
+    }
+  } catch (e) {
+    if (e.status === 404 && m) { lastTaskKey = null; $app.innerHTML = `<div class="crumb"><a href="#/">← All tickets</a></div><p class="empty">${esc(e.message)}: ${esc(decodeURIComponent(m[1]))}.</p>`; live(true, Date.now()); }
+    else live(false);
+  }
+  timer = setTimeout(render, window.AISDLC_SNAPSHOT ? 600000 : 4000);
+}
+window.addEventListener("hashchange", () => { lastTaskKey = null; render(); });
+render();
+</script>
+</body>
+</html>

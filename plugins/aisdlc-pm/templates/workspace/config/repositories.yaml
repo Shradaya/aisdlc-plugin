@@ -1,0 +1,7 @@
+# PM workspace marker (JSON-compatible YAML; full-line '#' comments only).
+# A PM workspace does not register code repositories; this file's presence is what makes the folder an aisdlc
+# workspace (resolved by the plugin's scripts/lib/root.js). The PM drafts requirements and acceptance criteria under
+# tasks/<TICKET>/ and writes them into the Jira ticket (the source of truth); there is no local code repository here.
+{
+  "repositories": {}
+}

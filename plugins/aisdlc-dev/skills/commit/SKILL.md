@@ -1,7 +1,7 @@
 ---
 name: commit
-description: Create a compliant git commit "<ticket-number>: <changes summary>" on the task branch and record the hash in task state. Use only when the developer runs /aisdlc-dev:commit or confirms the commit stage of a workflow.
-argument-hint: <ticket-number>
+description: "Create a compliant git commit \"{ticket-number}: {changes summary}\" on the task branch and record the hash in task state. Use only when the developer runs /aisdlc-dev:commit or confirms the commit stage of a workflow."
+argument-hint: "<ticket-number>"
 disable-model-invocation: true
 ---
 

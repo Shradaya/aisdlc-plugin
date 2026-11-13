@@ -11,22 +11,22 @@ const path = require("path");
 const REPO = path.resolve(__dirname, "..");
 const CORE = path.join(REPO, "packages", "aisdlc-core");
 
-// Which files each plugin needs. aisdlc-design and aisdlc-qa do not need the full feature config, but need the same
-// lib + state engine; every plugin gets the same core files (lifecycles and their gates come from each plugin's
-// config/task-types.yaml).
-const CORE_FILES = ["lib/root.js", "lib/repo-paths.js", "lib/yaml.js", "lib/design-config.js", "lib/jira.js", "state/aisdlc-state.js"];
+// Which files each plugin needs. aisdlc-dev and aisdlc-qa get the full core (lib + state engine; lifecycles and their
+// gates come from each plugin's config/task-types.yaml). aisdlc-design has no task lifecycle, so it only needs the
+// workspace-root helper.
+const FULL_CORE = ["lib/root.js", "lib/repo-paths.js", "lib/yaml.js", "lib/design-config.js", "lib/jira.js", "state/aisdlc-state.js"];
 const CORE_CONSUMERS = [
-  path.join(REPO, "plugins", "aisdlc-dev", "scripts"),
-  path.join(REPO, "plugins", "aisdlc-design", "scripts"),
-  path.join(REPO, "plugins", "aisdlc-qa", "scripts"),
+  { dest: path.join(REPO, "plugins", "aisdlc-dev", "scripts"), files: FULL_CORE },
+  { dest: path.join(REPO, "plugins", "aisdlc-design", "scripts"), files: ["lib/root.js"] },
+  { dest: path.join(REPO, "plugins", "aisdlc-qa", "scripts"), files: FULL_CORE },
 ];
 
 const check = process.argv.includes("--check");
 let drift = 0;
 
-for (const dest of CORE_CONSUMERS) {
+for (const { dest, files } of CORE_CONSUMERS) {
   if (!fs.existsSync(path.dirname(dest))) continue; // plugin not created yet
-  for (const rel of CORE_FILES) {
+  for (const rel of files) {
     const src = path.join(CORE, rel);
     const out = path.join(dest, rel);
     const want = fs.readFileSync(src);

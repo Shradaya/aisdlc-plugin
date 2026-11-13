@@ -1,7 +1,7 @@
 ---
 name: status-page
-description: Open the live status page for the aisdlc workspace in the browser - every task with its past, current and upcoming lifecycle states, approvals, next step, history and all its documents, plus repositories, blocking issues and credentials (names only). Read-only local web server; can also write a self-contained snapshot of the page as one HTML file, or one ticket's status as Markdown. Use when the developer runs /aisdlc-dev:status-page.
-argument-hint: [--port <n>] [--stop] | --export <file.html> [--with-docs] [--force] | --markdown <TICKET> [--out <file.md>]
+description: "Open the live status page for the aisdlc workspace in the browser - every task with its past, current and upcoming lifecycle states, approvals, next step, history and all its documents, plus repositories, blocking issues and credentials (names only). Read-only local web server; can also write a self-contained snapshot of the page as one HTML file, or one ticket's status as Markdown. Use when the developer runs /aisdlc-dev:status-page."
+argument-hint: "[--port <n>] [--stop] | --export <file.html> [--with-docs] [--force] | --markdown <TICKET> [--out <file.md>]"
 disable-model-invocation: true
 ---
 

@@ -1,41 +1,51 @@
 # aisdlc plugins
 
-Claude Code plugins for an AI-assisted software delivery lifecycle (AI-SDLC), one per role, published from one marketplace (`aisdlc-marketplace`):
+Claude Code plugins for an AI-assisted software delivery lifecycle (AI-SDLC), one per role (design, dev, QA and project manager), published from one marketplace (`aisdlc-marketplace`):
 
 | Plugin | For | What it does | Docs |
 |---|---|---|---|
-| **aisdlc-design** | UI/UX designers | Author a prototype under a design ticket, preview it, approve it, and commit it to a design repository | [plugins/aisdlc-design](plugins/aisdlc-design/README.md) |
+| **aisdlc-pm** | Project managers | Jira ticket → requirements and acceptance criteria (approved by a human) → written into the Jira ticket as the source of truth → hand-off to design or development | [plugins/aisdlc-pm](plugins/aisdlc-pm/README.md) |
+| **aisdlc-design** | UI/UX designers | Sync a Claude Design prototype to a git design repository, no ticket needed | [plugins/aisdlc-design](plugins/aisdlc-design/README.md) |
 | **aisdlc-dev** | Developers | Jira ticket → specification (approved) → implementation → review → commit → PR/CI → release → product knowledge | [plugins/aisdlc-dev](plugins/aisdlc-dev/README.md) |
 | **aisdlc-qa** | QA engineers | Jira ticket → test scenarios (approved) → Playwright tests run in a browser the QA watches → defects on the ticket, wait for the fix → signed-off evidence on Jira → regression suite; plus quick checks without a ticket, with the proof kept locally | [plugins/aisdlc-qa](plugins/aisdlc-qa/README.md) |
 
 Each role installs only its own plugin and sees only its own `/aisdlc-<role>:<skill>` commands.
 
-All three plugins work the same way:
+All four plugins work the same way:
 - Every piece of work hangs off a ticket.
 - A task moves through a state machine whose state changes only through the state CLI.
 - Human decisions are explicit approval gates, pinned to the hash of what was approved. Editing the approved file means approving it again.
 - Hooks block what the gates don't allow: early edits, wrong commit formats, force-push, printing secrets, testing against production.
 - Credentials are environment variables only, never files.
+- Every generated document (requirements, acceptance criteria, design, specification, impact analysis, plan, scenarios, results) is kept short and precise: terse bullets and tables, no filler.
 
 ## How the roles connect
 
 ```
+PM (aisdlc-pm): requirements + acceptance criteria (human-approved) go into the Jira ticket,
+then hand-off to design or development
+          |
+          v
 Designer (aisdlc-design)          Developer (aisdlc-dev)                  QA (aisdlc-qa)
-design ticket ─► prototype ─►     feature ticket ─► spec pins the     ─►  same ticket ─► scenarios approved
-approved, committed to the        design ─► implement ─► PR to             ─► tests run ─► defect comment on
-design repository                 lf-develop / lf-qa / lf-uat              Jira ◄──────── developer fixes,
+Claude Design prototype ─►        feature ticket ─► spec pins the     ─►  same ticket ─► scenarios approved
+synced to the design repo         design ─► implement ─► PR to             ─► tests run ─► defect comment on
+(folder per ticket, pushed)       lf-develop / lf-qa / lf-uat              Jira ◄──────── developer fixes,
                                                                            re-verified ─► sign-off ─► evidence
                                                                            on Jira, tests into regression suite
 ```
 
+0. **PM → design and development.**
+   - The PM drafts `/aisdlc-pm:requirements` and `/aisdlc-pm:acceptance-criteria`, approves the criteria, writes them to the Jira ticket with `/aisdlc-pm:jira-sync`, and hands off with `/aisdlc-pm:handoff <TICKET> dev|design`.
+   - The designer and developer read them from the ticket, and QA tags scenarios `@<TICKET>-AC<n>` from the numbered criteria.
 1. **Design → development.**
-   - The designer runs `/aisdlc-design:design <DESIGN-TICKET>` and `/aisdlc-design:commit`, then pushes the design repository.
+   - The designer runs `/aisdlc-design:sync <artifact> [--ticket KEY] [--pages ...]` (see the [design plugin README](plugins/aisdlc-design/README.md#design-flow)): the whole prototype is committed once to `main`, then each ticket's changes go on a branch from `main`, and the designer pushes it.
    - The developer registers that repository with `/aisdlc-dev:add-repo <name> <path> --kind design`.
    - During `/aisdlc-dev:feature`, the `design-link` step pins a hashed snapshot of the design into the specification.
 2. **Development → QA.**
    - Once the change is deployed to a QA environment, the QA engineer runs `/aisdlc-qa:test <TICKET>`.
    - App defects go back to the developer as comments on the Jira ticket, and the QA task waits for the fix.
    - When the developer says the fix is deployed, the QA runs `/aisdlc-qa:run <TICKET>` to re-verify.
+3. **Review loop.** After a PR is open, the developer runs `/aisdlc-dev:pr-comments <TICKET>`: it reads the reviewers' comments, triages them with the developer, fixes the valid ones (asking before each commit and push) and replies on the PR.
 
 ## Install
 
@@ -53,9 +63,18 @@ claude plugin install aisdlc-<role>@aisdlc-marketplace --scope project     # thi
 claude plugin install aisdlc-<role>@aisdlc-marketplace --scope local       # this workspace, only you
 ```
 
-`<role>` is `dev`, `design` or `qa`. Run the `--scope project` and `--scope local` forms from inside the workspace folder. Afterwards, restart Claude Code in the workspace so the hooks load. Then run `/aisdlc-<role>:init` to scaffold a workspace; each plugin's README describes its setup.
+`<role>` is `dev`, `design`, `qa` or `pm`. Run the `--scope project` and `--scope local` forms from inside the workspace folder. Afterwards, restart Claude Code in the workspace so the hooks load. Then run `/aisdlc-<role>:init` to scaffold a workspace; each plugin's README describes its setup.
 
 Don't also start Claude Code with `--plugin-dir` pointing at this folder, or the plugin loads twice.
+
+### Claude Desktop and Claude on the web
+
+These plugins need Claude Code (hooks, the `node` CLIs and a workspace folder), so use the **Code** tab in Claude Desktop or claude.ai/code. Plain chat does not run hooks, so it can't enforce the approval gates.
+
+- **Package.** `node scripts/package-plugins.js` writes `dist/<plugin>-<version>.zip` for each plugin (git-tracked files only, plugin contents at the zip root). Hand the zip to teammates or an org admin to upload.
+- **Desktop, Code tab.** It runs the same Claude Code, so the install above applies unchanged: open your workspace folder, add the marketplace or install the plugin, then run `/aisdlc-<role>:init`.
+- **Web (cloud sessions).** The session runs in a cloud sandbox and sees only the repository it was started on. Commit a `.claude/settings.json` to the workspace repository that registers the marketplace and enables your role's plugin, and set the credentials from the table above as environment variables or secrets of the cloud environment. Node 20+ is needed for the hooks.
+- **Limits on the web.** There is no local machine: QA's visible Playwright browser and repository paths on your PC are not available. Jira/Bitbucket work and spec, plan and scenario drafting do work.
 
 **Workspaces.**
 - Each plugin works in its own folder. A folder is a workspace when it contains `config/repositories.yaml`; the hooks and CLIs find it from the folder, any subfolder, or `AISDLC_ROOT`.
@@ -64,7 +83,7 @@ Don't also start Claude Code with `--plugin-dir` pointing at this folder, or the
 
 ## Requirements
 
-- Claude Code and Node.js: the hooks and CLIs run with `node`. The design preview app and the QA workspace need Node 20+.
+- Claude Code and Node.js: the hooks and CLIs run with `node`. The QA workspace needs Node 20+.
 - Credentials, as environment variables only:
 
 | Variable | Used by | For |
@@ -75,17 +94,51 @@ Don't also start Claude Code with `--plugin-dir` pointing at this folder, or the
 
 Set them in PowerShell before starting Claude Code (`$env:JIRA_API_TOKEN = "..."`), or as user environment variables. Claude only checks whether they are set, and a hook blocks printing them. Jira writes are off by default in each workspace's `config/integrations.yaml`.
 
+### Token scopes
+
+Create the tokens with only the scopes each role needs. Classic (unscoped) Atlassian tokens also work; the scopes below apply to tokens created with scopes. Anything marked *optional* is off by default and needed only after you switch the matching write in the workspace's `config/integrations.yaml`.
+
+**Jira** (`JIRA_API_TOKEN`)
+
+| Scope | dev | qa | pm | design | Used for |
+|---|:-:|:-:|:-:|:-:|---|
+| `read:issue:jira` | yes | yes | yes | n/a | Fetch the ticket and its basic fields |
+| `read:issue-details:jira` | yes | yes | yes | n/a | Description, labels, priority, linked issues |
+| `read:field:jira` | yes | yes | yes | n/a | Find the custom field holding acceptance criteria |
+| `read:comment:jira` | yes | yes | n/a | n/a | Comments (dev: only when the workflow asks; qa: developer replies while a defect waits) |
+| `read:project:jira` | yes | n/a | n/a | n/a | Resolve the project a ticket belongs to |
+| `read:jira-user` | yes | yes | yes | n/a | Connection check (`/myself`) and assignee names |
+| `write:comment:jira` | n/a | optional | n/a | n/a | qa: defect and results comments |
+| `write:attachment:jira` | n/a | optional | n/a | n/a | qa: screenshots and reports |
+| `write:issue:jira` | n/a | optional | optional | n/a | pm: write the managed block into the description. qa: status transitions |
+
+The design plugin needs no Jira token: `/aisdlc-design:sync` does not use Jira.
+
+**Bitbucket** (`BITBUCKET_API_TOKEN`, dev only)
+
+| Scope | Used for |
+|---|---|
+| `read:repository:bitbucket` | Read repository content and pull request diffs |
+| `read:pullrequest:bitbucket` | Read pull request details, status and review comments (`/aisdlc-dev:pr-comments`) |
+| `write:pullrequest:bitbucket` | Create pull requests; post PR comments and replies (on by default, set `git_hosting.write.add_pr_comment` to `false` to stop) |
+
+Never granted: approving or merging pull requests; the plugins never force-push.
+
+**Git access for designers.** `/aisdlc-design:sync` only runs local git commands; the designer pushes with their own git credentials. They need write (push) access to the design repository, or a fork and pull requests. No Bitbucket API token or scope is required for this.
+
 ## Repository layout
 
 | Path | Purpose |
 |---|---|
-| `.claude-plugin/marketplace.json` | Marketplace manifest listing the three plugins |
+| `.claude-plugin/marketplace.json` | Marketplace manifest listing the four plugins |
 | `plugins/aisdlc-dev/` | Developer plugin |
-| `plugins/aisdlc-design/` | Designer plugin, including the `preview/` app template |
+| `plugins/aisdlc-design/` | Designer plugin: `init` and `sync` |
 | `plugins/aisdlc-qa/` | QA plugin, including the Playwright workspace template, test runner and Jira helper |
+| `plugins/aisdlc-pm/` | Project-manager plugin: requirements, acceptance criteria, Jira write-back |
+| `scripts/package-plugins.js` | Builds one installable zip per plugin into `dist/` |
 | `packages/aisdlc-core/` | Shared core: state engine, workspace and path resolution, config loaders. The source of truth, vendored into each plugin. |
 | `scripts/sync-core.js` | Copies the shared core into each plugin; `--check` for CI |
-| `kiro/` | Port of the dev and design lifecycles as Kiro skills and hooks ([kiro/README.md](kiro/README.md)). QA is not ported yet. |
+| `kiro/` | Port of the dev lifecycle as Kiro skills and hooks (the design port predates `/aisdlc-design:sync` and is outdated) ([kiro/README.md](kiro/README.md)). QA is not ported yet. |
 
 Each plugin has the same internal layout:
 - `.claude-plugin/plugin.json`: manifest.
@@ -99,7 +152,7 @@ Each plugin has the same internal layout:
 
 A hosted-marketplace install copies only a plugin's own folder, which is why the core is vendored rather than shared.
 
-**Config-driven gates.** The state engine has built-in gates: `specification` and `plan` for dev, `design` for design. A lifecycle can also declare its own in `task-types.yaml`. QA uses this for its `scenarios` and `signoff` gates.
+**Config-driven gates.** The state engine has built-in gates: `specification` and `plan` for dev. A lifecycle can also declare its own in `task-types.yaml`. QA uses this for its `scenarios` and `signoff` gates.
 - `gates`: each gate's artifact, which is hash-pinned on approval.
 - `requires_approval`: which states need which gates, with an unchanged artifact.
 - `requires_no_open`: refuse a state while, for example, a defect is still open.
@@ -121,6 +174,8 @@ Checks (no network or model needed):
 node plugins/aisdlc-dev/scripts/validation/test-gates.js
 node plugins/aisdlc-dev/scripts/validation/test-repo-paths.js
 node scripts/test-version-check.js
+node scripts/test-conflict-markers.js
+node scripts/check-conflict-markers.js                          # no leftover merge conflict markers in tracked files
 node plugins/aisdlc-dev/scripts/validation/test-init-detect.js
 node plugins/aisdlc-dev/scripts/validation/test-jira-client.js    # Jira request routing (classic vs scoped tokens), mock server
 node plugins/aisdlc-dev/scripts/validation/cred-check.js        # run from a dev workspace
@@ -136,7 +191,7 @@ node scripts/sync-core.js --check
 node scripts/version-check.js                                   # every plugin.json matches its CHANGELOG.md
 claude plugin validate .
 ```
-CI (`.github/workflows/ci.yml`) runs all of the above on every PR, plus `node scripts/version-check.js --base origin/<base-branch>`: any PR that changes a plugin's behavior (anything under `plugins/<name>/` except README, CHANGELOG, `scripts/validation/**` and `templates/web/docs/**`) must raise that plugin's `.claude-plugin/plugin.json` version above the base and add a `CHANGELOG.md` entry whose newest heading matches it.
+CI (`.github/workflows/ci.yml`) runs all of the above on every PR (a PR fails if any tracked file still has merge conflict markers), plus `node scripts/version-check.js --base origin/<base-branch>`: any PR that changes a plugin's behavior (anything under `plugins/<name>/` except README, CHANGELOG, `scripts/validation/**` and `templates/web/docs/**`) must raise that plugin's `.claude-plugin/plugin.json` version above the base and add a `CHANGELOG.md` entry whose newest heading matches it.
 
 The integration helpers share a contract:
 - Credentials come from the environment only.

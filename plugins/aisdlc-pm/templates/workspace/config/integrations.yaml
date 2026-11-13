@@ -1,0 +1,44 @@
+# External integrations for the PM workspace. JSON-compatible YAML; '#' comments only on their own lines.
+# All Jira traffic goes over the Jira REST API through scripts/jira/jira-pm.js (no MCP server to set up): reading a
+# ticket ("issue"), and - only when the matching "write" switch is exactly true - writing the requirements and
+# acceptance criteria into a managed block of the Jira description ("update_description") and, optionally, into the
+# acceptance-criteria custom field ("update_acceptance_criteria_field"). Tickets are asked for interactively (a pasted
+# brief) when Jira is unavailable.
+# Credentials are read from environment variables ONLY; this file stores their names, never values.
+# Jira needs your site URL in "base_url" (not a secret).
+# auth_scheme: "basic" (Jira Cloud: email + API token) or "bearer" (Jira Data Center personal access token).
+# acceptance_criteria_field: optional custom field id (e.g. "customfield_10050"); empty = the description only.
+# api_route: "auto" (default) tries the site URL first and falls back to the Atlassian API gateway on 401/403 -
+# needed for a Jira Cloud token with granular scopes (e.g. read:issue:jira), which the site URL treats as anonymous.
+# "site" or "gateway" skip that probe when you already know which one applies. cloud_id skips the gateway lookup.
+# write.update_description and write.update_acceptance_criteria_field must be EXACTLY true to enable (any other value
+# is off); they default off, and init --from-dev never turns them on. Writing needs the write:issue:jira scope.
+{
+  "jira": {
+    "adapter": "rest-api",
+    "base_url": "",
+    "auth_scheme": "basic",
+    "api_route": "auto",
+    "cloud_id": "",
+    "acceptance_criteria_field": "",
+    "required_for_ticket_fetch": false,
+    "read": ["issue", "fields", "description", "acceptance_criteria", "labels", "priority", "linked_issues"],
+    "write": {
+      "update_description": false,
+      "update_acceptance_criteria_field": false
+    },
+    "script": "${CLAUDE_PLUGIN_ROOT}/scripts/jira/jira-pm.js",
+    "fallback": "interactive-questions",
+    "credentials": {
+      "email_env": "JIRA_EMAIL",
+      "api_token_env": "JIRA_API_TOKEN"
+    },
+    "token_scopes": {
+      "read:issue:jira": "Fetch the ticket and its basic fields",
+      "read:issue-details:jira": "Description, labels, priority, linked issues",
+      "read:field:jira": "Find the custom field holding acceptance criteria",
+      "read:jira-user": "The connection check (jira-pm.js check calls /myself)",
+      "write:issue:jira": "Write the managed block (and optional AC field) into the Jira description (only when a write switch is true)"
+    }
+  }
+}

@@ -1,6 +1,6 @@
 ---
 name: qa-test-reviewer
-description: Independent read-only review of generated or healed Playwright tests against the QA-approved scenarios (tasks/<TICKET>/spec.md) - coverage, faithful assertions, conventions, flakiness and safety. Flags any weakened assertion in a healer's change. Returns findings to the test skill.
+description: Independent read-only review of generated or healed Playwright tests against the QA-approved scenarios (tasks/{TICKET}/spec.md) - coverage, faithful assertions, conventions, flakiness and safety. Flags any weakened assertion in a healer's change. Returns findings to the test skill.
 tools: Read, Grep, Glob, Bash
 ---
 

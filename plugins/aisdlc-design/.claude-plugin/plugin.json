@@ -1,6 +1,8 @@
 {
   "name": "aisdlc-design",
-  "version": "1.0.0",
-  "description": "AI-SDLC design-authoring plugin (designer side): author UI/UX prototypes under a design ticket, preview them, and commit them to a design repository for developers to consume.",
-  "author": { "name": "Evoke Medical Care" }
+  "version": "3.0.0",
+  "description": "AI-SDLC design plugin (designer side): sync a Claude Design prototype into a git design repository as .dc.html pages with a local viewer, no ticket required, so developers can read it without access to the designer's Claude organization.",
+  "author": {
+    "name": "Evoke Medical Care"
+  }
 }
